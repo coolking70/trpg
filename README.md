@@ -1,8 +1,19 @@
 # TRPG AI 跑团
 
-基于 AI 的 TRPG 浏览器跑团游戏。AI 担任 Game Master，玩家通过卡牌、地图和文本交互推进冒险。
+> 基于 AI 的 TRPG 浏览器跑团游戏。AI 担任 Game Master，玩家通过卡牌、地图和文本交互推进冒险。
+
+[![CI](https://github.com/USERNAME/REPONAME/actions/workflows/ci.yml/badge.svg)](https://github.com/USERNAME/REPONAME/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-115%2F115-brightgreen)](./__tests__)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 支持完整的玩法闭环：探索 → 事件触发 → 战斗 → 角色成长 → 商店 → 主线推进，并配备完整的预设创作器，任何用户都能在浏览器中打造自己的故事。
+
+## 🚀 一键部署
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FUSERNAME%2FREPONAME)
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/USERNAME/REPONAME)
+
+或者用 GitHub Pages：仓库 Settings → Pages → Source 选 **GitHub Actions**，下次 push 到 `main` 即自动部署到 `https://USERNAME.github.io/REPONAME/`。
 
 ## 特性亮点
 
@@ -112,7 +123,7 @@ docs/                 # 创作者手册 + AI 集成手册
 
 ```bash
 npm test
-# 112 tests across 7 suites, ~0.4s
+# 115 tests across 7 suites, ~0.5s
 ```
 
 - DiceSystem (14)
@@ -120,18 +131,32 @@ npm test
 - EventTriggerEngine (16)
 - ProgressionSystem (15)
 - MemorySystem (11)
-- CombatSystem (13)
-- 主线 E2E 集成 (12)
+- CombatSystem (18)
+- 主线 E2E 集成 (12+)
 
 ## 路线图
 
-✅ Phase 0-7（已完成）：核心玩法、战斗、剧情系统、AI 记忆、UI 打磨、预设编辑器
+✅ **Phase 0-7**：核心玩法、战斗、剧情、AI 记忆、UI 打磨、预设编辑器
+✅ **Phase 8**：AI 队友自主决策、动态难度、随机世界生成、LLM 战术 AI
+✅ **Phase 9**：bug 扫清、动画过渡、错误样式
+✅ **Phase 10**：默认预设主线化（10 章暗黑森林）
+✅ **Phase 11**：生产默认值统一、AI 重试、错误兜底
+✅ **真实 AI 端到端验证**（OpenAI 兼容 API，含小米 MiMo 等）
 
 🔮 后续可能方向：
-- AI 队友自主行动（队伍 4 人，3 个由 AI 控制）
-- 云存档同步
-- 社区预设库
-- 移动端适配
+- 云存档同步（社区预设库）
+- 移动端响应式适配
+- 多语言（英文版预设）
+- Token 成本面板（实时计数 + 预算告警）
+
+## 玩测发现的 8 个 bug 已全部修复
+
+通过真实 AI 端到端玩测发现并修复了 8 个 bug，其中 2 个严重级别：
+- **#5 严重**：同种敌人多份时 turnOrder 卡死
+- **#8 严重**：AI 并发冲突丢失叙事
+- 其他：方向解析、战斗叙事、长期记忆等细节
+
+详见 [git log](https://github.com/USERNAME/REPONAME/commits/main)。
 
 ## License
 
