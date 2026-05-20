@@ -17,6 +17,8 @@ import { LeftPanel } from './LeftPanel.js';
 import { RightPanel } from './RightPanel.js';
 import { CombatPanel } from './CombatPanel.js';
 import { CombatResultModal } from './CombatResultModal.js';
+import { ToastManager } from './ToastManager.js';
+import { QuestTracker } from './QuestTracker.js';
 import { NarrativePanel } from './NarrativePanel.js';
 import { DiceOverlay } from './DiceOverlay.js';
 import { CardDetailModal } from './CardDetailModal.js';
@@ -48,6 +50,7 @@ export class GameUI {
     this.leftPanelEl = this.container.querySelector('#left-panel');
     this.rightPanelEl = this.container.querySelector('#right-panel');
     this.narrativeEl = this.container.querySelector('#narrative-panel');
+    this.questTrackerEl = this.container.querySelector('#quest-tracker-slot');
     this.diceOverlayEl = this.container.querySelector('#dice-overlay');
     this.modalContainerEl = this.container.querySelector('#modal-container');
 
@@ -80,6 +83,10 @@ export class GameUI {
     this.rightPanel = new RightPanel(this.rightPanelEl, this.eventSystem, this.engine);
     this.combatPanel = new CombatPanel(this.rightPanelEl, this.eventSystem);
     this.combatResultModal = new CombatResultModal(this.modalContainerEl, this.eventSystem);
+    // Toast 挂载在 body 级别，避免被面板裁切
+    this.toastManager = new ToastManager(this.container, this.eventSystem);
+    // QuestTracker 挂在叙事面板上方独立 slot（避免被 NarrativePanel.render 清空）
+    this.questTracker = new QuestTracker(this.questTrackerEl, this.eventSystem, this.engine);
     this.narrativePanel = new NarrativePanel(this.narrativeEl, this.eventSystem);
     this.diceOverlay = new DiceOverlay(this.diceOverlayEl, this.eventSystem);
     this.cardDetailModal = new CardDetailModal(this.modalContainerEl, this.eventSystem);
@@ -187,6 +194,8 @@ export class GameUI {
     this.rightPanel.destroy();
     this.combatPanel.destroy();
     this.combatResultModal.destroy();
+    this.toastManager.destroy();
+    this.questTracker.destroy();
     this.narrativePanel.destroy();
     this.diceOverlay.destroy();
     this.cardDetailModal.destroy();

@@ -1,0 +1,55 @@
+/* 主线进度追踪器 - 显示在叙事面板上方 */
+
+.quest-tracker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  background: rgba(245, 158, 11, 0.06);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+  font-size: 12px;
+}
+
+.quest-tracker__progress {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.quest-tracker__label {
+  color: #fbbf24;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.quest-tracker__count {
+  color: #fcd34d;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.quest-tracker__bar {
+  height: 5px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.quest-tracker__bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+  width: 0%;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.quest-tracker__hint {
+  color: #fcd34d;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 2px 0;
+}
+
+.quest-tracker__hint-icon {
+  margin-right: 4px;
+}
