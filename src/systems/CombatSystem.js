@@ -304,6 +304,16 @@ export class CombatSystem extends GameSystem {
       }
     }
 
+    // 在清空 activeCombat 之前快照击败的敌人（供 _finalizeCombat 等后续逻辑使用）
+    const defeatedEnemies = combat
+      ? combat.enemies.filter(e => e.stats.hpCurrent <= 0)
+          .map(e => ({
+            id: e._originalId || e.id,
+            name: e.name,
+            difficulty: e.difficulty,
+          }))
+      : [];
+
     gameState.activeCombat = null;
     gameState.currentPhase = 'exploration';
 
@@ -311,6 +321,7 @@ export class CombatSystem extends GameSystem {
       result,
       totalExp,
       loot,
+      defeatedEnemies,
       combatEnd: true,
       nextActor: null,
       newRound: false,

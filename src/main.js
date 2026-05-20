@@ -190,7 +190,7 @@ class TRPGApp {
       const mapData = this.engine.getSystem('MapSystem').getMapData();
       const targetTile = mapData ? mapData.getTile(gridPos.x, gridPos.y) : null;
       const tileName = targetTile ? targetTile.name : '';
-      const actionText = `向${dirLabel}前进 - ${tileName}`;
+      const actionText = `向${dirLabel} - ${tileName}`;
 
       // 走统一操作流程：锁定 → 显示意图 → 移动 → AI叙事 → 解锁
       this._executeMovementAction(actionText);
@@ -947,10 +947,16 @@ class TRPGApp {
     const cardManager = this.engine.getSystem('CardManager');
     const combatSystem = this.engine.getSystem('CombatSystem');
 
+    // 给每只敌人实例分配唯一 ID（修复 Bug #5：同种敌人多只时 findCombatant 冲突）
     const enemies = enemyIds
-      .map(id => cardManager.getCard(id))
-      .filter(Boolean)
-      .map(e => JSON.parse(JSON.stringify(e)));
+      .map((id, idx) => ({ original: cardManager.getCard(id), idx }))
+      .filter(o => o.original)
+      .map(({ original, idx }) => {
+        const clone = JSON.parse(JSON.stringify(original));
+        clone._originalId = original.id;  // 保留原 ID 供掉落/卡牌引用
+        clone.id = `${original.id}#${idx}`;  // 唯一实例 ID
+        return clone;
+      });
 
     if (enemies.length === 0) return;
 
@@ -1065,9 +1071,25 @@ class TRPGApp {
       this._showAttackDice(result, actorId);
     } else if (actionType === 'ability') {
       result = combatSystem.useAbility(this.gameState, actorId, abilityId, targetId);
+      this._showAttackDice(result, actorId);
     } else if (actionType === 'flee') {
       this._attemptFlee(actorId);
       return;
+    }
+
+    // 修复 Bug #3：玩家自己的战斗动作也写叙事
+    if (result && result.success) {
+      const action = actionType === 'attack' ? '普攻'
+        : (combatSystem.findCombatant(this.gameState, actorId)?.abilities?.find(a => a.id === abilityId)?.name || '技能');
+      const target = combatSystem.findCombatant(this.gameState, targetId);
+      const actor = combatSystem.findCombatant(this.gameState, actorId);
+      const dmg = result.finalDamage !== undefined ? result.finalDamage : result.damage;
+      const heal = result.healing;
+      let detail = '';
+      if (dmg > 0) detail = `造成 ${dmg} 点伤害`;
+      else if (heal > 0) detail = `恢复 ${heal} HP`;
+      const defeated = result.targetDefeated ? '，击败！' : '。';
+      this.gameState.addNarrative('system', `${actor?.name || ''} 对 ${target?.name || ''} 使用 ${action}${detail ? '，' + detail : ''}${defeated}`);
     }
 
     this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
@@ -1196,6 +1218,12 @@ class TRPGApp {
       if (!this.gameState || !this.gameState.activeCombat) return;
       const result = combatSystem.performAttack(this.gameState, enemyId, target.id);
       this._showAttackDice(result, enemyId);
+      // 修复 Bug #3：敌人攻击需要叙事条目（之前玩家完全不知道发生了什么）
+      if (result && result.success) {
+        const dmgStr = result.finalDamage > 0 ? `造成 ${result.finalDamage} 点伤害` : '未造成伤害';
+        const defeatedStr = result.targetDefeated ? '，将其击倒！' : '。';
+        this.gameState.addNarrative('system', `${enemy.name} 攻击 ${target.name}，${dmgStr}${defeatedStr}`);
+      }
       this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
       setTimeout(() => this._advanceTurn(), 600);
     }, 800);
@@ -1238,12 +1266,11 @@ class TRPGApp {
     // combat:end 已由 CombatSystem.endCombat 内部发布，无需重复
     this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
 
-    // 记忆战斗结果（仅保留 boss/精英级别和重要结局）
+    // 记忆战斗结果（修复 Bug #7：activeCombat 此时已被 endCombat 清空，改用 endResult.defeatedEnemies）
     const memorySystem = this.engine.getSystem('MemorySystem');
-    const combat = this.gameState.activeCombat;
-    if (memorySystem && combat && combat.enemies) {
-      const defeated = combat.enemies.filter(e => e.stats.hpCurrent <= 0);
-      const notable = defeated.filter(e => ['boss', 'hard'].includes(e.difficulty));
+    const defeatedList = endResult.defeatedEnemies || [];
+    if (memorySystem && defeatedList.length > 0) {
+      const notable = defeatedList.filter(e => ['boss', 'hard'].includes(e.difficulty));
       if (notable.length > 0 && endResult.result === 'victory') {
         memorySystem.addKeyEvent(this.gameState, {
           summary: `击败了 ${notable.map(e => e.name).join('、')}`,
@@ -1251,7 +1278,7 @@ class TRPGApp {
         });
       } else if (endResult.result === 'defeat') {
         memorySystem.addKeyEvent(this.gameState, {
-          summary: `被 ${combat.enemies.map(e => e.name).join('、')} 击败`,
+          summary: `被 ${defeatedList.map(e => e.name).join('、')} 击败`,
           tags: ['combat', 'defeat'],
         });
       }
@@ -1478,15 +1505,24 @@ class TRPGApp {
     if (!this.gameState || !this.mapRenderer.mapData) return false;
 
     // 方向 → 偏移量映射（dx, dy）
+    // 顺序很关键：对角线优先（含"北/南/西/东"子串），明确方向词优先于单字
+    // 修复 Bug #1: 之前"前进"被绑在"北"导致"向东前进"被识别成北
     const directionMap = [
-      { patterns: /北|向北|往北|north|up|↑|前进/, dx: 0, dy: -1 },
-      { patterns: /南|向南|往南|south|down|↓|后退/, dx: 0, dy: 1 },
-      { patterns: /西|向西|往西|west|left|←|向左/, dx: -1, dy: 0 },
-      { patterns: /东|向东|往东|east|right|→|向右/, dx: 1, dy: 0 },
+      // 对角线（必须排在前面，否则"西北"会先匹配单字"北"）
       { patterns: /西北|northwest/, dx: -1, dy: -1 },
       { patterns: /东北|northeast/, dx: 1, dy: -1 },
       { patterns: /西南|southwest/, dx: -1, dy: 1 },
       { patterns: /东南|southeast/, dx: 1, dy: 1 },
+      // 明确方向短语
+      { patterns: /向北|往北|north|↑/i, dx: 0, dy: -1 },
+      { patterns: /向南|往南|south|↓/i, dx: 0, dy: 1 },
+      { patterns: /向西|往西|west|←|向左/i, dx: -1, dy: 0 },
+      { patterns: /向东|往东|east|→|向右/i, dx: 1, dy: 0 },
+      // 单字 fallback（已排除上面被匹配的情况）
+      { patterns: /北/, dx: 0, dy: -1 },
+      { patterns: /南/, dx: 0, dy: 1 },
+      { patterns: /西/, dx: -1, dy: 0 },
+      { patterns: /东/, dx: 1, dy: 0 },
     ];
 
     // 尝试解析移动步数（支持"向北走2步"）

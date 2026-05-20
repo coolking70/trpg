@@ -273,6 +273,34 @@ describe('CombatSystem', () => {
       const r = sys.nextTurn(gameState);
       expect(r.nextActor.id).toBe('C');
     });
+
+    test('回归 Bug#5: 同种敌人多份用唯一 instanceId 时活敌不会被错误过滤', () => {
+      // 场景：两只暗影狼，原始 ID 都是 enemy_002
+      // 修复策略：_startCombat 给每只敌人加 #idx 后缀作为唯一 instance ID
+      // 不修：findCombatant 用 enemies.find(id===) 总是返回第一只 → filter 把活敌也过滤掉
+      const sys = makeSystem();
+      const char = makeChar();
+      const wolf1 = makeEnemy({ id: 'enemy_002#0', stats: { hp: 35, hpCurrent: 0 } });   // 死了
+      const wolf2 = makeEnemy({ id: 'enemy_002#1', stats: { hp: 35, hpCurrent: 35 } });  // 还活着
+      const gameState = {
+        activeCharacters: [char],
+        activeCombat: {
+          enemies: [wolf1, wolf2],
+          turnOrder: [
+            { id: 'enemy_002#0', type: 'enemy' },
+            { id: 'c1', type: 'character' },
+            { id: 'enemy_002#1', type: 'enemy' },
+          ],
+          currentActorIndex: 1, round: 1, log: [],
+        },
+      };
+      const r = sys.nextTurn(gameState);
+      // 死的狼1被过滤，活的狼2留下
+      expect(gameState.activeCombat.turnOrder.map(p => p.id)).toEqual(['c1', 'enemy_002#1']);
+      expect(r.combatEnd).toBeFalsy();
+      // 下一个应是 enemy_002#1
+      expect(r.nextActor.id).toBe('enemy_002#1');
+    });
   });
 
   describe('endCombat', () => {
