@@ -71,3 +71,42 @@
   cursor: pointer;
   border: none;
 }
+
+/* Token 统计区 */
+.settings__token-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  background: rgba(251, 191, 36, 0.06);
+  border: 1px solid rgba(251, 191, 36, 0.15);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.settings__token-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 6px;
+  font-size: 13px;
+}
+
+.settings__token-row span {
+  color: var(--text-muted);
+}
+
+.settings__token-row strong {
+  color: #fcd34d;
+  font-weight: bold;
+}
+
+.settings__token-last {
+  border-top: 1px dashed rgba(251, 191, 36, 0.2);
+  margin-top: 4px;
+  padding-top: 8px;
+}
+
+.settings__token-last strong {
+  color: #fbbf24;
+}

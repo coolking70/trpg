@@ -403,6 +403,29 @@ class TRPGApp {
       // AI 队友决策模式
       const ally = this.engine.getSystem('AllyAIController');
       if (ally && cfg.allyAIMode) ally.setMode(cfg.allyAIMode);
+      // Token 预算告警阈值
+      const aiEngine = this.engine.getSystem('AIGMEngine');
+      if (aiEngine && cfg.budgetWarningTokens !== undefined) {
+        aiEngine.setBudgetWarning(cfg.budgetWarningTokens);
+      }
+    });
+
+    // ---- Token 统计请求/重置（SettingsModal 解耦用） ----
+    es.subscribe('tokenStats:request', () => {
+      const aiEngine = this.engine.getSystem('AIGMEngine');
+      if (aiEngine) {
+        es.publish('tokenStats:response', { stats: aiEngine.getTokenStats() });
+      }
+    });
+    es.subscribe('tokenStats:resetRequest', () => {
+      const aiEngine = this.engine.getSystem('AIGMEngine');
+      if (aiEngine) {
+        aiEngine.resetTokenStats();
+        if (this.gameState) {
+          this.gameState.addNarrative('system', 'Token 统计已重置');
+          es.publish('game:stateChanged', { gameState: this.gameState });
+        }
+      }
     });
 
     // ---- 键盘快捷键 ----
@@ -621,6 +644,10 @@ class TRPGApp {
         if (config.allyAIMode) {
           const ally = this.engine.getSystem('AllyAIController');
           if (ally) ally.setMode(config.allyAIMode);
+        }
+        if (config.budgetWarningTokens !== undefined) {
+          const aiEngine = this.engine.getSystem('AIGMEngine');
+          if (aiEngine) aiEngine.setBudgetWarning(config.budgetWarningTokens);
         }
       } catch (e) {
         // 忽略

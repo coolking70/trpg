@@ -52,6 +52,19 @@ export class ToastManager {
       });
     });
 
+    // Token 预算告警
+    this._subscribe('ai:budgetWarning', (evt) => {
+      const { totalTokens, budgetTokens } = evt.data;
+      const fmt = (n) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n);
+      this.show({
+        type: 'error',
+        icon: '🪙',
+        title: 'Token 预算告警',
+        msg: `已使用 ${fmt(totalTokens)} / ${fmt(budgetTokens)}，请注意 API 费用`,
+        lifetime: 6000,
+      });
+    });
+
     // 角色升级（明显的庆祝 toast）
     this._subscribe('character:levelUp', (evt) => {
       this.show({

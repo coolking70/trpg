@@ -22,6 +22,7 @@ export class SettingsModal {
       autoSaveEnabled: true,
       dynamicDifficulty: true,   // 动态难度（基于战斗表现）
       allyAIMode: 'heuristic',   // 'heuristic' | 'llm' - AI 队友决策模式
+      budgetWarningTokens: 0,    // Token 预算告警阈值（0 = 关闭）
     };
 
     this._loadConfig();
@@ -127,6 +128,22 @@ export class SettingsModal {
           <span class="settings__hint">LLM 模式让 AI 队友的战术更灵活，但每个队友回合会调用一次 API（增加 token 消耗）</span>
         </div>
       </div>
+
+      <div class="settings__section">
+        <h3 class="settings__section-title">🪙 Token 使用统计</h3>
+        <div class="settings__token-stats" id="token-stats-display">
+          <!-- 由 _refreshTokenStats 动态填充 -->
+        </div>
+        <div class="settings__field">
+          <label class="settings__label">预算告警阈值（Token）</label>
+          <input type="number" class="input settings__input" id="setting-budget"
+            value="${this.config.budgetWarningTokens}" min="0" step="1000">
+          <span class="settings__hint">超过此值时弹出告警 toast（0 = 关闭）。例如填 50000 适合短时游玩限额。</span>
+        </div>
+        <div class="settings__field">
+          <button class="btn" id="setting-reset-tokens" type="button">重置 Token 统计</button>
+        </div>
+      </div>
     `;
 
     // 温度滑块实时显示
@@ -159,6 +176,49 @@ export class SettingsModal {
     this._backdrop.appendChild(modal);
     this.container.appendChild(this._backdrop);
     this.container.classList.add('active');
+
+    // Token 统计：填充 + 订阅实时更新
+    this._refreshTokenStats(body);
+    if (!this._tokenSubId) {
+      this._tokenSubId = this.eventSystem.subscribe('ai:tokenUpdate', () => {
+        const open = this._backdrop && this._backdrop.querySelector('#token-stats-display');
+        if (open) this._refreshTokenStats(this._backdrop);
+      });
+    }
+
+    // 重置 token 按钮
+    const resetBtn = body.querySelector('#setting-reset-tokens');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        this.eventSystem.publish('tokenStats:resetRequest');
+      });
+    }
+  }
+
+  /** 填充 token 统计区 */
+  _refreshTokenStats(rootEl) {
+    const slot = rootEl.querySelector('#token-stats-display');
+    if (!slot) return;
+    // 通过事件系统请求最新 stats（避免直接耦合 AIGMEngine）
+    let stats = null;
+    const onResp = (e) => { stats = e.data.stats; };
+    const subId = this.eventSystem.subscribe('tokenStats:response', onResp);
+    this.eventSystem.publish('tokenStats:request');
+    this.eventSystem.unsubscribe('tokenStats:response', subId);
+
+    if (!stats) {
+      slot.innerHTML = '<div class="settings__hint">尚无 AI 调用记录</div>';
+      return;
+    }
+    const fmt = (n) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n);
+    slot.innerHTML = `
+      <div class="settings__token-row"><span>调用次数</span><strong>${stats.totalCalls}</strong></div>
+      <div class="settings__token-row"><span>累计 Tokens</span><strong>${fmt(stats.totalTokens)}</strong></div>
+      <div class="settings__token-row"><span>Prompt</span><strong>${fmt(stats.totalPromptTokens)}</strong></div>
+      <div class="settings__token-row"><span>Completion</span><strong>${fmt(stats.totalCompletionTokens)}</strong></div>
+      <div class="settings__token-row"><span>平均/次</span><strong>${fmt(stats.averagePerCall)}</strong></div>
+      ${stats.lastCall ? `<div class="settings__token-row settings__token-last"><span>最近一次</span><strong>${fmt(stats.lastCall.totalTokens)}</strong></div>` : ''}
+    `;
   }
 
   /** 隐藏设置面板 */
@@ -188,6 +248,7 @@ export class SettingsModal {
     this.config.autoSaveEnabled = body.querySelector('#setting-autosave').checked;
     this.config.dynamicDifficulty = body.querySelector('#setting-dynamic-difficulty').checked;
     this.config.allyAIMode = body.querySelector('#setting-ally-mode').value;
+    this.config.budgetWarningTokens = parseInt(body.querySelector('#setting-budget').value) || 0;
 
     this._saveConfig();
     this.eventSystem.publish('settings:changed', this.config);
@@ -216,6 +277,10 @@ export class SettingsModal {
   }
 
   destroy() {
+    if (this._tokenSubId) {
+      this.eventSystem.unsubscribe('ai:tokenUpdate', this._tokenSubId);
+      this._tokenSubId = null;
+    }
     this.hide();
   }
 }

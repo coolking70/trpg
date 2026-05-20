@@ -79,9 +79,23 @@ export class ToolbarPanel {
       <span class="toolbar__status-item" data-key="turn" title="回合">🔄 <span class="toolbar__status-value">1</span></span>
       <span class="toolbar__status-item" data-key="chapter" title="当前章节">📖 <span class="toolbar__status-value">序章</span></span>
       <span class="toolbar__status-item" data-key="difficulty" title="难度">⚔ <span class="toolbar__status-value">普通</span></span>
+      <span class="toolbar__status-item" data-key="tokens" title="AI Token 累计消耗">🪙 <span class="toolbar__status-value">0</span></span>
     `;
     this._statusBar = statusBar;
     this.container.appendChild(statusBar);
+
+    // 订阅 token 用量更新事件
+    this.eventSystem.subscribe('ai:tokenUpdate', (evt) => {
+      const total = evt.data.stats.totalTokens || 0;
+      const text = total >= 1000 ? `${(total / 1000).toFixed(1)}K` : String(total);
+      const el = this._statusBar.querySelector('[data-key="tokens"] .toolbar__status-value');
+      if (el && el.textContent !== text) {
+        el.textContent = text;
+        el.classList.remove('flash');
+        void el.offsetWidth;
+        el.classList.add('flash');
+      }
+    });
   }
 
   /**

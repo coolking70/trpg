@@ -7,6 +7,7 @@
 import { GameSystem } from '../core/GameEngine.js';
 import { AIPromptBuilder } from './AIPromptBuilder.js';
 import { AIResponseParser } from './AIResponseParser.js';
+import { estimateTokens } from '../utils/tokenEstimator.js';
 
 export class AIGMEngine extends GameSystem {
   constructor() {
@@ -51,6 +52,17 @@ export class AIGMEngine extends GameSystem {
 
     /** 是否正在请求中 */
     this.isProcessing = false;
+
+    /** Token 使用统计（session 级，每次 reload 重置） */
+    this.tokenStats = {
+      totalPromptTokens: 0,
+      totalCompletionTokens: 0,
+      totalTokens: 0,
+      totalCalls: 0,
+      lastCall: null,  // { promptTokens, completionTokens, totalTokens, ts }
+      budgetWarningTokens: null,  // 设为数字时超过此值发警告
+      _warned: false,
+    };
 
     /** 本地叙事模板（常规操作不调AI） */
     this.localTemplates = {
@@ -297,7 +309,13 @@ export class AIGMEngine extends GameSystem {
     const data = await response.json();
 
     if (data.choices && data.choices[0]) {
-      return data.choices[0].message.content;
+      const content = data.choices[0].message.content;
+      // Token 用量：优先使用 API 返回的 usage（精确），否则本地估算
+      const usage = data.usage;
+      const promptTokens = usage?.prompt_tokens ?? estimateTokens(messages.map(m => m.content || '').join('\n'));
+      const completionTokens = usage?.completion_tokens ?? estimateTokens(content);
+      this._recordTokenUsage(promptTokens, completionTokens);
+      return content;
     }
 
     throw new Error('无法解析API响应');
@@ -378,6 +396,66 @@ export class AIGMEngine extends GameSystem {
     messages.push({ role: 'user', content: currentMessage });
 
     return messages;
+  }
+
+  /**
+   * 记录一次 AI 调用的 token 用量
+   * 超过 budgetWarningTokens 时发布 ai:budgetWarning 事件
+   */
+  _recordTokenUsage(promptTokens, completionTokens) {
+    const total = promptTokens + completionTokens;
+    this.tokenStats.totalPromptTokens += promptTokens;
+    this.tokenStats.totalCompletionTokens += completionTokens;
+    this.tokenStats.totalTokens += total;
+    this.tokenStats.totalCalls += 1;
+    this.tokenStats.lastCall = {
+      promptTokens, completionTokens, totalTokens: total, ts: Date.now(),
+    };
+    // 预算告警（每个 session 只警告一次）
+    if (this.tokenStats.budgetWarningTokens && !this.tokenStats._warned
+        && this.tokenStats.totalTokens >= this.tokenStats.budgetWarningTokens) {
+      this.tokenStats._warned = true;
+      if (this.eventSystem) {
+        this.eventSystem.publish('ai:budgetWarning', {
+          totalTokens: this.tokenStats.totalTokens,
+          budgetTokens: this.tokenStats.budgetWarningTokens,
+        });
+      }
+    }
+    // 每次调用都发布更新事件（让 UI 实时刷新）
+    if (this.eventSystem) {
+      this.eventSystem.publish('ai:tokenUpdate', { stats: this.getTokenStats() });
+    }
+  }
+
+  /** 获取当前 token 统计快照 */
+  getTokenStats() {
+    const avgPerCall = this.tokenStats.totalCalls > 0
+      ? Math.round(this.tokenStats.totalTokens / this.tokenStats.totalCalls)
+      : 0;
+    return {
+      ...this.tokenStats,
+      averagePerCall: avgPerCall,
+    };
+  }
+
+  /** 重置统计（用户手动清零） */
+  resetTokenStats() {
+    this.tokenStats.totalPromptTokens = 0;
+    this.tokenStats.totalCompletionTokens = 0;
+    this.tokenStats.totalTokens = 0;
+    this.tokenStats.totalCalls = 0;
+    this.tokenStats.lastCall = null;
+    this.tokenStats._warned = false;
+    if (this.eventSystem) {
+      this.eventSystem.publish('ai:tokenUpdate', { stats: this.getTokenStats() });
+    }
+  }
+
+  /** 设置预算告警阈值（0 = 关闭） */
+  setBudgetWarning(tokens) {
+    this.tokenStats.budgetWarningTokens = tokens > 0 ? tokens : null;
+    this.tokenStats._warned = false;
   }
 
   /** 把记忆视图格式化为 system 消息文本 */
