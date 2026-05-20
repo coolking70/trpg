@@ -103,8 +103,18 @@ export class AIPromptBuilder {
       }
 
       case 'narrate_combat': {
-        parts.push('战斗回合总结:');
-        if (actionData.roundResults) {
+        const isOpening = !actionData.roundResults || actionData.roundResults.length === 0;
+        if (isOpening) {
+          // 修复 Bug #2: 战斗刚启动时不要描述任何具体动作，AI 容易脑补根本没发生的行动
+          parts.push('战斗即将开始（尚未有人行动）。');
+          if (actionData.enemies) {
+            const enemySummary = actionData.enemies
+              .map(e => `${e.name}:HP${e.stats.hpCurrent}/${e.stats.hp}`).join(' ');
+            parts.push(`敌人: ${enemySummary}`);
+          }
+          parts.push('请用1-2句描述双方对峙的紧张气氛、环境光影、敌人的神态——但严禁描述任何角色的具体行动（不要写"举盾/拉弓/施法/挥剑"等动作）。');
+        } else {
+          parts.push('战斗回合总结:');
           for (const r of actionData.roundResults) {
             if (r.attackerName && r.targetName) {
               parts.push(`${r.attackerName}攻击${r.targetName}，造成${r.finalDamage||0}伤害${r.targetDefeated ? '，击败!' : ''}`);
@@ -112,16 +122,16 @@ export class AIPromptBuilder {
             if (r.abilityName) {
               parts.push(`${r.casterName}使用${r.abilityName}对${r.targetName}，伤害${r.damage||0}治疗${r.healing||0}`);
             }
+            if (r.narrative) parts.push(r.narrative);
           }
+          // 敌人状态
+          if (actionData.enemies) {
+            const enemySummary = actionData.enemies
+              .map(e => `${e.name}:HP${e.stats.hpCurrent}/${e.stats.hp}`).join(' ');
+            parts.push(`敌人: ${enemySummary}`);
+          }
+          parts.push('请用2-3句描述这个战斗回合的场面，严格基于上述实际发生的行动叙述，不要编造未发生的内容。');
         }
-        // 敌人状态
-        if (actionData.enemies) {
-          const enemySummary = actionData.enemies
-            .map(e => `${e.name}:HP${e.stats.hpCurrent}/${e.stats.hp}`)
-            .join(' ');
-          parts.push(`敌人: ${enemySummary}`);
-        }
-        parts.push('请用2-3句描述这个战斗回合的场面。');
         break;
       }
 

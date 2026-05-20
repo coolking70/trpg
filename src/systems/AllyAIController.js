@@ -53,6 +53,7 @@ export class AllyAIController extends GameSystem {
 
   /**
    * 启发式决策（原 decideAction 实现）
+   * reason 字段使用模板库随机抽取，比"X → Y"更生动（修复 Bug #4）
    */
   _decideHeuristic(actor, gameState) {
     if (!actor || !gameState || !gameState.activeCombat) {
@@ -73,7 +74,7 @@ export class AllyAIController extends GameSystem {
       return {
         actionType: 'ability', actorId: actor.id,
         abilityId: healAbility.id, targetId: lowHpAlly.id,
-        reason: `治疗 ${lowHpAlly.name} (HP ${lowHpAlly.stats.hpCurrent}/${lowHpAlly.stats.hp})`,
+        reason: this._pickHealTemplate(healAbility.name, lowHpAlly.name),
       };
     }
 
@@ -83,7 +84,7 @@ export class AllyAIController extends GameSystem {
       return {
         actionType: 'ability', actorId: actor.id,
         abilityId: healAbility.id, targetId: actor.id,
-        reason: '自疗',
+        reason: this._pickSelfHealTemplate(healAbility.name),
       };
     }
 
@@ -91,10 +92,13 @@ export class AllyAIController extends GameSystem {
     const damageAbility = this._findBestDamageAbility(actor);
     if (damageAbility && actor.stats.mpCurrent >= (damageAbility.cost?.mp || 0)) {
       const target = this._findLowestHpEnemy(aliveEnemies);
+      const isAoe = damageAbility.effect && damageAbility.effect.target === 'all_enemies';
       return {
         actionType: 'ability', actorId: actor.id,
         abilityId: damageAbility.id, targetId: target.id,
-        reason: `${damageAbility.name} → ${target.name}`,
+        reason: isAoe
+          ? this._pickAoeTemplate(damageAbility.name)
+          : this._pickDamageTemplate(damageAbility.name, target.name),
       };
     }
 
@@ -103,8 +107,55 @@ export class AllyAIController extends GameSystem {
     return {
       actionType: 'attack', actorId: actor.id,
       targetId: attackTarget.id,
-      reason: `普攻 ${attackTarget.name}`,
+      reason: this._pickAttackTemplate(attackTarget.name),
     };
+  }
+
+  _pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  _pickAttackTemplate(targetName) {
+    return this._pick([
+      `挥剑直击 ${targetName}`,
+      `突进近身，向 ${targetName} 出手`,
+      `寻找破绽对 ${targetName} 下手`,
+      `稳住身形，向 ${targetName} 发起进攻`,
+      `屏息凝神，刺向 ${targetName}`,
+    ]);
+  }
+
+  _pickDamageTemplate(abilityName, targetName) {
+    return this._pick([
+      `凝聚力量发动 ${abilityName}，直击 ${targetName}`,
+      `集中精神释放 ${abilityName}，锁定 ${targetName}`,
+      `怒喝一声，${abilityName} 朝 ${targetName} 倾泻`,
+      `屏息将 ${abilityName} 灌注于武器，目标 ${targetName}`,
+    ]);
+  }
+
+  _pickAoeTemplate(abilityName) {
+    return this._pick([
+      `挥手释放 ${abilityName}，能量在敌阵中爆开`,
+      `高声咏唱 ${abilityName}，光芒席卷战场`,
+      `双手张开释放 ${abilityName}，狂风骤起`,
+      `掌中能量喷薄而出，${abilityName} 覆盖整片战场`,
+    ]);
+  }
+
+  _pickHealTemplate(abilityName, allyName) {
+    return this._pick([
+      `吟唱 ${abilityName}，柔光洒向 ${allyName}`,
+      `伸手为 ${allyName} 引导生机，${abilityName} 之力涌动`,
+      `咏唱 ${abilityName}，治愈之光环绕 ${allyName}`,
+      `召唤 ${abilityName} 的能量，温暖覆盖 ${allyName} 的伤处`,
+    ]);
+  }
+
+  _pickSelfHealTemplate(abilityName) {
+    return this._pick([
+      `咬牙集中精神，${abilityName} 灌入自身`,
+      `闭目调息，${abilityName} 之力修复自身的伤口`,
+      `凝神运起 ${abilityName}，缓解身上的伤势`,
+    ]);
   }
 
   /**
