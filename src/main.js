@@ -1303,10 +1303,19 @@ class TRPGApp {
 
     // AI 总结叙事
     const aiEngine = this.engine.getSystem('AIGMEngine');
+    const resultLabel = endResult.result === 'victory' ? '胜利' : endResult.result === 'flee' ? '逃脱' : '失败';
     aiEngine.processGameAction('narrate_combat', {
-      roundResults: [{ narrative: `战斗${endResult.result === 'victory' ? '胜利' : endResult.result === 'flee' ? '逃脱' : '失败'}` }],
+      roundResults: [{ narrative: `战斗${resultLabel}` }],
       enemies: [],
-    }, this.gameState).finally(() => {
+    }, this.gameState).catch(() => {
+      // AI 失败兜底：写一个最简的结算叙事，避免战斗结束后什么也没说
+      const fallbackText = endResult.result === 'victory'
+        ? '硝烟散去，敌人倒下。你们喘着粗气审视战场，准备整理装备继续前行。'
+        : endResult.result === 'flee'
+        ? '你们终于挣脱了战斗，跌跌撞撞退入林中阴影深处，心跳仍未平息。'
+        : '一切归于沉寂。你们倒在战场上...这是最后的画面。';
+      this.gameState.addNarrative('gm', fallbackText);
+    }).finally(() => {
       this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
       // 战斗结束扫描可能因击败 boss 或获得物品触发的后续事件
       this._scanEventTriggers(TRIGGER_MOMENTS.COMBAT_END);

@@ -314,7 +314,7 @@ export function generateRandomPreset(options = {}) {
     events,
     map,
     rules: { diceType: 'd20', combatFormula: '(attack + dice) - defense', maxPartySize: 4, startingGold: 100 },
-    aiConfig: { temperature: 0.7, maxResponseTokens: 300, useStructuredOutput: true, language: 'zh-CN' },
+    aiConfig: { temperature: 0.7, maxResponseTokens: 1000, useStructuredOutput: true, language: 'zh-CN' },
   };
 }
 

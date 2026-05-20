@@ -17,7 +17,7 @@ export class SettingsModal {
       apiKey: '',
       model: 'gpt-4o-mini',
       temperature: 0.7,
-      maxTokens: 300,
+      maxTokens: 1000,
       difficulty: 'normal',      // easy | normal | hard
       autoSaveEnabled: true,
       dynamicDifficulty: true,   // 动态难度（基于战斗表现）

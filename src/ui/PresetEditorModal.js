@@ -204,7 +204,7 @@ export class PresetEditorModal {
       items: [],
       map: null,
       rules: { diceType: 'd20', maxPartySize: 4, startingGold: 100 },
-      aiConfig: { temperature: 0.7, maxResponseTokens: 300 },
+      aiConfig: { temperature: 0.7, maxResponseTokens: 1000 },
     };
   }
 

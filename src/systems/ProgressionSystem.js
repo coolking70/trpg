@@ -6,9 +6,9 @@
 
 import { GameSystem } from '../core/GameEngine.js';
 
-/** 升级所需经验：currentLevel * 100 (简单线性) */
+/** 升级所需经验：currentLevel * 50（调整后比原 100 节奏快 1 倍） */
 export function getExperienceForNextLevel(currentLevel) {
-  return Math.max(1, currentLevel) * 100;
+  return Math.max(1, currentLevel) * 50;
 }
 
 /**

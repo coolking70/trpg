@@ -425,7 +425,7 @@ export const DEFAULT_PRESET = {
     systemPromptTemplate: 'compact',
     customSystemPrompt: '',
     temperature: 0.7,
-    maxResponseTokens: 300,
+    maxResponseTokens: 1000,
     useStructuredOutput: true,
     language: 'zh-CN',
   },

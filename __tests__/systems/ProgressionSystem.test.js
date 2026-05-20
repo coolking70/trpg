@@ -35,10 +35,10 @@ function makeSystem(cards = []) {
 
 describe('ProgressionSystem', () => {
   describe('经验曲线', () => {
-    test('getExperienceForNextLevel 线性', () => {
-      expect(getExperienceForNextLevel(1)).toBe(100);
-      expect(getExperienceForNextLevel(3)).toBe(300);
-      expect(getExperienceForNextLevel(10)).toBe(1000);
+    test('getExperienceForNextLevel 线性 (level * 50)', () => {
+      expect(getExperienceForNextLevel(1)).toBe(50);
+      expect(getExperienceForNextLevel(3)).toBe(150);
+      expect(getExperienceForNextLevel(10)).toBe(500);
     });
   });
 
@@ -71,7 +71,9 @@ describe('ProgressionSystem', () => {
     test('连升（Lv.4 → Lv.6）', () => {
       const sys = makeSystem();
       const char = makeChar({ level: 4 });
-      const r = sys.grantExperience(char, 950);  // 400+500=900 跨两级
+      // 公式: getExperienceForNextLevel(L) = L*50
+      // Lv4→5 需 200, Lv5→6 需 250, 总 450
+      const r = sys.grantExperience(char, 470);
       expect(r.leveledUp).toBe(true);
       expect(char.level).toBe(6);
       expect(r.growthSummary).toHaveLength(2);
@@ -80,7 +82,8 @@ describe('ProgressionSystem', () => {
     test('奇数级不加 speed/luck', () => {
       const sys = makeSystem();
       const char = makeChar({ level: 2, stats: { hp: 100, hpCurrent: 100, mp: 50, mpCurrent: 50, attack: 10, defense: 8, magicAttack: 5, magicDefense: 5, speed: 10, luck: 5 } });
-      sys.grantExperience(char, 200);  // 升到 3
+      // 新公式 Lv2→3 需 100 XP；给恰好 100 升一次到 Lv3，不会跨级到 Lv4
+      sys.grantExperience(char, 100);
       expect(char.level).toBe(3);
       expect(char.stats.speed).toBe(10);
       expect(char.stats.luck).toBe(5);

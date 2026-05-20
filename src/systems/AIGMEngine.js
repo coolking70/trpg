@@ -17,7 +17,7 @@ export class AIGMEngine extends GameSystem {
       endpoint: 'https://api.openai.com/v1',
       apiKey: '',
       model: 'gpt-4o-mini',
-      maxTokens: 300,
+      maxTokens: 1000,  // 修复 Bug #6: 300 太小，复杂场景（creativeOutcome JSON）会截断
       temperature: 0.7,
       useStructuredOutput: true,
     };
@@ -218,11 +218,30 @@ export class AIGMEngine extends GameSystem {
   }
 
   /**
-   * 调用AI API（带30秒超时）
+   * 调用 AI API（带 30 秒超时 + 网络失败自动重试 1 次）
    * @param {Array<{role: string, content: string}>} messages
    * @returns {Promise<string>} AI响应文本
    */
   async callAI(messages) {
+    // 最多重试 1 次（仅网络错误/超时；4xx 不重试因为是请求本身问题）
+    let lastErr;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await this._callAIOnce(messages);
+      } catch (e) {
+        lastErr = e;
+        // 4xx 错误不重试
+        if (/API请求失败 \(4\d\d\)/.test(e.message)) throw e;
+        if (attempt === 0) {
+          // 等 800ms 后重试
+          await new Promise(r => setTimeout(r, 800));
+        }
+      }
+    }
+    throw lastErr;
+  }
+
+  async _callAIOnce(messages) {
     const url = `${this.apiConfig.endpoint}/chat/completions`;
 
     const body = {
@@ -386,12 +405,26 @@ export class AIGMEngine extends GameSystem {
 
       case 'narrate_combat': {
         const results = actionData.roundResults || [];
+        // 检测特殊场景：战斗结束（_finalizeCombat 会传 narrative 形如"战斗胜利/逃脱/失败"）
+        const endLabel = results.find(r => r.narrative && /战斗(胜利|逃脱|失败)/.test(r.narrative));
+        if (endLabel) {
+          if (endLabel.narrative.includes('胜利')) {
+            narrative = '硝烟散去，敌人倒下。你们喘着粗气审视战场，准备整理装备继续前行。';
+          } else if (endLabel.narrative.includes('逃脱')) {
+            narrative = '你们终于挣脱了战斗，跌跌撞撞退入林中阴影深处，心跳尚未平息。';
+          } else {
+            narrative = '一切归于沉寂。你们倒在战场上...';
+          }
+          break;
+        }
+        // 普通战斗回合：从 log 拼出
         const parts = results.map(r => {
           if (r.attackerName) return `${r.attackerName}攻击${r.targetName}，造成${r.finalDamage||0}点伤害。`;
           if (r.abilityName) return `${r.casterName}使用了${r.abilityName}。`;
           return '';
         }).filter(Boolean);
-        narrative = parts.join(' ') || '战斗继续...';
+        // 开场场景（无 results）走简单兜底
+        narrative = parts.join(' ') || (results.length === 0 ? '双方对峙，剑拔弩张。' : '战斗继续...');
         break;
       }
 
