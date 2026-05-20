@@ -1,0 +1,11 @@
+/**
+ * 骰子覆盖层样式
+ */
+
+.dice-overlay {
+  transition: background-color 0.3s ease;
+}
+
+.dice-overlay.active {
+  background-color: rgba(0, 0, 0, 0.6);
+}

@@ -1,0 +1,97 @@
+/* 存档管理模态框 */
+
+.save-load-modal {
+  width: 540px;
+  max-width: 92vw;
+}
+
+.save-load-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.save-slot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+}
+
+.save-slot.has-save {
+  border-color: rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.06);
+}
+
+.save-slot.auto-slot {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.save-slot.empty {
+  opacity: 0.7;
+}
+
+.save-slot__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.save-slot__name {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.save-slot__name--empty {
+  color: var(--text-muted);
+  font-style: italic;
+  font-weight: normal;
+}
+
+.save-slot__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.save-slot__party {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.save-slot__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+.save-slot__actions .btn {
+  min-width: 80px;
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.save-slot__del {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.save-slot__note {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}

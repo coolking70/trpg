@@ -1,0 +1,139 @@
+/**
+ * 叙事面板样式
+ */
+
+.narrative__log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.narrative__input-row {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--bg-dark);
+}
+
+.narrative__input {
+  flex: 1;
+}
+
+.narrative__send {
+  min-width: 60px;
+}
+
+.narrative__message {
+  display: flex;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--border-radius-sm);
+  font-size: 13px;
+  line-height: 1.5;
+  animation: fadeIn 200ms ease;
+}
+
+.narrative__message--gm {
+  background-color: var(--bg-medium);
+  border-left: 3px solid var(--color-primary);
+}
+
+.narrative__message--player {
+  background-color: rgba(6, 182, 212, 0.1);
+  border-left: 3px solid var(--color-secondary);
+}
+
+.narrative__message--system {
+  background-color: rgba(245, 158, 11, 0.1);
+  border-left: 3px solid var(--color-accent);
+  font-style: italic;
+}
+
+.narrative__speaker {
+  font-weight: 600;
+  color: var(--text-highlight);
+  white-space: nowrap;
+  min-width: 28px;
+}
+
+.narrative__message--gm .narrative__speaker {
+  color: var(--color-primary-light);
+}
+
+.narrative__message--player .narrative__speaker {
+  color: var(--color-secondary);
+}
+
+.narrative__message--system .narrative__speaker {
+  color: var(--color-accent);
+}
+
+.narrative__text {
+  color: var(--text-primary);
+}
+
+/* 禁用状态 */
+.narrative__input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: var(--bg-medium);
+}
+
+.narrative__send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* GM思考中加载指示器 */
+.narrative__loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--border-radius-sm);
+  font-size: 13px;
+  color: var(--text-muted);
+  background-color: var(--bg-medium);
+  border-left: 3px solid var(--color-primary);
+  animation: narrativePulse 1.5s ease-in-out infinite;
+}
+
+.narrative__loading-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  animation: narrativeDotPulse 1s ease-in-out infinite;
+}
+
+@keyframes narrativePulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes narrativeDotPulse {
+  0%, 100% { transform: scale(0.8); opacity: 0.5; }
+  50% { transform: scale(1.2); opacity: 1; }
+}
+
+/* 警告/错误类系统消息 */
+.narrative__message--warning {
+  background: rgba(239, 68, 68, 0.08);
+  border-left: 3px solid rgba(239, 68, 68, 0.6);
+  padding-left: 8px;
+  border-radius: 0 4px 4px 0;
+}
+
+.narrative__message--warning .narrative__speaker {
+  color: #f87171;
+}
+
+.narrative__message--warning .narrative__text {
+  color: #fca5a5;
+}

@@ -1,0 +1,238 @@
+/* 战斗面板样式 — 战斗期间替代 RightPanel 显示 */
+
+.combat-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+/* 头部 */
+.combat-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.combat-panel__title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #ef4444;
+  letter-spacing: 1px;
+}
+
+.combat-panel__round {
+  color: #a0a0b8;
+  font-size: 13px;
+}
+
+/* 先攻顺序条 */
+.combat-panel__turn-order {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 4px 0;
+}
+
+.combat-panel__turn-slot {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.combat-panel__turn-slot--enemy {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+.combat-panel__turn-slot--character {
+  background: rgba(139, 92, 246, 0.3);
+}
+
+.combat-panel__turn-slot.active {
+  border-color: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+  transform: scale(1.05);
+}
+
+.combat-panel__turn-slot.dead {
+  opacity: 0.3;
+  text-decoration: line-through;
+}
+
+/* 敌人列表 */
+.combat-panel__enemies {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.combat-panel__enemy-card {
+  padding: 10px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  cursor: default;
+  transition: all 0.15s;
+}
+
+.combat-panel__enemy-card.selectable {
+  cursor: pointer;
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.combat-panel__enemy-card.selectable:hover {
+  background: rgba(245, 158, 11, 0.25);
+  transform: translateX(2px);
+}
+
+.combat-panel__enemy-card.selectable.disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* (defeated 状态见文件末尾，含 transform 动画) */
+
+.combat-panel__enemy-name {
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: #fff;
+  font-size: 13px;
+}
+
+.combat-panel__enemy-hp {
+  position: relative;
+  height: 16px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.combat-panel__enemy-hp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.combat-panel__enemy-card {
+  transition: all 0.3s ease;
+}
+
+.combat-panel__enemy-card.defeated {
+  opacity: 0.35;
+  filter: grayscale(0.5);
+  transform: scale(0.95);
+}
+
+.combat-panel__enemy-hp-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 3px #000, 0 0 3px #000;
+}
+
+/* 当前行动者 */
+.combat-panel__current {
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.combat-panel__current--character {
+  background: rgba(139, 92, 246, 0.18);
+  border-left: 3px solid #8b5cf6;
+}
+
+.combat-panel__current--enemy {
+  background: rgba(239, 68, 68, 0.18);
+  border-left: 3px solid #ef4444;
+}
+
+/* 操作按钮组 */
+.combat-panel__actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.combat-panel__btn {
+  font-size: 12px;
+  padding: 8px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.combat-panel__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 目标选择提示 */
+.combat-panel__target-prompt {
+  padding: 10px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px dashed rgba(245, 158, 11, 0.5);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.combat-panel__hint {
+  font-size: 12px;
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+/* AI 队友标签 */
+.combat-panel__ai-tag {
+  display: inline-block;
+  padding: 2px 6px;
+  background: rgba(6, 182, 212, 0.2);
+  border: 1px solid rgba(6, 182, 212, 0.5);
+  border-radius: 8px;
+  font-size: 11px;
+  color: #67e8f9;
+  margin-left: 6px;
+}
+
+/* 敌人回合等待提示 */
+.combat-panel__waiting {
+  text-align: center;
+  padding: 14px;
+  color: #a0a0b8;
+  font-style: italic;
+  font-size: 13px;
+}
+
+.combat-panel__waiting::after {
+  content: ' ';
+  animation: combatDots 1.4s infinite;
+}
+
+@keyframes combatDots {
+  0%, 20% { content: ' .'; }
+  40% { content: ' ..'; }
+  60%, 100% { content: ' ...'; }
+}

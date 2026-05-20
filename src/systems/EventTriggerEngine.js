@@ -1,0 +1,193 @@
+/**
+ * 事件触发引擎
+ * 评估复合触发条件，支持空间/变量/前置事件/HP/回合/物品等多维度
+ * 在玩家移动、回合结束、战斗结束、事件完成时被扫描
+ */
+
+import { GameSystem } from '../core/GameEngine.js';
+
+/** 触发时机枚举 */
+export const TRIGGER_MOMENTS = {
+  MOVE: 'move',
+  TURN_END: 'turn_end',
+  COMBAT_END: 'combat_end',
+  EVENT_COMPLETE: 'event_complete',
+  VARIABLE_CHANGE: 'variable_change',
+};
+
+export class EventTriggerEngine extends GameSystem {
+  constructor() {
+    super('EventTriggerEngine');
+    this.cardManager = null;
+    this.mapSystem = null;
+  }
+
+  initialize(gameEngine) {
+    super.initialize(gameEngine);
+    this.cardManager = gameEngine.getSystem('CardManager');
+    this.mapSystem = gameEngine.getSystem('MapSystem');
+  }
+
+  /**
+   * 扫描所有事件并返回匹配条件的事件 ID 列表（按优先级排序）
+   * @param {object} gameState
+   * @param {object} context - 触发上下文 { moment, tileX, tileY, ... }
+   * @returns {string[]} 应触发的 event ID 列表（按 priority 排序，未指定则按文件顺序）
+   */
+  scan(gameState, context = {}) {
+    if (!this.cardManager || !gameState) return [];
+
+    const events = this.cardManager.getCardsByType('event');
+    const matches = [];
+
+    for (const event of events) {
+      // 不可重复且已完成 → 跳过
+      if (!event.repeatable && gameState.completedEventIds.includes(event.id)) {
+        continue;
+      }
+
+      // 重复事件检查最大次数
+      if (event.maxOccurrences && event.maxOccurrences > 0) {
+        const count = gameState.getEventCompletionCount
+          ? gameState.getEventCompletionCount(event.id)
+          : gameState.completedEventIds.filter(id => id === event.id).length;
+        if (count >= event.maxOccurrences) continue;
+      }
+
+      if (this.evaluateTrigger(event, gameState, context)) {
+        matches.push(event);
+      }
+    }
+
+    // 按 priority 字段降序排（未设置默认为 0）
+    matches.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    return matches.map(e => e.id);
+  }
+
+  /**
+   * 评估单个事件的触发条件是否满足
+   * @param {object} event - EventCard
+   * @param {object} gameState
+   * @param {object} context
+   * @returns {boolean}
+   */
+  evaluateTrigger(event, gameState, context) {
+    const trigger = event.trigger;
+    if (!trigger) return false;
+
+    // 兼容旧格式 map_tile
+    if (trigger.type === 'map_tile') {
+      return this._evaluateMapTile(trigger.condition || {}, gameState, context);
+    }
+
+    // 显式触发器（由 outcome.effects 的 trigger_event 直接发起，不走条件评估）
+    if (trigger.type === 'explicit') {
+      return false; // 不会通过 scan 触发
+    }
+
+    // 复合条件
+    if (trigger.type === 'composite') {
+      return this._evaluateComposite(trigger.condition || {}, gameState, context);
+    }
+
+    return false;
+  }
+
+  /**
+   * 评估旧的 map_tile 触发器（仅在 MOVE 时机有效）
+   */
+  _evaluateMapTile(condition, gameState, context) {
+    if (context.moment !== TRIGGER_MOMENTS.MOVE) return false;
+    const { tileX, tileY, tileKey } = context;
+    if (tileX === undefined || tileY === undefined) return false;
+
+    const tileTypes = condition.tileTypes || [];
+    if (tileTypes.length > 0 && !tileTypes.includes(tileKey)) return false;
+
+    const prob = condition.probability !== undefined ? condition.probability : 1.0;
+    return Math.random() < prob;
+  }
+
+  /**
+   * 评估复合触发器（所有给定条件必须满足）
+   */
+  _evaluateComposite(condition, gameState, context) {
+    // 空间条件（OR 关系：tileTypes / pointsOfInterest 满足任一）
+    const hasSpatialCondition = (condition.tileTypes && condition.tileTypes.length > 0) ||
+                                (condition.pointsOfInterest && condition.pointsOfInterest.length > 0);
+
+    if (hasSpatialCondition) {
+      // 空间条件仅在 MOVE 时机评估
+      if (context.moment !== TRIGGER_MOMENTS.MOVE) return false;
+      let spatialMatch = false;
+
+      if (condition.tileTypes && condition.tileTypes.includes(context.tileKey)) {
+        spatialMatch = true;
+      }
+      if (!spatialMatch && condition.pointsOfInterest && this.mapSystem) {
+        const mapData = this.mapSystem.getMapData();
+        if (mapData) {
+          const poi = mapData.getPointOfInterest(context.tileX, context.tileY);
+          if (poi && condition.pointsOfInterest.includes(poi.id || `${poi.x},${poi.y}`)) {
+            spatialMatch = true;
+          }
+        }
+      }
+      if (!spatialMatch) return false;
+    }
+
+    // 变量条件（全部匹配）
+    if (condition.requireVariables) {
+      const vars = gameState.variables || {};
+      for (const [key, expected] of Object.entries(condition.requireVariables)) {
+        if (vars[key] !== expected) return false;
+      }
+    }
+
+    // 已完成事件（全部完成）
+    if (condition.requireCompletedEvents && condition.requireCompletedEvents.length > 0) {
+      for (const eid of condition.requireCompletedEvents) {
+        if (!gameState.completedEventIds.includes(eid)) return false;
+      }
+    }
+
+    // 排除已完成事件（任一已完成即拒绝）
+    if (condition.excludeCompletedEvents && condition.excludeCompletedEvents.length > 0) {
+      for (const eid of condition.excludeCompletedEvents) {
+        if (gameState.completedEventIds.includes(eid)) return false;
+      }
+    }
+
+    // HP 阈值
+    if (condition.partyHpBelow !== undefined) {
+      const chars = gameState.activeCharacters || [];
+      const alive = chars.filter(c => c.stats.hp > 0);
+      if (alive.length === 0) return false;
+      const totalRatio = alive.reduce((sum, c) => sum + (c.stats.hpCurrent / c.stats.hp), 0) / alive.length;
+      if (totalRatio >= condition.partyHpBelow) return false;
+    }
+
+    // 回合数
+    if (condition.turnNumberAtLeast !== undefined) {
+      if (gameState.turnNumber < condition.turnNumberAtLeast) return false;
+    }
+
+    // 必须持有物品（任一角色持有即可）
+    if (condition.requireItems && condition.requireItems.length > 0) {
+      const allInventories = (gameState.activeCharacters || []).flatMap(c => c.inventory || []);
+      for (const itemId of condition.requireItems) {
+        if (!allInventories.includes(itemId)) return false;
+      }
+    }
+
+    // 概率
+    const prob = condition.probability !== undefined ? condition.probability : 1.0;
+    return Math.random() < prob;
+  }
+
+  destroy() {
+    this.cardManager = null;
+    this.mapSystem = null;
+    super.destroy();
+  }
+}

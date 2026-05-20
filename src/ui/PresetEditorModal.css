@@ -1,0 +1,425 @@
+/* 预设编辑器 — 全屏模态框 */
+
+.preset-editor-backdrop {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.preset-editor-modal {
+  width: 95vw;
+  height: 90vh;
+  max-width: 1400px;
+  max-height: 950px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.preset-editor__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-medium);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.preset-editor__title {
+  font-weight: bold;
+  font-size: 16px;
+  color: var(--color-primary-light);
+  white-space: nowrap;
+}
+
+.preset-editor__tabs {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.preset-editor__tab {
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+
+.preset-editor__tab:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.preset-editor__tab.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.preset-editor__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.preset-editor__actions .btn {
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.preset-editor__content {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+  background: var(--bg-dark);
+}
+
+/* === 字段通用 === */
+.editor-field {
+  margin-bottom: 10px;
+}
+
+.editor-field__label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.editor-field__input {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.editor-field__input[type="number"] {
+  max-width: 120px;
+}
+
+textarea.editor-field__input {
+  font-family: inherit;
+  resize: vertical;
+}
+
+.editor-field__hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* === 分区 === */
+.editor-section {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.editor-section__title {
+  font-size: 13px;
+  color: var(--color-accent);
+  margin-bottom: 8px;
+  border-bottom: 1px dashed rgba(245, 158, 11, 0.3);
+  padding-bottom: 4px;
+}
+
+.editor-form {
+  max-width: 720px;
+}
+
+/* === 列表+表单 二栏 === */
+.editor-list-form {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 16px;
+  height: 100%;
+}
+
+.editor-list-form__list {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-medium);
+  border-radius: 6px;
+  overflow: hidden;
+  max-height: calc(90vh - 130px);
+}
+
+.editor-list-form__list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.editor-list-form__title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.editor-list-form__items {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.editor-list-form__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+
+.editor-list-form__item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.editor-list-form__item.active {
+  background: rgba(139, 92, 246, 0.2);
+  border-left: 3px solid var(--color-primary);
+}
+
+.editor-list-form__del {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  font-size: 16px;
+}
+
+.editor-list-form__del:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: white;
+}
+
+.editor-list-form__form {
+  overflow-y: auto;
+  max-height: calc(90vh - 130px);
+  padding-right: 8px;
+}
+
+.editor-list-form__empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* === 属性网格（角色/敌人/装备） === */
+.editor-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+/* === 子表单（技能、效果等） === */
+.editor-subform {
+  background: rgba(0, 0, 0, 0.25);
+  border-left: 3px solid rgba(139, 92, 246, 0.5);
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+}
+
+.editor-subform__del {
+  margin-top: 8px;
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.editor-loot-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 8px;
+  align-items: end;
+  border-left: 3px solid rgba(245, 158, 11, 0.5);
+}
+
+.editor-loot-row .editor-field {
+  margin-bottom: 0;
+}
+
+.editor-loot-row .btn {
+  height: 36px;
+}
+
+/* === 事件选项 + outcomes === */
+.editor-choice {
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.editor-outcome {
+  background: rgba(6, 182, 212, 0.06);
+  border-left: 3px solid var(--color-secondary);
+  padding: 10px;
+  margin: 8px 0;
+  border-radius: 4px;
+}
+
+.editor-effect {
+  background: rgba(34, 197, 94, 0.06);
+  border-left: 3px solid #22c55e;
+  padding: 8px;
+  margin: 6px 0;
+  border-radius: 4px;
+}
+
+/* === 地图编辑器 === */
+.map-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 8px;
+}
+
+.map-editor__info {
+  display: flex;
+  gap: 16px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.map-editor__current-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  vertical-align: middle;
+  margin: 0 4px;
+  border: 1px solid rgba(255,255,255,0.3);
+}
+
+.map-editor__layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 12px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.map-editor__tools {
+  overflow-y: auto;
+  max-height: calc(90vh - 200px);
+  padding-right: 8px;
+}
+
+.map-editor__canvas-wrap {
+  overflow: auto;
+  background: var(--bg-medium);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px;
+  max-height: calc(90vh - 200px);
+}
+
+.map-editor__canvas {
+  display: block;
+  cursor: crosshair;
+  image-rendering: pixelated;
+}
+
+.map-editor__tool-bar {
+  display: flex;
+  gap: 6px;
+}
+
+.map-editor__palette {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.map-editor__swatch {
+  height: 40px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  color: #fff;
+  font-weight: bold;
+  font-size: 11px;
+  text-shadow: 0 0 3px #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-editor__swatch.selected {
+  border-color: #fbbf24;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
+}
+
+.map-editor__type-row {
+  display: grid;
+  grid-template-columns: 24px 36px 1fr 44px auto auto;
+  gap: 4px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.map-editor__type-row .input {
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+.map-editor__type-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.map-editor__type-color {
+  width: 38px;
+  height: 28px;
+  border: none;
+  cursor: pointer;
+}
+
+.map-editor__type-row label {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.map-editor__poi-row,
+.map-editor__poi-extra {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.map-editor__poi-row .input,
+.map-editor__poi-extra .input {
+  font-size: 12px;
+  padding: 4px 6px;
+}
+
+.map-editor__poi-extra {
+  margin-bottom: 10px;
+  padding-left: 8px;
+  border-left: 2px solid rgba(245, 158, 11, 0.3);
+}
+
+.map-editor__gen-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.map-editor__gen-row .input {
+  flex: 1;
+  font-size: 12px;
+}

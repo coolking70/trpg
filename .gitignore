@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+.env
+.env.local
+
+# IDE / 编辑器临时文件
+.vscode/
+.idea/
+*.swp
+*~
+
+# Jest / 测试
+coverage/
+.jest-cache/
+
+# Claude 工具的本机设置（保留 launch.json 共享）
+.claude/settings.local.json

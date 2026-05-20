@@ -1,0 +1,124 @@
+/* 战斗结算模态框 */
+
+.combat-result-modal {
+  width: 420px;
+  max-width: 90vw;
+  background: linear-gradient(180deg, rgba(30, 30, 50, 0.98), rgba(20, 20, 35, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  animation: combatResultPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes combatResultPop {
+  0% { transform: scale(0.7); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.combat-result-modal__header {
+  text-align: center;
+  padding: 24px 20px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.combat-result-modal__emoji {
+  font-size: 56px;
+  line-height: 1;
+  margin-bottom: 8px;
+  animation: combatResultEmoji 0.6s ease;
+}
+
+@keyframes combatResultEmoji {
+  0% { transform: scale(0) rotate(-180deg); }
+  60% { transform: scale(1.2) rotate(10deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+.combat-result-modal__title {
+  font-size: 28px;
+  font-weight: bold;
+  letter-spacing: 4px;
+  text-shadow: 0 0 16px currentColor;
+}
+
+.combat-result-modal__body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 80px;
+}
+
+.combat-result-modal__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+}
+
+.combat-result-modal__label {
+  font-size: 13px;
+  color: #a0a0b8;
+}
+
+.combat-result-modal__value {
+  font-size: 15px;
+  font-weight: bold;
+  color: #fbbf24;
+}
+
+.combat-result-modal__loot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.combat-result-modal__loot-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 6px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 6px;
+}
+
+.combat-result-modal__loot-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.combat-result-modal__loot-icon img {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.combat-result-modal__loot-name {
+  font-size: 11px;
+  text-align: center;
+  color: #fde68a;
+  word-break: break-word;
+}
+
+.combat-result-modal__empty {
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+  padding: 16px;
+}
+
+.combat-result-modal__footer {
+  padding: 12px 20px 20px;
+  text-align: center;
+}
+
+.combat-result-modal__footer .btn {
+  min-width: 100px;
+}

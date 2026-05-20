@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TRPG AI跑团</title>
+</head>
+<body>
+  <div id="app">
+    <!-- 工具栏 -->
+    <div id="toolbar-panel" class="toolbar-panel"></div>
+
+    <!-- 主内容区 -->
+    <div id="main-content" class="main-content">
+      <!-- 左面板：卡牌列表 -->
+      <div id="left-panel" class="left-panel"></div>
+
+      <!-- 中央：地图区域 -->
+      <div id="center-panel" class="center-panel">
+        <canvas id="game-canvas"></canvas>
+      </div>
+
+      <!-- 右面板：事件卡 -->
+      <div id="right-panel" class="right-panel"></div>
+    </div>
+
+    <!-- 底部叙事面板 -->
+    <div id="narrative-panel" class="narrative-panel"></div>
+
+    <!-- 骰子覆盖层 -->
+    <div id="dice-overlay" class="dice-overlay"></div>
+
+    <!-- 模态框容器 -->
+    <div id="modal-container"></div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+/**
+ * 卡牌详情模态框样式
+ */
+
+.card-detail__image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background-color: var(--bg-lighter);
+  border-radius: var(--border-radius-sm);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.card-detail__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-detail__name {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-highlight);
+  margin-bottom: 4px;
+}
+
+.card-detail__type {
+  font-size: 13px;
+  color: var(--color-primary-light);
+  margin-bottom: 12px;
+}
+
+.card-detail__desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.card-detail__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.card-detail__stats span {
+  background-color: var(--bg-medium);
+  padding: 4px 10px;
+  border-radius: var(--border-radius-sm);
+  font-size: 12px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.card-detail__abilities h3 {
+  font-size: 14px;
+  color: var(--text-highlight);
+  margin-bottom: 8px;
+}
+
+.card-detail__ability {
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.card-detail__ability strong {
+  color: var(--text-primary);
+}
+
+.card-detail__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.tag {
+  background-color: var(--bg-lighter);
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+}

@@ -1,0 +1,29 @@
+/**
+ * 主UI协调器样式
+ * 战斗模式高亮、全局过渡等
+ */
+
+/* ========== 战斗模式 ========== */
+#app.combat-mode .left-panel {
+  border-right-color: var(--color-hp);
+}
+
+#app.combat-mode .right-panel {
+  border-left-color: var(--color-hp);
+}
+
+#app.combat-mode .toolbar-panel {
+  border-bottom-color: var(--color-hp);
+}
+
+#app.combat-mode .narrative-panel {
+  border-top-color: var(--color-hp);
+}
+
+/* ========== 面板过渡 ========== */
+.left-panel,
+.right-panel,
+.toolbar-panel,
+.narrative-panel {
+  transition: border-color var(--transition-normal);
+}
