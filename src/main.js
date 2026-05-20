@@ -601,30 +601,49 @@ class TRPGApp {
   }
 
   /**
-   * 加载初始数据（存档或默认预设）
+   * 加载初始数据（自动存档槽 → 旧 trpg_save → 默认预设）
+   * 修复 Bug #9：之前只读旧 trpg_save，自动存档槽 'auto' 不被读取，刷新页面进度丢失
    */
   _loadInitialData() {
-    // 尝试读取存档
-    const savedState = this.stateManager.loadFromLocal('trpg_save');
-    if (savedState) {
-      this.gameState = GameState.fromJSON(savedState);
-      // 需要重新加载预设来恢复卡牌等数据
-      const savedPresetRaw = localStorage.getItem('trpg_current_preset');
-      if (savedPresetRaw) {
+    // 优先尝试自动存档槽（_autoSave 写入的位置）
+    const autoSlot = this.stateManager.loadFromSlot('auto');
+    if (autoSlot && autoSlot.state) {
+      this.gameState = GameState.fromJSON(autoSlot.state);
+      // 字段名是 preset（JSON 字符串），不是 presetJson
+      if (autoSlot.preset) {
         try {
-          const presetData = JSON.parse(savedPresetRaw);
+          const presetData = JSON.parse(autoSlot.preset);
           this._applyPreset(presetData);
-          this.gameState.addNarrative('system', '已从存档恢复游戏。');
+          this.gameState.addNarrative('system', '已从自动存档恢复游戏。');
         } catch (e) {
-          console.warn('无法恢复预设，使用默认预设:', e);
+          console.warn('无法恢复自动存档的预设，使用默认预设:', e);
           this.loadPreset(DEFAULT_PRESET);
         }
       } else {
         this.loadPreset(DEFAULT_PRESET);
       }
     } else {
-      // 没有存档，加载默认预设
-      this.loadPreset(DEFAULT_PRESET);
+      // 兼容旧机制（trpg_save 单槽）
+      const savedState = this.stateManager.loadFromLocal('trpg_save');
+      if (savedState) {
+        this.gameState = GameState.fromJSON(savedState);
+        const savedPresetRaw = localStorage.getItem('trpg_current_preset');
+        if (savedPresetRaw) {
+          try {
+            const presetData = JSON.parse(savedPresetRaw);
+            this._applyPreset(presetData);
+            this.gameState.addNarrative('system', '已从存档恢复游戏。');
+          } catch (e) {
+            console.warn('无法恢复预设，使用默认预设:', e);
+            this.loadPreset(DEFAULT_PRESET);
+          }
+        } else {
+          this.loadPreset(DEFAULT_PRESET);
+        }
+      } else {
+        // 没有任何存档，加载默认预设
+        this.loadPreset(DEFAULT_PRESET);
+      }
     }
 
     // 加载AI设置（如有）+ 游戏设置
