@@ -110,6 +110,7 @@ docs/                 # 创作者手册 + AI 集成手册
 
 - [📖 预设创作者手册](docs/AUTHORING_GUIDE.md) — 触发器架构、状态机设计、AI 提示词调优
 - [🤖 AI 集成手册](docs/AI_INTEGRATION.md) — AI 调用流程、Action 白名单、记忆分层
+- [🛠 开发状态与接手指南](docs/DEVELOPMENT_STATUS.md) — **给接手开发者**：项目当前位置、关键文件、9 个已修复 bug、工作流约定
 
 ## 技术栈
 

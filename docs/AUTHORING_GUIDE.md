@@ -249,7 +249,7 @@ ch_shop (pointsOfInterest: ['poi_village'], repeatable: true)
 }
 ```
 
-**升级公式**：`getExperienceForNextLevel(currentLevel) = currentLevel * 100`
+**升级公式**：`getExperienceForNextLevel(currentLevel) = currentLevel * 50`（Phase 11.A 后从 ×100 调整为 ×50，升级节奏快 1 倍）
 
 升级时所有属性 +1，HP/MP ×1.10，偶数级 speed/luck +1，并全恢复 HP/MP。
 
@@ -331,8 +331,8 @@ ch_shop (pointsOfInterest: ['poi_village'], repeatable: true)
 ```json
 {
   "aiConfig": {
-    "temperature": 0.7,  // 0=确定性，1=最有创意
-    "maxResponseTokens": 300
+    "temperature": 0.7,        // 0=确定性，1=最有创意
+    "maxResponseTokens": 1000  // 推荐 ≥1000，防止 creativeOutcome JSON 截断
   }
 }
 ```

@@ -21,11 +21,13 @@
 {
   endpoint: 'https://api.openai.com/v1',
   apiKey: 'sk-...',
-  model: 'gpt-4o-mini',  // 或 deepseek-chat / qwen2.5:7b 等
+  model: 'gpt-4o-mini',  // 或 deepseek-chat / qwen2.5:7b / mimo-v2.5 等
   temperature: 0.7,
-  maxTokens: 300
+  maxTokens: 1000        // 推荐 ≥ 1000 防止 creativeOutcome JSON 被截断
 }
 ```
+
+> 注意：模型名通常**大小写敏感**。如果 API 报 `Not supported model`，先 GET `/v1/models` 看准确拼写（如小米 MiMo 是 `mimo-v2.5` 不是 `MiMo-V2.5`）。
 
 ### 推荐配置
 
@@ -33,6 +35,7 @@
 |---|---|---|
 | `gpt-4o-mini` | 通用 | 性价比高 |
 | `deepseek-chat` | 中文叙事 | 价格友好 |
+| `mimo-v2.5` / `mimo-v2.5-pro` | 中文叙事 | 小米 MiMo（实测兼容） |
 | `qwen2.5:7b` (Ollama) | 本地部署 | 无网络依赖 |
 | `claude-haiku-4-5` (代理) | 长上下文 | 通过代理转 OpenAI 格式 |
 
@@ -253,13 +256,35 @@ import { estimateTokens } from './utils/tokenEstimator.js';
 
 | 错误 | 处理 |
 |---|---|
-| API 超时（30s） | catch → 系统消息 "GM 失联: 超时" + 走 localFallback |
-| 网络错误 | catch → 同上 |
+| API 超时（30s）| catch → "GM 失联: 超时" + localFallback |
+| 网络错误 | catch → 同上；**自动重试 1 次（800ms backoff）** |
+| 4xx 请求错误 | 立即抛出，**不重试**（请求本身问题，重试无意义） |
 | JSON 解析失败 | 三级 fallback: 直接 → markdown 提取 → brace 提取 → 整文本作为 narrative |
 | AI 返回非法 action | 静默丢弃，console.warn 记录 |
-| AI 编造 creativeOutcome | DC 范围校验，越界 → null |
+| AI 编造 creativeOutcome | DC 范围校验（1-40），越界 → null |
+| **并发冲突**（isProcessing=true）| **轮询等待**前请求完成（最多 30s），不丢叙事 |
+| **AI 主动 narrate 失败时的兜底**| `_localFallback.narrate_combat` 区分胜利/逃脱/失败/开场，写出有质感的本地叙事 |
 
 整体哲学：**优雅降级，永不打断玩家**。
+
+### Token 使用监控
+
+`AIGMEngine.tokenStats`（session 级，每次 reload 重置）：
+
+```js
+{
+  totalPromptTokens, totalCompletionTokens, totalTokens, totalCalls,
+  lastCall: { promptTokens, completionTokens, totalTokens, ts },
+  budgetWarningTokens, // 设为 >0 时超过会发 'ai:budgetWarning' 事件
+}
+```
+
+- 优先用 API 返回的 `usage` 字段（精确）
+- 缺失时本地估算（`utils/tokenEstimator.js`）
+- 工具栏 🪙 实时显示累计 tokens
+- 设置面板有详细统计 + 重置按钮
+
+实测：一场完整 10 章主线 ~30K tokens，按 gpt-4o-mini 约 ¥0.10。
 
 ---
 
@@ -287,3 +312,26 @@ case 'player_action': narrative = '你' + actionText + '。';
 4. **main.js** 订阅相应事件（如 npc:summonRequest）
 
 确保 **校验先于应用**，否则 AI 会变成不受约束的"god mode"。
+
+---
+
+## 十二、prompt 调优经验（来自实测）
+
+### 12.1 强语气禁止比正向描述更有效
+
+❌ 弱："请描述战斗场面"  
+✅ 强："严禁描述任何角色的具体行动（不要写"举盾/拉弓/施法/挥剑"等动作）"
+
+战斗开场（roundResults 为空）时，AI 倾向于脑补角色行动。明确禁止后才能让 AI 只描述气氛/环境/敌人神态。
+
+### 12.2 "严格按 outcomeText" 约束
+
+事件 outcome 的概率分支可能与 event.description 中的元素冲突（如 ch8 描述提"两尊石像鬼守在门两侧"，但 use_amulet 成功 outcome 应该是"石门打开"）。AI 可能把描述中的元素混入 outcome 叙事。
+
+建议 prompt 增加："严格按结果文本叙事，不要编造与结果矛盾的情节"。
+
+### 12.3 长 prompt 配 maxTokens ≥ 1000
+
+`creativeOutcome` 的 JSON 结构（dc + formula + onSuccess + onFail + 两个 narrative + 两个 actions）至少要 300-500 token 才能完整。maxTokens 300 会导致 JSON 截断，触发 `_fallback(text)` 把整段 raw JSON 当 narrative 显示给玩家。
+
+**默认值已统一为 1000**（见 Phase 11.A），文档若提到 300 是历史值。
