@@ -131,8 +131,18 @@ export class AIGMEngine extends GameSystem {
       return this._localFallback(actionType, actionData, gameState);
     }
 
+    // 修复 Bug #8: 并发冲突时不能只返回占位结果而丢弃叙事
+    // 改为等待当前请求完成（最多 30s）再串行处理
     if (this.isProcessing) {
-      return { narrative: '正在思考中...', actions: [], diceRequests: [] };
+      const startWait = performance.now();
+      while (this.isProcessing && performance.now() - startWait < 30000) {
+        await new Promise(r => setTimeout(r, 100));
+      }
+      if (this.isProcessing) {
+        // 真的超时了 → 退回 localFallback 保证叙事不丢
+        console.warn('AI 并发等待超时，退回本地叙事');
+        return this._localFallback(actionType, actionData, gameState);
+      }
     }
 
     this.isProcessing = true;
