@@ -96,9 +96,14 @@ export class AIPromptBuilder {
           parts.push(`描述: ${evt.description}`);
           if (evt.aiPromptHint) parts.push(`叙事提示: ${evt.aiPromptHint}`);
           if (actionData.choiceText) parts.push(`玩家选择: ${actionData.choiceText}`);
-          if (actionData.outcomeText) parts.push(`结果: ${actionData.outcomeText}`);
+          if (actionData.outcomeText) parts.push(`【实际结果】: ${actionData.outcomeText}`);
         }
-        parts.push('请用生动的语言叙述这个事件场景。');
+        if (actionData.outcomeText) {
+          // 修复 Obs #1：AI 容易把描述中的元素混入 outcome 叙事，强约束
+          parts.push('请用生动的语言叙述这个事件场景。**严格按【实际结果】所述发生的事情写**，不要编造与结果矛盾的情节（例如结果说"门打开"，就不要写"敌人袭击"；结果说"成功说服"，就不要写"对方拔剑"）。');
+        } else {
+          parts.push('请用生动的语言叙述这个事件场景。');
+        }
         break;
       }
 
