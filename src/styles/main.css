@@ -201,10 +201,134 @@ html, body {
   }
 }
 
-@media (max-width: 700px) {
-  /* 极小屏：折叠左面板 */
+/* ========== 移动端抽屉布局（Phase 14） ========== */
+@media (max-width: 768px) {
+  :root {
+    --narrative-height: 180px;
+    --toolbar-height: 48px;
+  }
+
+  /* 主内容区改为只显示中央地图 */
+  .main-content {
+    position: relative;
+  }
+
+  /* 左右面板变为绝对定位的抽屉，默认隐藏 */
+  .left-panel, .right-panel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 75vw;
+    max-width: 320px;
+    z-index: 50;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+  }
   .left-panel {
+    left: 0;
+    transform: translateX(-100%);
+  }
+  .right-panel {
+    right: 0;
+    transform: translateX(100%);
+  }
+  /* 打开时滑入 */
+  body.drawer-left-open .left-panel { transform: translateX(0); }
+  body.drawer-right-open .right-panel { transform: translateX(0); }
+
+  /* 抽屉打开时显示遮罩 */
+  .drawer-backdrop {
     display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 45;
+    transition: opacity 0.3s ease;
+  }
+  body.drawer-left-open .drawer-backdrop,
+  body.drawer-right-open .drawer-backdrop {
+    display: block;
+  }
+
+  /* center-panel 占满 */
+  .center-panel {
+    width: 100%;
+  }
+
+  /* 工具栏紧凑：标题和状态栏完全隐藏（用 body 提升 specificity 覆盖 ToolbarPanel.css） */
+  body .toolbar__title,
+  body .toolbar__separator,
+  body .toolbar__status {
+    display: none;
+  }
+  body .toolbar__btn-label {
+    display: none;
+  }
+  .toolbar__btn {
+    padding: 4px 6px;
+    min-width: 32px;
+    min-height: 32px;
+  }
+  .toolbar__btn-icon {
+    font-size: 16px;
+  }
+  /* btn-group 可滚动以容纳所有按钮 */
+  .toolbar__btn-group {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    max-width: calc(100vw - 96px); /* 减去左右抽屉按钮宽度 */
+    -webkit-overflow-scrolling: touch;
+  }
+  .toolbar__btn-group::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 抽屉触发按钮（仅小屏可见） */
+  .drawer-toggle {
+    background: var(--bg-medium);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    color: var(--text-highlight);
+    flex-shrink: 0;
+  }
+  .drawer-toggle:active {
+    background: var(--bg-lighter);
+  }
+
+  /* 模态框小屏占满 */
+  .modal {
+    width: 95vw !important;
+    max-width: none !important;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* 输入框 hit target 增大 */
+  .input, .btn {
+    min-height: 40px;
+    font-size: 14px;
+  }
+
+  /* 叙事面板输入更舒适 */
+  .narrative__input {
+    font-size: 16px;  /* iOS 自动缩放：>= 16px 不触发缩放 */
+  }
+}
+
+/* 桌面端默认隐藏抽屉切换按钮 */
+.drawer-toggle {
+  display: none;
+}
+@media (max-width: 768px) {
+  .drawer-toggle {
+    display: flex;
   }
 }
 

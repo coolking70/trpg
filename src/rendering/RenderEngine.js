@@ -87,7 +87,7 @@ export class RenderEngine extends GameSystem {
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  /** 绑定DOM事件 */
+  /** 绑定DOM事件（鼠标 + 触控，Phase 14 移动端适配） */
   bindEvents() {
     if (!this.canvas) return;
     this.canvas.addEventListener('mousedown', this._onMouseDown);
@@ -97,6 +97,46 @@ export class RenderEngine extends GameSystem {
     this.canvas.addEventListener('wheel', this._onWheel, { passive: false });
     this.canvas.addEventListener('click', this._onClick);
     window.addEventListener('resize', this._onResize);
+
+    // 触控事件（手指拖拽 + 点击）— 转换为同等的鼠标事件
+    this._onTouchStart = (e) => this._dispatchTouchAsMouse(e, 'mousedown');
+    this._onTouchMove = (e) => {
+      e.preventDefault();  // 防止页面滚动干扰
+      this._dispatchTouchAsMouse(e, 'mousemove');
+    };
+    this._onTouchEnd = (e) => {
+      this._dispatchTouchAsMouse(e, 'mouseup');
+      // 触控结束时若未拖拽则视为 click
+      if (e.changedTouches && e.changedTouches.length > 0) {
+        const t = e.changedTouches[0];
+        this._dispatchTouchAsMouse({ ...e, touches: [t] }, 'click', t);
+      }
+    };
+    this.canvas.addEventListener('touchstart', this._onTouchStart, { passive: true });
+    this.canvas.addEventListener('touchmove', this._onTouchMove, { passive: false });
+    this.canvas.addEventListener('touchend', this._onTouchEnd, { passive: true });
+    this.canvas.addEventListener('touchcancel', this._onTouchEnd, { passive: true });
+  }
+
+  /** 把 TouchEvent 转换为合成的 MouseEvent 触发已有处理器 */
+  _dispatchTouchAsMouse(touchEvent, mouseType, fallbackTouch = null) {
+    const touch = fallbackTouch || (touchEvent.touches && touchEvent.touches[0]);
+    if (!touch) {
+      if (mouseType === 'mouseup' || mouseType === 'mouseleave') {
+        // 触控结束没有 touches，直接走 _onMouseUp 通用路径
+        this._onMouseUp({ clientX: this.dragStartX, clientY: this.dragStartY });
+      }
+      return;
+    }
+    const fakeEvent = {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      preventDefault: () => {},
+    };
+    if (mouseType === 'mousedown') this._onMouseDown(fakeEvent);
+    else if (mouseType === 'mousemove') this._onMouseMove(fakeEvent);
+    else if (mouseType === 'mouseup') this._onMouseUp(fakeEvent);
+    else if (mouseType === 'click') this._onClick(fakeEvent);
   }
 
   /** 解绑DOM事件 */
@@ -108,6 +148,12 @@ export class RenderEngine extends GameSystem {
     this.canvas.removeEventListener('mouseleave', this._onMouseUp);
     this.canvas.removeEventListener('wheel', this._onWheel);
     this.canvas.removeEventListener('click', this._onClick);
+    if (this._onTouchStart) {
+      this.canvas.removeEventListener('touchstart', this._onTouchStart);
+      this.canvas.removeEventListener('touchmove', this._onTouchMove);
+      this.canvas.removeEventListener('touchend', this._onTouchEnd);
+      this.canvas.removeEventListener('touchcancel', this._onTouchEnd);
+    }
     window.removeEventListener('resize', this._onResize);
   }
 

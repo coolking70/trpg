@@ -1,0 +1,19 @@
+{
+  "name": "TRPG AI 跑团",
+  "short_name": "TRPG",
+  "description": "基于 AI 的浏览器 TRPG，AI 担任 GM 引导玩家冒险",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%231a1a2e'/><text x='50%25' y='50%25' font-size='100' text-anchor='middle' dominant-baseline='central' fill='%23fbbf24'>⚔</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

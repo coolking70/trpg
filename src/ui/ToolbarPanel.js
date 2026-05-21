@@ -34,6 +34,16 @@ export class ToolbarPanel {
   render() {
     this.container.innerHTML = '';
 
+    /* 左抽屉切换（仅小屏可见） */
+    const leftToggle = document.createElement('button');
+    leftToggle.className = 'drawer-toggle drawer-toggle--left';
+    leftToggle.innerHTML = '☰';
+    leftToggle.title = '打开角色面板';
+    leftToggle.addEventListener('click', () => {
+      this.eventSystem.publish('ui:toggleDrawer', { side: 'left' });
+    });
+    this.container.appendChild(leftToggle);
+
     /* 标题区域 */
     const title = document.createElement('div');
     title.className = 'toolbar__title';
@@ -71,6 +81,15 @@ export class ToolbarPanel {
     spacer.className = 'toolbar__spacer';
     this.container.appendChild(spacer);
 
+    /* 右抽屉切换（仅小屏可见） */
+    const rightToggle = document.createElement('button');
+    rightToggle.className = 'drawer-toggle drawer-toggle--right';
+    rightToggle.innerHTML = '📋';
+    rightToggle.title = '打开事件面板';
+    rightToggle.addEventListener('click', () => {
+      this.eventSystem.publish('ui:toggleDrawer', { side: 'right' });
+    });
+
     /* 状态栏：金币 / 回合 / 当前章节 / 难度 */
     const statusBar = document.createElement('div');
     statusBar.className = 'toolbar__status';
@@ -83,6 +102,9 @@ export class ToolbarPanel {
     `;
     this._statusBar = statusBar;
     this.container.appendChild(statusBar);
+
+    // 右抽屉按钮放在最后（仅小屏可见）
+    this.container.appendChild(rightToggle);
 
     // 订阅 token 用量更新事件
     this.eventSystem.subscribe('ai:tokenUpdate', (evt) => {

@@ -130,6 +130,14 @@ export class GameUI {
       this.settingsModal.show();
     });
 
+    /* 移动端抽屉切换（Phase 14） */
+    this._subscribe('ui:toggleDrawer', (evt) => {
+      this._toggleDrawer(evt.data.side);
+    });
+
+    /* 创建抽屉遮罩（点击关闭） */
+    this._createDrawerBackdrop();
+
     /* 存档管理模态框 */
     this._subscribe('ui:openSaveModal', () => {
       this.saveLoadModal.showSave();
@@ -239,5 +247,41 @@ export class GameUI {
   /** 事件触发时更新右面板 */
   _onEventTrigger(data) {
     this.rightPanel.setActiveEvent(data.event || data);
+    // 移动端：触发新事件时自动打开右抽屉让玩家看到
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      this._openDrawer('right');
+    }
+  }
+
+  /** 创建抽屉遮罩（点击关闭抽屉） */
+  _createDrawerBackdrop() {
+    const main = this.container.querySelector('#main-content');
+    if (!main || main.querySelector('.drawer-backdrop')) return;
+    const backdrop = document.createElement('div');
+    backdrop.className = 'drawer-backdrop';
+    backdrop.addEventListener('click', () => this._closeAllDrawers());
+    main.appendChild(backdrop);
+  }
+
+  _toggleDrawer(side) {
+    const cls = `drawer-${side}-open`;
+    const other = side === 'left' ? 'drawer-right-open' : 'drawer-left-open';
+    if (document.body.classList.contains(cls)) {
+      document.body.classList.remove(cls);
+    } else {
+      document.body.classList.remove(other);
+      document.body.classList.add(cls);
+    }
+  }
+
+  _openDrawer(side) {
+    const cls = `drawer-${side}-open`;
+    const other = side === 'left' ? 'drawer-right-open' : 'drawer-left-open';
+    document.body.classList.remove(other);
+    document.body.classList.add(cls);
+  }
+
+  _closeAllDrawers() {
+    document.body.classList.remove('drawer-left-open', 'drawer-right-open');
   }
 }
