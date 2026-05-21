@@ -20,6 +20,7 @@ export class ToolbarPanel {
       { id: 'load',     label: '读档', icon: '📂', event: 'toolbar:load' },
       { id: 'editor',   label: '编辑器', icon: '📝', event: 'ui:openEditor' },
       { id: 'random',   label: '随机世界', icon: '🎲', event: 'toolbar:randomWorld' },
+      { id: 'log',      label: '导出日志', icon: '📋', event: 'toolbar:exportLog' },
       { id: 'settings', label: '设置', icon: '⚙',  event: 'ui:openSettings' },
       { id: 'dice',     label: '掷骰', icon: '🎲', event: 'toolbar:rollDice' },
     ];

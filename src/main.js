@@ -28,6 +28,7 @@ import { MemorySystem } from './systems/MemorySystem.js';
 import { AllyAIController } from './systems/AllyAIController.js';
 import { DifficultyTracker } from './systems/DifficultyTracker.js';
 import { generateRandomPreset, getThemes } from './systems/WorldGenerator.js';
+import { LogSystem } from './systems/LogSystem.js';
 
 // 渲染
 import { RenderEngine } from './rendering/RenderEngine.js';
@@ -124,6 +125,7 @@ class TRPGApp {
     this.engine.registerSystem(new MemorySystem(), 28);
     this.engine.registerSystem(new AllyAIController(), 22);
     this.engine.registerSystem(new DifficultyTracker(), 21);
+    this.engine.registerSystem(new LogSystem(), 5);  // 低优先级即可，被动收集
 
     // 渲染引擎最低优先级（最后更新 = 最后绘制）
     this.engine.registerSystem(new RenderEngine(), 10);
@@ -342,6 +344,11 @@ class TRPGApp {
     // ---- 变量变化 → 扫描可能因此解锁的事件 ----
     es.subscribe('game:variableChanged', () => {
       this._scanEventTriggers(TRIGGER_MOMENTS.VARIABLE_CHANGE);
+    });
+
+    // ---- 导出日志 ----
+    es.subscribe('toolbar:exportLog', () => {
+      this._handleExportLog();
     });
 
     // ---- 一键生成随机世界 ----
@@ -1971,6 +1978,24 @@ class TRPGApp {
 
     // 每次扫描只触发优先级最高的一个，避免事件爆炸
     this._triggerEvent(matchedIds[0]);
+  }
+
+  /**
+   * 导出日志：弹出格式选择，调 LogSystem 触发下载
+   */
+  _handleExportLog() {
+    const logSystem = this.engine.getSystem('LogSystem');
+    if (!logSystem) return;
+
+    const choice = prompt('选择导出格式：\n1 - JSON（机器可读，含完整数据，可用于 bug 报告）\n2 - Markdown（人类可读，叙事/战斗回顾）', '1');
+    if (!choice) return;
+
+    const format = choice.trim() === '2' ? 'markdown' : 'json';
+    const ok = logSystem.exportToFile(this.gameState, format, this.preset);
+    if (ok && this.gameState) {
+      this.gameState.addNarrative('system', `📋 日志已导出为 ${format.toUpperCase()}`);
+      this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+    }
   }
 }
 
