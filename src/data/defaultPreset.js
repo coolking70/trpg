@@ -95,7 +95,7 @@ export const DEFAULT_PRESET = {
 
   events: [
     // ============================================================
-    // 第一章：受命出征（起点 POI 自动触发）
+    // 第一章：受命出征（场景 scene_spawn 入场即触发）
     // ============================================================
     {
       id: 'ch1_start', type: 'event', name: '第一章 受命出征',
@@ -103,7 +103,7 @@ export const DEFAULT_PRESET = {
       image: '', eventType: 'story',
       trigger: {
         type: 'composite',
-        condition: { pointsOfInterest: ['poi_spawn'], excludeCompletedEvents: ['ch1_start'], probability: 1.0 },
+        condition: { inScene: ['scene_spawn'], excludeCompletedEvents: ['ch1_start'], probability: 1.0 },
       },
       priority: 100,
       choices: [
@@ -117,7 +117,7 @@ export const DEFAULT_PRESET = {
     },
 
     // ============================================================
-    // 第二章：林间相遇（条件：已接任务 + 在道路上）
+    // 第二章：林间相遇（场景 scene_traveler_camp 抵达必触发）
     // ============================================================
     {
       id: 'ch2_traveler', type: 'event', name: '第二章 神秘旅人',
@@ -125,14 +125,14 @@ export const DEFAULT_PRESET = {
       image: '', eventType: 'encounter',
       trigger: {
         type: 'composite',
-        condition: { tileTypes: ['R'], requireVariables: { quest_received: true }, excludeCompletedEvents: ['ch2_traveler'], probability: 0.55 },
+        condition: { inScene: ['scene_traveler_camp'], requireVariables: { quest_received: true }, excludeCompletedEvents: ['ch2_traveler'], probability: 1.0 },
       },
       priority: 90,
       choices: [
         { id: 'accept_help', text: '接受旅人的帮助', requirements: null,
           outcomes: [{ probability: 1.0, text: '旅人将一枚刻有古老符文的护身符交给艾拉："带上它，符文之门会为你而开。"',
             effects: [
-              { type: 'add_item', itemId: 'item_007' },
+              { type: 'add_item', itemId: 'item_013' },
               { type: 'set_variable', name: 'met_traveler', value: true },
               { type: 'add_memory', value: '神秘旅人赠予艾拉一枚刻有符文的护身符' },
             ] }] },
@@ -146,7 +146,7 @@ export const DEFAULT_PRESET = {
     },
 
     // ============================================================
-    // 第三章：林间村落（POI 触发）
+    // 第三章：林间村落（场景 scene_village 抵达必触发）
     // ============================================================
     {
       id: 'ch3_village', type: 'event', name: '第三章 林间村落',
@@ -154,7 +154,7 @@ export const DEFAULT_PRESET = {
       image: '', eventType: 'story',
       trigger: {
         type: 'composite',
-        condition: { pointsOfInterest: ['poi_village'], excludeCompletedEvents: ['ch3_village'], probability: 1.0 },
+        condition: { inScene: ['scene_village'], excludeCompletedEvents: ['ch3_village'], probability: 1.0 },
       },
       priority: 90,
       choices: [
@@ -182,9 +182,9 @@ export const DEFAULT_PRESET = {
       image: '', eventType: 'shop',
       trigger: {
         type: 'composite',
-        condition: { pointsOfInterest: ['poi_village'], requireCompletedEvents: ['ch3_village'], probability: 1.0 },
+        condition: { inScene: ['scene_village'], requireCompletedEvents: ['ch3_village'], probability: 1.0 },
       },
-      priority: 85,  // 高于 ch6 路上 boss (80)，保证在村庄 POI 上优先触发
+      priority: 85,  // 高于 ch3 重访叙事，重访村庄优先打开商店
       shop: {
         inventory: [
           { itemId: 'item_009', price: 25, stock: 5 },
@@ -201,7 +201,7 @@ export const DEFAULT_PRESET = {
     },
 
     // ============================================================
-    // 第五章：暗影狼伏击（已接任务 + 森林随机触发）
+    // 第五章：暗影狼伏击（场景 scene_shadow_grove 抵达即触发）
     // ============================================================
     {
       id: 'ch5_wolves', type: 'event', name: '暗影狼伏击',
@@ -209,7 +209,7 @@ export const DEFAULT_PRESET = {
       image: '', eventType: 'encounter',
       trigger: {
         type: 'composite',
-        condition: { tileTypes: ['T', 'G'], requireCompletedEvents: ['ch1_start'], excludeCompletedEvents: ['ch5_wolves'], probability: 0.25 },
+        condition: { inScene: ['scene_shadow_grove'], requireCompletedEvents: ['ch1_start'], excludeCompletedEvents: ['ch5_wolves'], probability: 1.0 },
       },
       priority: 50,
       choices: [
@@ -227,7 +227,7 @@ export const DEFAULT_PRESET = {
     },
 
     // ============================================================
-    // 第六章：堕落骑士（条件：已知传闻）
+    // 第六章：堕落骑士（场景 scene_abandoned_outpost 抵达 + 已知传闻）
     // ============================================================
     {
       id: 'ch6_dark_knight', type: 'event', name: '第六章 堕落骑士',
@@ -235,7 +235,7 @@ export const DEFAULT_PRESET = {
       image: '', eventType: 'boss',
       trigger: {
         type: 'composite',
-        condition: { tileTypes: ['R', 'G'], requireVariables: { knows_dark_knight: true }, excludeCompletedEvents: ['ch6_dark_knight'], probability: 0.4 },
+        condition: { inScene: ['scene_abandoned_outpost'], requireVariables: { knows_dark_knight: true }, excludeCompletedEvents: ['ch6_dark_knight'], probability: 1.0 },
       },
       priority: 80,
       choices: [
@@ -259,7 +259,7 @@ export const DEFAULT_PRESET = {
     },
 
     // ============================================================
-    // 第七章：林中治愈者（条件：HP 危急）
+    // 第七章：林中治愈者（场景 scene_healer_shrine 抵达 + HP 危急）
     // ============================================================
     {
       id: 'ch7_rescue', type: 'event', name: '林中的治愈者',
@@ -267,7 +267,7 @@ export const DEFAULT_PRESET = {
       image: '', eventType: 'story',
       trigger: {
         type: 'composite',
-        condition: { partyHpBelow: 0.3, requireCompletedEvents: ['ch1_start'], excludeCompletedEvents: ['ch7_rescue'], probability: 1.0 },
+        condition: { inScene: ['scene_healer_shrine'], partyHpBelow: 0.5, requireCompletedEvents: ['ch1_start'], excludeCompletedEvents: ['ch7_rescue'], probability: 1.0 },
       },
       priority: 95,
       choices: [
@@ -284,7 +284,7 @@ export const DEFAULT_PRESET = {
     },
 
     // ============================================================
-    // 第八章：遗迹之门（POI 触发）
+    // 第八章：遗迹之门（场景 scene_ruin_gate）
     // ============================================================
     {
       id: 'ch8_dungeon_gate', type: 'event', name: '第八章 遗迹之门',
@@ -292,7 +292,7 @@ export const DEFAULT_PRESET = {
       image: '', eventType: 'boss',
       trigger: {
         type: 'composite',
-        condition: { pointsOfInterest: ['poi_dungeon'], excludeCompletedEvents: ['ch8_dungeon_gate'], probability: 1.0 },
+        condition: { inScene: ['scene_ruin_gate'], excludeCompletedEvents: ['ch8_dungeon_gate'], probability: 1.0 },
       },
       priority: 95,
       choices: [
@@ -319,7 +319,7 @@ export const DEFAULT_PRESET = {
     },
 
     // ============================================================
-    // 第九章：最终对决（条件：进入了遗迹）
+    // 第九章：最终对决（场景 scene_lich_altar，需 opened_gate=true）
     // ============================================================
     {
       id: 'ch9_lich', type: 'event', name: '第九章 森林巫妖',
@@ -327,7 +327,7 @@ export const DEFAULT_PRESET = {
       image: '', eventType: 'boss',
       trigger: {
         type: 'composite',
-        condition: { requireVariables: { opened_gate: true }, excludeCompletedEvents: ['ch9_lich'], probability: 1.0 },
+        condition: { inScene: ['scene_lich_altar'], requireVariables: { opened_gate: true }, excludeCompletedEvents: ['ch9_lich'], probability: 1.0 },
       },
       priority: 100,
       choices: [
@@ -341,7 +341,8 @@ export const DEFAULT_PRESET = {
     },
 
     // ============================================================
-    // 第十章：黎明（条件：击败巫妖）
+    // 第十章：黎明（默认结局，场景 scene_dawn_meadow）
+    // 需 ch9 完成，且**没有**唤醒堕落骑士 — 单纯地"打赢了 boss"
     // ============================================================
     {
       id: 'ch10_epilogue', type: 'event', name: '第十章 黎明',
@@ -349,13 +350,238 @@ export const DEFAULT_PRESET = {
       image: '', eventType: 'story',
       trigger: {
         type: 'composite',
-        condition: { requireCompletedEvents: ['ch9_lich'], excludeCompletedEvents: ['ch10_epilogue'], probability: 1.0 },
+        condition: {
+          inScene: ['scene_dawn_meadow'],
+          requireCompletedEvents: ['ch9_lich'],
+          excludeCompletedEvents: ['ch10_epilogue', 'ch10_redeemed'],
+          probability: 1.0,
+        },
       },
       priority: 100,
       choices: [],
       repeatable: false, maxOccurrences: 1,
       aiPromptHint: '光明、希望、新的开始',
-      tags: ['epilogue', 'main'], notes: '',
+      tags: ['epilogue', 'main', 'chapter10'], notes: '',
+    },
+
+    // ============================================================
+    // 第十章·变体：救赎之黎明（同一场景，但唤醒了堕落骑士时的另一种结局）
+    // priority 110 高于 ch10_epilogue 100，且加 requireVariables.redeemed_knight=true
+    // 让 _afterSceneEnter 的 trigger 条件过滤把这一支挑出来
+    // ============================================================
+    {
+      id: 'ch10_redeemed', type: 'event', name: '第十章 救赎之黎明',
+      description: '巫妖陨落，圣光重新临人间。但你们走出遗迹时，那位曾守护森林的堕落骑士在道路尽头静静等候——他的铠甲不再漆黑，眼中重燃了三年前那束熟悉的光。',
+      image: '', eventType: 'story',
+      trigger: {
+        type: 'composite',
+        condition: {
+          inScene: ['scene_dawn_meadow'],
+          requireCompletedEvents: ['ch9_lich'],
+          requireVariables: { redeemed_knight: true },
+          excludeCompletedEvents: ['ch10_epilogue', 'ch10_redeemed'],
+          probability: 1.0,
+        },
+      },
+      priority: 110,
+      choices: [],
+      repeatable: false, maxOccurrences: 1,
+      aiPromptHint: '悲喜交织的救赎，强调骑士从黑暗中归来的庄严，与艾拉重逢同袍的感动',
+      tags: ['epilogue', 'main', 'chapter10', 'good-ending'], notes: '',
+    },
+  ],
+
+  // ============================================================
+  // 场景图（Scene Graph） — 桌游跑团式节点地图
+  // 11 个节点 + 路径连接，每次跳转一次 AI 抵达叙事。
+  // 从 scene_spawn 出发，可走主路（村庄→堕落骑士→遗迹）或支路（暗影狼/治愈者）。
+  // ============================================================
+  startingSceneId: 'scene_spawn',
+  displayMode: 'scene-graph',
+  scenes: [
+    {
+      id: 'scene_spawn', name: '冒险者公会门口', type: 'spawn', icon: '🏛',
+      description: '黄昏中的村庄外缘，林边小径在暮色中蜿蜒。',
+      coords: { x: 3, y: 7 },
+      connections: [
+        { to: 'scene_forest_path', label: '踏上幽暗的林边小径' },
+      ],
+      events: ['ch1_start'],
+      vignettes: [
+        '你们再次回到公会门口。守门人朝你们点头致意，目光透着敬意。',
+        '夕阳把公会的旗帜染成血红色——这地方现在感觉像是另一个世界了。',
+      ],
+      tags: ['safe', 'main'],
+    },
+    {
+      id: 'scene_forest_path', name: '林边小径', type: 'wilderness', icon: '🌿',
+      description: '幽暗的林间小径，两侧的树木枝干扭曲，空气中弥漫着腐叶与潮湿的气息。',
+      coords: { x: 5, y: 7 },
+      connections: [
+        { to: 'scene_spawn', label: '原路返回村口' },
+        { to: 'scene_traveler_camp', label: '深入小径，朝林间篝火走去' },
+        { to: 'scene_shadow_grove', label: '偏离主道，钻进密林深处',
+          gated: { requireCompletedEvents: ['ch1_start'], hint: '你们还没下定决心，正式踏入森林' } },
+      ],
+      events: [],
+      vignettes: [
+        '小径两旁的树影摇晃着，戈尔下意识握紧了匕首。',
+        '远处传来一声渡鸦的尖鸣，雷恩示意大家放轻脚步。',
+      ],
+      tags: ['main'],
+    },
+    {
+      id: 'scene_traveler_camp', name: '林间篝火', type: 'wilderness', icon: '🔥',
+      description: '一簇不合时宜的篝火在道旁噼啪作响，仿佛在等待着谁。',
+      coords: { x: 7, y: 5 },
+      connections: [
+        { to: 'scene_forest_path', label: '回到林边小径' },
+        { to: 'scene_village', label: '沿古道北上，前往林间村落' },
+      ],
+      events: ['ch2_traveler'],
+      vignettes: [
+        '篝火已经熄灭，只剩一圈焦黑的石头。旅人早已不知去向。',
+        '风掠过空荡的营地，唯有焦土气息提醒着这里曾有人停留。',
+      ],
+      tags: ['main', 'npc'],
+    },
+    {
+      id: 'scene_village', name: '林间村落', type: 'settlement', icon: '🏘',
+      description: '雾气缭绕的木屋聚落，村民投来戒备的目光——三年来鲜有外来者活着抵达此处。',
+      coords: { x: 7, y: 1 },
+      connections: [
+        { to: 'scene_traveler_camp', label: '沿古道南返' },
+        { to: 'scene_dark_corridor', label: '沿主路东行，深入森林',
+          gated: { requireCompletedEvents: ['ch3_village'], hint: '你们应该先和村民打个招呼' } },
+      ],
+      events: ['ch4_shop', 'ch3_village'],
+      vignettes: [
+        '你们再次踏入村落，孩童们好奇地张望。老布伦在杂货铺门口冲你们点头致意。',
+        '村中的炊烟比之前稀薄了几分，几位老人正在井边低声议论你们的事迹。',
+      ],
+      tags: ['safe', 'main', 'shop'],
+    },
+    {
+      id: 'scene_dark_corridor', name: '森林古道', type: 'wilderness', icon: '🌲',
+      description: '深入森林的主要古道，铺路石板已被苔藓与裂缝侵蚀。',
+      coords: { x: 11, y: 5 },
+      connections: [
+        { to: 'scene_village', label: '原路返回村落' },
+        { to: 'scene_abandoned_outpost', label: '继续沿道深入',
+          gated: { requireVariables: { knows_dark_knight: true }, hint: '前方阴气逼人，你们还不知道那里隐藏着什么' } },
+        { to: 'scene_shadow_grove', label: '钻进路边的密林' },
+        { to: 'scene_healer_shrine', label: '注意到林中隐秘的祭坛小径' },
+      ],
+      events: [],
+      vignettes: [
+        '古道两旁的枯树像无数张沉默的脸，注视着你们的身影。',
+        '远处传来沉闷的钟声，方向难以辨认。',
+      ],
+      tags: ['main'],
+    },
+    {
+      id: 'scene_shadow_grove', name: '暗影丛林', type: 'combat', icon: '🐺',
+      description: '光线骤暗的密林深处，灌木丛中传来低沉的咆哮。',
+      coords: { x: 9, y: 8 },
+      connections: [
+        { to: 'scene_forest_path', label: '退回林边小径' },
+        { to: 'scene_dark_corridor', label: '钻出密林回到古道' },
+      ],
+      events: ['ch5_wolves'],
+      vignettes: [
+        '丛林深处静悄悄的，只剩你们方才战斗的痕迹。',
+        '几丛被狼爪挠过的灌木还在风中摇曳。',
+      ],
+      tags: ['combat'],
+    },
+    {
+      id: 'scene_healer_shrine', name: '苔藓祭坛', type: 'vignette', icon: '🌿',
+      description: '隐藏在密林深处的小祭坛，绿光在石缝间若隐若现。',
+      coords: { x: 13, y: 8 },
+      connections: [
+        { to: 'scene_dark_corridor', label: '回到古道' },
+      ],
+      events: ['ch7_rescue'],
+      vignettes: [
+        '祭坛上的青苔在阳光中安详地呼吸，治愈者早已不知所踪。',
+        '你们在祭坛前驻足片刻，仿佛能感受到一丝来自远方的祝福。',
+      ],
+      tags: ['rescue', 'safe'],
+    },
+    {
+      id: 'scene_abandoned_outpost', name: '废弃哨所', type: 'combat', icon: '⚔',
+      description: '一座倾颓的圣光教团哨所，黑暗气息在残垣间游动。',
+      coords: { x: 14, y: 5 },
+      connections: [
+        { to: 'scene_dark_corridor', label: '原路返回古道' },
+        { to: 'scene_ruin_outskirts', label: '继续向东深入森林' },
+      ],
+      events: ['ch6_dark_knight'],
+      vignettes: [
+        '哨所静默无人，唯有风掠过破损的旗帜。',
+        '骑士留下的剑痕还嵌在断墙上，向所有人诉说曾经的对决。',
+      ],
+      tags: ['boss', 'main'],
+    },
+    {
+      id: 'scene_ruin_outskirts', name: '遗迹外围', type: 'wilderness', icon: '🏚',
+      description: '森林尽头的山脚，远处隐约可见藤蔓缠绕的巨大石门。',
+      coords: { x: 16, y: 8 },
+      connections: [
+        { to: 'scene_abandoned_outpost', label: '返回哨所' },
+        { to: 'scene_ruin_gate', label: '走近那扇巨大的石门' },
+      ],
+      events: [],
+      vignettes: [
+        '石门的轮廓在雾中若隐若现，仿佛在等待着什么。',
+        '空气中弥漫着古老魔力的余烬，让人头皮发麻。',
+      ],
+      tags: ['main'],
+    },
+    {
+      id: 'scene_ruin_gate', name: '遗迹之门', type: 'dungeon', icon: '🚪',
+      description: '布满藤蔓的巨大石门矗立在山壁前，门上刻着古老的精灵符文。',
+      coords: { x: 17, y: 10 },
+      connections: [
+        { to: 'scene_ruin_outskirts', label: '撤回外围' },
+        { to: 'scene_lich_altar', label: '踏入门后的黑暗',
+          gated: { requireVariables: { opened_gate: true }, hint: '石门紧闭，似乎需要某种钥匙' } },
+      ],
+      events: ['ch8_dungeon_gate'],
+      vignettes: [
+        '石门已经向你们开启，幽暗的通道在前方等待。',
+        '门口的石像鬼已陷入沉寂，圣光的余晖照亮了符文。',
+      ],
+      tags: ['boss', 'main'],
+    },
+    {
+      id: 'scene_lich_altar', name: '巫妖祭坛', type: 'dungeon', icon: '💀',
+      description: '阴森的地下祭坛，幽绿鬼火在祭台中央跳动。',
+      coords: { x: 17, y: 12 },
+      connections: [
+        { to: 'scene_dawn_meadow', label: '战斗结束后走出遗迹',
+          gated: { requireCompletedEvents: ['ch9_lich'], hint: '诅咒的源头还在脉动，必须先终结它' } },
+      ],
+      events: ['ch9_lich'],
+      vignettes: [
+        '祭坛上的碎骨已化为灰烬，幽绿火焰彻底熄灭。',
+        '空荡的祭坛回荡着风声，曾经的恐怖只剩一片寂静。',
+      ],
+      tags: ['boss', 'main'],
+    },
+    {
+      id: 'scene_dawn_meadow', name: '黎明草地', type: 'ending', icon: '🌅',
+      description: '走出遗迹，森林正迎来三年来的第一缕黎明。',
+      coords: { x: 17, y: 14 },
+      connections: [],
+      // 两个结局事件挂在同一场景，按 trigger 条件 + priority 分流：
+      // - ch10_redeemed: 优先 (priority 110)，需 redeemed_knight=true
+      // - ch10_epilogue: 默认 (priority 100)
+      events: ['ch10_redeemed', 'ch10_epilogue'],
+      vignettes: [
+        '阳光铺满草地，鸟鸣声从远处传来。',
+      ],
+      tags: ['epilogue', 'main', 'safe'],
     },
   ],
 
@@ -372,6 +598,9 @@ export const DEFAULT_PRESET = {
     { id: 'item_010', type: 'item', name: '魔力药水', description: '恢复20点魔力', image: '', itemType: 'consumable', statModifiers: {}, consumeEffect: { type: 'heal', stat: 'mp', value: 20 }, equipSlot: null, buyPrice: 30, sellPrice: 15, stackable: true, maxStack: 10, tags: ['consumable', 'potion'], notes: '' },
     { id: 'item_011', type: 'item', name: '开锁工具', description: '盗贼专用的精密开锁工具', image: '', itemType: 'quest', statModifiers: {}, consumeEffect: null, equipSlot: null, buyPrice: 50, sellPrice: 25, stackable: false, maxStack: 1, tags: ['tool', 'rogue'], notes: '' },
     { id: 'item_012', type: 'item', name: '烟雾弹', description: '可以制造烟幕掩护撤退', image: '', itemType: 'consumable', statModifiers: {}, consumeEffect: { type: 'buff', stat: 'speed', value: 5, duration: 2 }, equipSlot: null, buyPrice: 40, sellPrice: 20, stackable: true, maxStack: 5, tags: ['consumable', 'rogue'], notes: '' },
+    // ch2 神秘旅人赠予的关键剧情物品；ch8 遗迹之门 use_amulet 选项叙事所指
+    // 与玩家初始装备的 item_007 魔力水晶解耦，避免叙事/物品错位
+    { id: 'item_013', type: 'item', name: '符文护身符', description: '刻有古老精灵符文的护身符，符文之门会为它开启', image: '', itemType: 'accessory', statModifiers: { magicDefense: 4, hp: 10 }, consumeEffect: null, equipSlot: 'accessory', buyPrice: 0, sellPrice: 80, stackable: false, maxStack: 1, tags: ['accessory', 'quest', 'rune'], notes: '剧情物品 — 来自 ch2_traveler' },
   ],
 
   map: {

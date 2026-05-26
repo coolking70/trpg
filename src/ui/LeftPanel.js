@@ -107,6 +107,14 @@ export class LeftPanel {
       let cardEl;
       if (this.currentTab === 'characters') {
         cardEl = CardRenderer.renderCharacterMini(card);
+        // Phase 20A — 标记 NPC 伙伴（装备不可编辑、独立 badge）
+        if (card._isCompanion) {
+          cardEl.classList.add('is-companion');
+          const badge = document.createElement('div');
+          badge.className = 'card__companion-badge';
+          badge.textContent = '🤝 同行（AI 控制）';
+          cardEl.appendChild(badge);
+        }
       } else if (this.currentTab === 'enemies') {
         cardEl = CardRenderer.renderEnemyMini(card);
       } else {

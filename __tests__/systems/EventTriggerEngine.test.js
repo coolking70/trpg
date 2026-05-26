@@ -241,4 +241,89 @@ describe('EventTriggerEngine', () => {
       expect(engine.scan(gs, { moment: 'event_complete' })).not.toContain('e1');
     });
   });
+
+  // Phase 19A — 玩家 tags
+  describe('Phase 19A — composite: 玩家 tags', () => {
+    test('requireTags 全匹配通过', () => {
+      const engine = makeEngine([
+        { id: 'e_elf_noble', type: 'event', trigger: { type: 'composite', condition: { requireTags: ['race:elf', 'origin:noble'], probability: 1.0 } } },
+      ]);
+      const gs = { ...makeGameState(), playerTags: ['race:elf', 'origin:noble', 'faith:moon'] };
+      expect(engine.scan(gs, { moment: 'scene_enter' })).toContain('e_elf_noble');
+    });
+
+    test('requireTags 缺一个则拒', () => {
+      const engine = makeEngine([
+        { id: 'e_elf_noble', type: 'event', trigger: { type: 'composite', condition: { requireTags: ['race:elf', 'origin:noble'], probability: 1.0 } } },
+      ]);
+      const gs = { ...makeGameState(), playerTags: ['race:elf'] };
+      expect(engine.scan(gs, { moment: 'scene_enter' })).not.toContain('e_elf_noble');
+    });
+
+    test('requireAnyTags 任一命中', () => {
+      const engine = makeEngine([
+        { id: 'e_caster', type: 'event', trigger: { type: 'composite', condition: { requireAnyTags: ['bg:scholar', 'bg:mage'], probability: 1.0 } } },
+      ]);
+      const gs = { ...makeGameState(), playerTags: ['bg:mage'] };
+      expect(engine.scan(gs, { moment: 'scene_enter' })).toContain('e_caster');
+    });
+
+    test('requireNoTags 排除指定 tag', () => {
+      const engine = makeEngine([
+        { id: 'e_living', type: 'event', trigger: { type: 'composite', condition: { requireNoTags: ['undead'], probability: 1.0 } } },
+      ]);
+      const okGs = { ...makeGameState(), playerTags: ['race:human'] };
+      const banGs = { ...makeGameState(), playerTags: ['undead'] };
+      expect(engine.scan(okGs, { moment: 'scene_enter' })).toContain('e_living');
+      expect(engine.scan(banGs, { moment: 'scene_enter' })).not.toContain('e_living');
+    });
+  });
+
+  // Phase 19C — 故事时间
+  describe('Phase 19C — composite: requireStoryTime', () => {
+    test('minDay/maxDay 范围匹配', () => {
+      const engine = makeEngine([
+        { id: 'e_week1', type: 'event', trigger: { type: 'composite', condition: { requireStoryTime: { minDay: 1, maxDay: 7 }, probability: 1.0 } } },
+      ]);
+      const okGs = { ...makeGameState(), storyTime: { day: 3, hour: 10 } };
+      const lateGs = { ...makeGameState(), storyTime: { day: 8, hour: 10 } };
+      expect(engine.scan(okGs, { moment: 'scene_enter' })).toContain('e_week1');
+      expect(engine.scan(lateGs, { moment: 'scene_enter' })).not.toContain('e_week1');
+    });
+
+    test('hourRange 普通时段', () => {
+      const engine = makeEngine([
+        { id: 'e_day', type: 'event', trigger: { type: 'composite', condition: { requireStoryTime: { hourRange: [8, 18] }, probability: 1.0 } } },
+      ]);
+      const okGs = { ...makeGameState(), storyTime: { day: 1, hour: 12 } };
+      const nightGs = { ...makeGameState(), storyTime: { day: 1, hour: 22 } };
+      expect(engine.scan(okGs, { moment: 'scene_enter' })).toContain('e_day');
+      expect(engine.scan(nightGs, { moment: 'scene_enter' })).not.toContain('e_day');
+    });
+
+    test('hourRange 跨午夜（lo>hi）', () => {
+      const engine = makeEngine([
+        { id: 'e_night', type: 'event', trigger: { type: 'composite', condition: { requireStoryTime: { hourRange: [22, 6] }, probability: 1.0 } } },
+      ]);
+      const midnightGs = { ...makeGameState(), storyTime: { day: 1, hour: 2 } };
+      const lateGs = { ...makeGameState(), storyTime: { day: 1, hour: 23 } };
+      const noonGs = { ...makeGameState(), storyTime: { day: 1, hour: 12 } };
+      expect(engine.scan(midnightGs, { moment: 'scene_enter' })).toContain('e_night');
+      expect(engine.scan(lateGs, { moment: 'scene_enter' })).toContain('e_night');
+      expect(engine.scan(noonGs, { moment: 'scene_enter' })).not.toContain('e_night');
+    });
+  });
+
+  // Phase 22 预留 — worldFlags
+  describe('Phase 22 — composite: requireWorldFlags', () => {
+    test('worldFlag 匹配', () => {
+      const engine = makeEngine([
+        { id: 'e_war', type: 'event', trigger: { type: 'composite', condition: { requireWorldFlags: { war_declared: true }, probability: 1.0 } } },
+      ]);
+      const wartime = { ...makeGameState(), worldFlags: { war_declared: true } };
+      const peace = { ...makeGameState(), worldFlags: {} };
+      expect(engine.scan(wartime, { moment: 'scene_enter' })).toContain('e_war');
+      expect(engine.scan(peace, { moment: 'scene_enter' })).not.toContain('e_war');
+    });
+  });
 });

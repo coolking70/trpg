@@ -31,8 +31,53 @@ export class GamePreset {
     this.events = [...(data.events || [])];
     this.items = [...(data.items || [])];
 
-    // 地图
+    // Phase 19B — NPC 系统（持久世界角色，与战斗 enemy 解耦）
+    // NPC 有 affection、schedule、giftPreferences、dialogueTree 等字段
+    this.npcs = [...(data.npcs || [])];
+
+    // Phase 22B — NPC 关系图：from 的 affection 变化会按 strength 传播到 to
+    //   [{ from: 'npc_a', to: 'npc_b', strength: 0.5 }]     ally（同向）
+    //   [{ from: 'npc_a', to: 'npc_b', strength: -0.3 }]    rival（反向）
+    this.npcRelations = [...(data.npcRelations || [])];
+
+    // Phase 19A — 角色创建选项
+    // 4 个轴：种族 / 出身 / 背景 / 信仰；每个有 id/name/icon/statBonus/tags/description
+    // 若 startingOptions 为空，新游戏直接用现有 characters[0] 不弹角色创建
+    this.startingOptions = data.startingOptions || null;
+    // 例：[{ when: { tags: ['origin:noble'] }, sceneId: 'scene_manor' }, { default: 'scene_village' }]
+    this.startingSceneRules = [...(data.startingSceneRules || [])];
+
+    // Phase 19 — 战斗 / 玩法模式
+    //   'party' (default, current) ：4 人小队，玩家直接控制每个角色
+    //   'solo'  ：单主角 + AI 控制的可选伙伴
+    this.combatMode = data.combatMode || 'party';
+
+    // Phase 19 — AI 调用控制（与运行时 aiTier 配合）
+    // 每个 hook: 'optional'（按 tier 决定）/ 'never'（永远不调）/ 'always'（强制）
+    this.aiHooks = {
+      sceneArrival: 'optional',
+      eventResolve: 'optional',
+      npcDialogue: 'optional',
+      vignette: 'never',
+      worldRipple: 'optional',
+      ...(data.aiHooks || {}),
+    };
+
+    // 地图（旧版格子地图，仍支持以保持向后兼容）
     this.map = data.map || null;
+
+    // 场景图（新版主路径）— 节点 + 连接，每个节点是一个有意义的场景
+    // scenes 为空数组时回退到旧的格子地图触发机制
+    this.scenes = [...(data.scenes || [])];
+
+    // 起始场景 ID — 仅在 scenes[] 非空时使用
+    this.startingSceneId = data.startingSceneId || (this.scenes[0]?.id || null);
+
+    // 显示模式
+    //   'grid'        ：纯格子地图（旧）
+    //   'scene-graph' ：节点图（推荐 — 桌游跑团式）
+    //   'hybrid'      ：节点图叠在格子地图上
+    this.displayMode = data.displayMode || (this.scenes.length > 0 ? 'scene-graph' : 'grid');
 
     // 游戏规则配置
     this.rules = {
@@ -86,8 +131,28 @@ export class GamePreset {
     const errors = [];
 
     if (!this.name) errors.push('预设名称不能为空');
-    if (!this.map) errors.push('预设必须包含地图数据');
+    if (!this.map && this.scenes.length === 0) errors.push('预设必须包含地图数据或场景图（map 或 scenes 至少一项）');
     if (this.characters.length === 0) errors.push('预设至少需要一个角色卡');
+
+    // 场景图校验（如果使用 scenes）
+    if (this.scenes.length > 0) {
+      const sceneIds = new Set(this.scenes.map(s => s.id));
+      if (this.startingSceneId && !sceneIds.has(this.startingSceneId)) {
+        errors.push(`startingSceneId 引用了不存在的场景: ${this.startingSceneId}`);
+      }
+      for (const scene of this.scenes) {
+        for (const conn of (scene.connections || [])) {
+          if (!sceneIds.has(conn.to)) {
+            errors.push(`场景"${scene.id}"连接到不存在的场景: ${conn.to}`);
+          }
+        }
+        for (const eid of (scene.events || [])) {
+          if (!this.events.some(e => e.id === eid)) {
+            errors.push(`场景"${scene.id}"引用了不存在的事件: ${eid}`);
+          }
+        }
+      }
+    }
 
     // 校验事件卡引用的敌人ID是否存在
     const enemyIds = new Set(this.enemies.map(e => e.id));
@@ -126,6 +191,13 @@ export class GamePreset {
 
   toJSON() {
     return deepClone({
+      // Phase 19
+      npcs: this.npcs,
+      npcRelations: this.npcRelations,  // Phase 22B
+      startingOptions: this.startingOptions,
+      startingSceneRules: this.startingSceneRules,
+      combatMode: this.combatMode,
+      aiHooks: this.aiHooks,
       version: this.version,
       presetId: this.presetId,
       name: this.name,
@@ -138,6 +210,9 @@ export class GamePreset {
       events: this.events,
       items: this.items,
       map: this.map,
+      scenes: this.scenes,
+      startingSceneId: this.startingSceneId,
+      displayMode: this.displayMode,
       rules: this.rules,
       aiConfig: this.aiConfig,
     });

@@ -163,6 +163,25 @@ export class ProgressionSystem extends GameSystem {
         summary.buffApplied = `${eff.stat}+${eff.value} (${eff.duration || 3}回合)`;
         break;
       }
+      // Phase 26C — 战中逃跑道具（烟雾弹 / 卷轴）
+      case 'escape_combat': {
+        if (!gameState.activeCombat) {
+          return { success: false, reason: '不在战斗中' };
+        }
+        // 付出代价：全队 HP 按 hpPenaltyPct（默认 10%）扣血
+        const penaltyPct = eff.hpPenaltyPct ?? 0.10;
+        for (const c of gameState.activeCharacters) {
+          if (c.stats && c.stats.hpCurrent > 0) {
+            const dmg = Math.floor(c.stats.hp * penaltyPct);
+            c.stats.hpCurrent = Math.max(1, c.stats.hpCurrent - dmg);   // 至少留 1 HP（不会被烟雾弹自我团灭）
+          }
+        }
+        summary.escapedCombat = true;
+        summary.hpPenaltyPct = penaltyPct;
+        // 实际结束战斗的调用由调用方（main.js _useItem）处理 — 这里只标记
+        summary.requiresCombatEnd = 'flee';
+        break;
+      }
       default:
         return { success: false, reason: `未知效果类型: ${eff.type}` };
     }

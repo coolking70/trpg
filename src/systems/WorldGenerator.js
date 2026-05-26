@@ -396,3 +396,289 @@ function generateRandomEvents(map, enemies, items, themeKey) {
 export function getThemes() {
   return Object.entries(THEMES).map(([key, t]) => ({ key, name: t.name }));
 }
+
+// ============================================================
+// 场景图（Scene Graph）随机生成 — 桌游跑团式 6-8 节点小剧本
+// 不再产出 20×15 格子地图，每个节点就是一段戏。
+// ============================================================
+
+const SCENE_THEME_TEMPLATES = {
+  forest: {
+    name: '森林',
+    icon: '🌲',
+    spawn: { name: '林边公会', desc: '冒险者公会的边境哨站，使命召唤你们启程。', icon: '🚩' },
+    village: { name: '林间小村', desc: '雾气缭绕的木屋聚落，村民投来戒备的目光。', icon: '🏘' },
+    wilderness: [
+      { name: '幽林古道', desc: '林间古道两旁的树木枝干扭曲，落叶踩上去发出闷响。', icon: '🌿' },
+      { name: '荒废神龛', desc: '苔藓覆盖的小神龛半倾倒在路旁，传来微弱的绿光。', icon: '✨' },
+    ],
+    combat: { name: '暗影丛林', desc: '光线骤暗的密林深处，灌木丛中传来低沉的咆哮。', icon: '🐺' },
+    dungeon: { name: '古老遗迹', desc: '布满藤蔓的巨大石门矗立在山壁前。', icon: '🚪' },
+    boss: { name: '诅咒祭坛', desc: '阴森的祭坛上，幽绿鬼火在祭台中央跳动。', icon: '💀' },
+    ending: { name: '黎明草地', desc: '走出遗迹，迎来三年来的第一缕黎明。', icon: '🌅' },
+  },
+  desert: {
+    name: '荒漠',
+    icon: '🏜',
+    spawn: { name: '商队起点', desc: '炽热的烈日下，最后一队商队整理着行装。', icon: '🐪' },
+    village: { name: '绿洲城', desc: '罕见的水井边围着不少商贩，棕榈树投下凉荫。', icon: '🏘' },
+    wilderness: [
+      { name: '风蚀峡谷', desc: '风沙打磨出的褶皱岩柱在烈日下投出长影。', icon: '⛰' },
+      { name: '废弃驿站', desc: '半埋在沙中的驿站，门帘已被风沙撕成布条。', icon: '🛖' },
+    ],
+    combat: { name: '骸骨之地', desc: '黄沙中堆着不知名生物的白骨，沙下传来窸窣声。', icon: '☠' },
+    dungeon: { name: '法老陵墓', desc: '黄沙半埋着一座方形入口，符文在炽日下隐约发光。', icon: '🚪' },
+    boss: { name: '陵墓核心', desc: '阴冷的密室中，一尊干瘪的木乃伊缓缓抬起头颅。', icon: '🏺' },
+    ending: { name: '日出沙丘', desc: '诅咒散去，第一缕清晨的光让沙丘镀上金色。', icon: '🌅' },
+  },
+  ruins: {
+    name: '废墟',
+    icon: '🏚',
+    spawn: { name: '降落点', desc: '一艘失事的飞船残骸冒着青烟，你们从废墟中爬出。', icon: '🚀' },
+    village: { name: '幸存者营地', desc: '废墟中拼凑起来的临时居所，几位居民紧张地看着你们。', icon: '🛖' },
+    wilderness: [
+      { name: '断壁巷道', desc: '坍塌的高墙之间，电缆从天而降迸出火星。', icon: '⚙' },
+      { name: '锈蚀广场', desc: '荒废广场中央，一尊残破的雕像凝视虚空。', icon: '🗿' },
+    ],
+    combat: { name: '机械废场', desc: '故障机器人在残骸间巡逻，红光锁定了你们。', icon: '🤖' },
+    dungeon: { name: '地下入口', desc: '一座沉重的金属门紧闭着，门旁刻着古老的警告。', icon: '🚪' },
+    boss: { name: '核心反应堆', desc: '主控间内，被腐蚀的 AI 用合成嗓音宣告你们的终结。', icon: '💠' },
+    ending: { name: '地表重光', desc: '反应堆停转，地下的奇异光带不再脉动，地表传来风声。', icon: '🌄' },
+  },
+};
+
+/**
+ * 生成场景图预设（替代 generateRandomPreset 的新版）
+ * @param {object} options - { theme, baseLibrary }
+ * @returns {object} 完整的 GamePreset 数据（含 scenes[]）
+ */
+export function generateScenePreset(options = {}) {
+  const themeKey = options.theme || 'forest';
+  const tpl = SCENE_THEME_TEMPLATES[themeKey] || SCENE_THEME_TEMPLATES.forest;
+  const baseLibrary = options.baseLibrary || {};
+
+  const characters = baseLibrary.characters || [];
+  const enemies = baseLibrary.enemies || [];
+  const items = baseLibrary.items || [];
+
+  // 选 enemy 引用（带回退）
+  const easyEnemies = enemies.filter(e => ['easy', 'normal'].includes(e.difficulty));
+  const bossEnemies = enemies.filter(e => e.difficulty === 'boss' || e.difficulty === 'hard');
+  const combatEnemyId = (easyEnemies[0] || enemies[0])?.id;
+  const bossEnemyId = (bossEnemies[0] || enemies[enemies.length - 1])?.id;
+
+  // 选商店物品
+  const consumables = items.filter(i => i.itemType === 'consumable');
+  const shopInventory = consumables.slice(0, 3).map(it => ({
+    itemId: it.id, price: it.buyPrice || 25, stock: 5,
+  }));
+
+  // 选一个"治疗类 accessory"作为关键奖励物（首选 accessory，否则随便）
+  const keyItem = items.find(i => i.itemType === 'accessory') || items.find(i => i.itemType === 'consumable');
+  const keyItemId = keyItem ? keyItem.id : null;
+
+  // 1) 事件骨架（6-7 个事件，每个挂在一个场景上）
+  const events = [
+    {
+      id: 'rnd_start', type: 'event', name: '启程',
+      description: `${tpl.spawn.desc} 守门人将一封蜡封信交给你们 — 任务召唤。`,
+      eventType: 'story', priority: 100,
+      trigger: { type: 'composite', condition: { inScene: ['scene_spawn'], excludeCompletedEvents: ['rnd_start'], probability: 1.0 } },
+      choices: [
+        { id: 'accept', text: '接受任务，出发！', requirements: null,
+          outcomes: [{ probability: 1.0, text: '你们整装待发。', effects: [{ type: 'set_variable', name: 'quest_started', value: true }] }] },
+      ],
+      repeatable: false, tags: ['main'],
+    },
+    {
+      id: 'rnd_traveler', type: 'event', name: '神秘相遇',
+      description: '一位披着兜帽的旅人坐在路旁，似乎在等候。',
+      eventType: 'encounter', priority: 90,
+      trigger: { type: 'composite', condition: { inScene: ['scene_wild_1'], requireVariables: { quest_started: true }, excludeCompletedEvents: ['rnd_traveler'], probability: 1.0 } },
+      choices: [
+        { id: 'accept_help', text: '接受旅人的帮助', requirements: null,
+          outcomes: [{ probability: 1.0, text: '旅人递给你们一件神秘物品。',
+            effects: keyItemId ? [
+              { type: 'add_item', itemId: keyItemId },
+              { type: 'set_variable', name: 'met_traveler', value: true },
+            ] : [{ type: 'set_variable', name: 'met_traveler', value: true }] }] },
+        { id: 'decline', text: '婉拒后继续上路', requirements: null,
+          outcomes: [{ probability: 1.0, text: '旅人耸耸肩，目送你们离去。', effects: [] }] },
+      ],
+      repeatable: false, tags: ['main', 'npc'],
+    },
+    shopInventory.length > 0 ? {
+      id: 'rnd_shop', type: 'event', name: `${tpl.village.name}的商人`,
+      description: '一位商人在简陋的柜台后向你招手。',
+      eventType: 'shop', priority: 85,
+      trigger: { type: 'composite', condition: { inScene: ['scene_village'], probability: 1.0 } },
+      shop: { inventory: shopInventory, sellMultiplier: 0.5 },
+      choices: [],
+      repeatable: true, tags: ['shop'],
+    } : null,
+    combatEnemyId ? {
+      id: 'rnd_combat', type: 'event', name: '突袭',
+      description: '阴影中跃出敌人，战斗一触即发！',
+      eventType: 'encounter', priority: 70,
+      trigger: { type: 'composite', condition: { inScene: ['scene_combat'], requireCompletedEvents: ['rnd_start'], excludeCompletedEvents: ['rnd_combat'], probability: 1.0 } },
+      choices: [
+        { id: 'fight', text: '迎战', requirements: null,
+          outcomes: [{ probability: 1.0, text: '战斗开始！', effects: [{ type: 'start_combat', enemyIds: [combatEnemyId, combatEnemyId] }] }] },
+        { id: 'flee', text: '尝试脱身', requirements: null,
+          outcomes: [
+            { probability: 0.6, text: '你们成功甩开敌人。', effects: [] },
+            { probability: 0.4, text: '逃跑失败！', effects: [{ type: 'start_combat', enemyIds: [combatEnemyId] }] },
+          ] },
+      ],
+      repeatable: false, tags: ['combat'],
+    } : null,
+    bossEnemyId ? {
+      id: 'rnd_dungeon_gate', type: 'event', name: '入口',
+      description: `${tpl.dungeon.desc} 前方危机四伏。`,
+      eventType: 'story', priority: 95,
+      trigger: { type: 'composite', condition: { inScene: ['scene_dungeon'], excludeCompletedEvents: ['rnd_dungeon_gate'], probability: 1.0 } },
+      choices: [
+        { id: 'enter', text: '推开门，深入', requirements: null,
+          outcomes: [{ probability: 1.0, text: '门吱呀作响，缓缓打开。', effects: [{ type: 'set_variable', name: 'entered_dungeon', value: true }] }] },
+      ],
+      repeatable: false, tags: ['main'],
+    } : null,
+    bossEnemyId ? {
+      id: 'rnd_boss', type: 'event', name: '终焉',
+      description: `${tpl.boss.desc} 决战不可避免。`,
+      eventType: 'boss', priority: 100,
+      trigger: { type: 'composite', condition: { inScene: ['scene_boss'], requireVariables: { entered_dungeon: true }, excludeCompletedEvents: ['rnd_boss'], probability: 1.0 } },
+      choices: [
+        { id: 'final', text: '终结这一切！', requirements: null,
+          outcomes: [{ probability: 1.0, text: '决战开始！', effects: [{ type: 'start_combat', enemyIds: [bossEnemyId] }] }] },
+      ],
+      repeatable: false, tags: ['boss', 'main'],
+    } : null,
+    {
+      id: 'rnd_ending', type: 'event', name: '黎明',
+      description: `${tpl.ending.desc} 任务终于完成。`,
+      eventType: 'story', priority: 100,
+      trigger: { type: 'composite', condition: { inScene: ['scene_ending'], requireCompletedEvents: bossEnemyId ? ['rnd_boss'] : ['rnd_start'], excludeCompletedEvents: ['rnd_ending'], probability: 1.0 } },
+      choices: [],
+      repeatable: false, tags: ['epilogue', 'main'],
+    },
+  ].filter(Boolean);
+
+  // 2) 场景图（7-8 个节点）
+  const scenes = [
+    {
+      id: 'scene_spawn', name: tpl.spawn.name, type: 'spawn', icon: tpl.spawn.icon,
+      description: tpl.spawn.desc,
+      coords: { x: 0, y: 2 },
+      connections: [{ to: 'scene_wild_1', label: '踏上征程' }],
+      events: ['rnd_start'],
+      vignettes: ['你们再次回到起点，似乎一切刚刚开始。'],
+      tags: ['safe', 'main'],
+    },
+    {
+      id: 'scene_wild_1', name: tpl.wilderness[0].name, type: 'wilderness', icon: tpl.wilderness[0].icon,
+      description: tpl.wilderness[0].desc,
+      coords: { x: 1, y: 2 },
+      connections: [
+        { to: 'scene_spawn', label: '返回起点' },
+        { to: 'scene_village', label: '继续前行' },
+        { to: 'scene_combat', label: '偏离主道', gated: { requireCompletedEvents: ['rnd_start'] } },
+      ],
+      events: ['rnd_traveler'],
+      vignettes: ['熟悉的路径，没有新的发现。'],
+      tags: ['main'],
+    },
+    {
+      id: 'scene_village', name: tpl.village.name, type: 'settlement', icon: '🏘',
+      description: tpl.village.desc,
+      coords: { x: 2, y: 1 },
+      connections: [
+        { to: 'scene_wild_1', label: '返回旷野' },
+        { to: 'scene_wild_2', label: '沿主路深入' },
+      ],
+      events: ['rnd_shop'].filter(Boolean),
+      vignettes: ['村民冲你们点头致意。'],
+      tags: ['safe', 'shop', 'main'],
+    },
+    {
+      id: 'scene_combat', name: tpl.combat.name, type: 'combat', icon: tpl.combat.icon,
+      description: tpl.combat.desc,
+      coords: { x: 2, y: 3 },
+      connections: [
+        { to: 'scene_wild_1', label: '撤回旷野' },
+        { to: 'scene_wild_2', label: '继续向前突进' },
+      ],
+      events: combatEnemyId ? ['rnd_combat'] : [],
+      vignettes: ['空旷的战场，只剩风声。'],
+      tags: ['combat'],
+    },
+    {
+      id: 'scene_wild_2', name: tpl.wilderness[1].name, type: 'wilderness', icon: tpl.wilderness[1].icon,
+      description: tpl.wilderness[1].desc,
+      coords: { x: 3, y: 2 },
+      connections: [
+        { to: 'scene_village', label: '回到村庄' },
+        { to: 'scene_combat', label: '钻回密道' },
+        { to: 'scene_dungeon', label: '推进至入口' },
+      ],
+      events: [],
+      vignettes: ['你已经熟悉这片荒野。'],
+      tags: ['main'],
+    },
+    {
+      id: 'scene_dungeon', name: tpl.dungeon.name, type: 'dungeon', icon: tpl.dungeon.icon,
+      description: tpl.dungeon.desc,
+      coords: { x: 4, y: 2 },
+      connections: [
+        { to: 'scene_wild_2', label: '退回旷野' },
+        { to: 'scene_boss', label: '深入内部', gated: { requireVariables: { entered_dungeon: true } } },
+      ],
+      events: bossEnemyId ? ['rnd_dungeon_gate'] : [],
+      vignettes: ['入口的门已开启，黑暗在召唤。'],
+      tags: ['main'],
+    },
+    {
+      id: 'scene_boss', name: tpl.boss.name, type: 'dungeon', icon: tpl.boss.icon,
+      description: tpl.boss.desc,
+      coords: { x: 5, y: 2 },
+      connections: [{ to: 'scene_ending', label: '走出 / 仰望黎明', gated: { requireCompletedEvents: bossEnemyId ? ['rnd_boss'] : ['rnd_start'] } }],
+      events: bossEnemyId ? ['rnd_boss'] : [],
+      vignettes: ['一片寂静，胜利的回响早已散去。'],
+      tags: ['boss', 'main'],
+    },
+    {
+      id: 'scene_ending', name: tpl.ending.name, type: 'ending', icon: tpl.ending.icon,
+      description: tpl.ending.desc,
+      coords: { x: 6, y: 2 },
+      connections: [],
+      events: ['rnd_ending'],
+      vignettes: ['晨光铺满大地。'],
+      tags: ['epilogue', 'main', 'safe'],
+    },
+  ];
+
+  return {
+    version: '1.0.0',
+    presetId: 'preset_random_' + themeKey + '_' + Date.now(),
+    name: `随机${tpl.name}冒险`,
+    author: 'WorldGenerator',
+    createdAt: new Date().toISOString(),
+    description: `自动生成的${tpl.name}主题场景图冒险（7 节点小剧本）`,
+    lore: {
+      worldName: `随机${tpl.name}世界`,
+      era: '未知纪元',
+      background: `命运随机编织的${tpl.name}。从启点开始，途经村落与试炼，最终走向真相之门。`,
+      rules: '采用 D20 骰子系统，战斗为回合制',
+      gmStyle: '氛围多变，根据玩家选择形成独特故事',
+    },
+    characters,
+    enemies,
+    items,
+    events,
+    startingSceneId: 'scene_spawn',
+    displayMode: 'scene-graph',
+    scenes,
+    rules: { diceType: 'd20', combatFormula: '(attack + dice) - defense', maxPartySize: 4, startingGold: 100 },
+    aiConfig: { temperature: 0.7, maxResponseTokens: 1000, useStructuredOutput: true, language: 'zh-CN' },
+  };
+}

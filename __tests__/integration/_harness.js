@@ -24,6 +24,7 @@ import { ImportExportSystem } from '../../src/systems/ImportExportSystem.js';
 import { EventTriggerEngine, TRIGGER_MOMENTS } from '../../src/systems/EventTriggerEngine.js';
 import { ProgressionSystem } from '../../src/systems/ProgressionSystem.js';
 import { MemorySystem } from '../../src/systems/MemorySystem.js';
+import { SceneSystem } from '../../src/systems/SceneSystem.js';
 
 export function createHarness(presetData) {
   const engine = new GameEngine();
@@ -42,6 +43,7 @@ export function createHarness(presetData) {
   engine.registerSystem(new MemorySystem(), 28);
   engine.registerSystem(new ProgressionSystem(), 25);
   engine.registerSystem(new ImportExportSystem(), 20);
+  engine.registerSystem(new SceneSystem(), 33);
 
   // 初始化所有系统
   engine.systems.forEach(s => s.initialize(engine));
@@ -50,6 +52,7 @@ export function createHarness(presetData) {
   const preset = new GamePreset(presetData);
   engine.getSystem('CardManager').loadFromPreset(preset);
   if (preset.map) engine.getSystem('MapSystem').loadMap(preset.map);
+  engine.getSystem('SceneSystem').loadFromPreset(preset);
 
   const aiEngine = engine.getSystem('AIGMEngine');
   aiEngine.setPreset(preset);
@@ -188,6 +191,21 @@ export function createHarness(presetData) {
       const mapData = engine.getSystem('MapSystem').getMapData();
       const tileKey = mapData ? mapData.getTileKey(x, y) : null;
       this.scanTriggers(TRIGGER_MOMENTS.MOVE, { tileX: x, tileY: y, tileKey });
+      // 兼容：如果该格子坐标对应某个场景节点，也走 scene travel（让 inScene 事件触发）
+      const sceneSystem = engine.getSystem('SceneSystem');
+      if (sceneSystem.hasScenes()) {
+        const sceneAt = sceneSystem.getAllScenes().find(s => s.coords && s.coords.x === x && s.coords.y === y);
+        if (sceneAt) this.travelTo(sceneAt.id);
+      }
+    },
+
+    /** 场景图模式：跳转到指定场景节点（更新 currentSceneId + 扫 SCENE_ENTER） */
+    travelTo(sceneId) {
+      const sceneSystem = engine.getSystem('SceneSystem');
+      const result = sceneSystem.performTravel(gameState, sceneId);
+      if (!result) return false;
+      this.scanTriggers(TRIGGER_MOMENTS.SCENE_ENTER);
+      return true;
     },
 
     /** 扫描事件触发器 */

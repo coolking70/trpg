@@ -204,12 +204,18 @@ export class StateManager extends GameSystem {
       };
       localStorage.setItem(this._slotDataKey(slotId), JSON.stringify(payload));
 
+      // 解析 preset 以便把当前场景名 / 总场景数写进 meta（不依赖 preset 也要能存）
+      let presetData = null;
+      if (presetJson) {
+        try { presetData = JSON.parse(presetJson); } catch { /* */ }
+      }
+
       // 更新索引
       const index = this._readSlotsIndex();
       index[slotId] = {
         name: name || index[slotId]?.name || slotId,
         savedAt: payload.savedAt,
-        meta: this._extractStateMeta(this.state),
+        meta: this._extractStateMeta(this.state, presetData),
       };
       this._writeSlotsIndex(index);
 
@@ -266,17 +272,49 @@ export class StateManager extends GameSystem {
    * 从游戏状态中提取关键展示信息
    * @param {object} state
    */
-  _extractStateMeta(state) {
+  _extractStateMeta(state, preset = null) {
     if (!state) return {};
     const chars = state.activeCharacters || [];
+    const mapState = state.mapState || {};
+
+    // 把场景名 / 已访问/总场景数从 preset 解析出来
+    let currentSceneName = null;
+    let visitedSceneCount = 0;
+    let totalSceneCount = 0;
+    if (preset && Array.isArray(preset.scenes) && preset.scenes.length > 0) {
+      totalSceneCount = preset.scenes.length;
+      visitedSceneCount = (mapState.visitedSceneIds || []).length;
+      const currentSceneId = mapState.currentSceneId;
+      if (currentSceneId) {
+        const cur = preset.scenes.find(s => s.id === currentSceneId);
+        if (cur) currentSceneName = `${cur.icon || '📍'} ${cur.name}`;
+      }
+    }
+
+    // 把章节 ID 转成 preset 里的事件名（更友好）
+    const lastChapterId = (state.completedEventIds || []).filter(id => id.startsWith('ch')).pop() || null;
+    let lastChapterLabel = lastChapterId;
+    if (preset && lastChapterId && Array.isArray(preset.events)) {
+      const ev = preset.events.find(e => e.id === lastChapterId);
+      if (ev) lastChapterLabel = ev.name;
+    }
+
     return {
       turnNumber: state.turnNumber || 1,
       phase: state.currentPhase || 'exploration',
       partySize: chars.length,
       partyHpSummary: chars.map(c => `${c.name}:${c.stats?.hpCurrent ?? 0}/${c.stats?.hp ?? 0}`).join(' '),
       chaptersCompleted: (state.completedEventIds || []).filter(id => id.startsWith('ch')).length,
-      lastChapter: (state.completedEventIds || []).filter(id => id.startsWith('ch')).pop() || null,
+      lastChapter: lastChapterId,
+      lastChapterLabel,
       gold: state.gold || 0,
+      // 场景图模式
+      currentSceneId: mapState.currentSceneId || null,
+      currentSceneName,
+      visitedSceneCount,
+      totalSceneCount,
+      // 旧格子模式（兼容）
+      playerPosition: mapState.playerPosition || null,
     };
   }
 

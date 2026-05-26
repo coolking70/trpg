@@ -17,6 +17,10 @@ import { LeftPanel } from './LeftPanel.js';
 import { RightPanel } from './RightPanel.js';
 import { CombatPanel } from './CombatPanel.js';
 import { CombatResultModal } from './CombatResultModal.js';
+import { EndgameModal } from './EndgameModal.js';
+import { CharacterCreationModal } from './CharacterCreationModal.js';
+import { CampModal } from './CampModal.js';
+import { CodexModal } from './CodexModal.js';
 import { ToastManager } from './ToastManager.js';
 import { QuestTracker } from './QuestTracker.js';
 import { NarrativePanel } from './NarrativePanel.js';
@@ -81,8 +85,12 @@ export class GameUI {
     this.toolbar = new ToolbarPanel(this.toolbarEl, this.eventSystem);
     this.leftPanel = new LeftPanel(this.leftPanelEl, this.eventSystem, this.engine);
     this.rightPanel = new RightPanel(this.rightPanelEl, this.eventSystem, this.engine);
-    this.combatPanel = new CombatPanel(this.rightPanelEl, this.eventSystem);
+    this.combatPanel = new CombatPanel(this.rightPanelEl, this.eventSystem, this.engine);
     this.combatResultModal = new CombatResultModal(this.modalContainerEl, this.eventSystem);
+    this.endgameModal = new EndgameModal(this.modalContainerEl, this.eventSystem);
+    this.characterCreationModal = new CharacterCreationModal(this.modalContainerEl, this.eventSystem);
+    this.campModal = new CampModal(this.modalContainerEl, this.eventSystem, this.engine);
+    this.codexModal = new CodexModal(this.modalContainerEl, this.eventSystem, this.engine);
     // Toast 挂载在 body 级别，避免被面板裁切
     this.toastManager = new ToastManager(this.container, this.eventSystem);
     // QuestTracker 挂在叙事面板上方独立 slot（避免被 NarrativePanel.render 清空）
@@ -202,6 +210,10 @@ export class GameUI {
     this.rightPanel.destroy();
     this.combatPanel.destroy();
     this.combatResultModal.destroy();
+    if (this.endgameModal) this.endgameModal.destroy();
+    if (this.characterCreationModal) this.characterCreationModal.destroy();
+    if (this.campModal) this.campModal.destroy();
+    if (this.codexModal) this.codexModal.destroy();
     this.toastManager.destroy();
     this.questTracker.destroy();
     this.narrativePanel.destroy();

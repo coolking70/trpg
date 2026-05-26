@@ -28,9 +28,35 @@ describe('DiceSystem', () => {
       expect(dice.parseFormula(' 3 D 8 + 5 ')).toEqual({ count: 3, sides: 8, modifier: 5 });
     });
 
-    test('非法公式抛错', () => {
-      expect(() => dice.parseFormula('hello')).toThrow();
-      expect(() => dice.parseFormula('d')).toThrow();
+    test('纯字母 / 单字母 d 视为 0（容错策略）', () => {
+      // 旧版会抛错；新版宽容到 modifier=0，避免 AI 偶尔生成的非标准公式 crash 战斗
+      expect(dice.parseFormula('hello')).toEqual({ count: 0, sides: 0, modifier: 0 });
+      expect(dice.parseFormula('d')).toEqual({ count: 0, sides: 0, modifier: 0 });
+    });
+
+    test('真正无法解析的串仍然抛错', () => {
+      expect(() => dice.parseFormula('!!@@##')).toThrow();
+      expect(() => dice.parseFormula('d20d20')).toThrow();
+    });
+
+    test('支持多项修正符 d20+13-9', () => {
+      expect(dice.parseFormula('d20+13-9')).toEqual({ count: 1, sides: 20, modifier: 4 });
+    });
+
+    test('支持长链修正 2d6+3+1-2', () => {
+      expect(dice.parseFormula('2d6+3+1-2')).toEqual({ count: 2, sides: 6, modifier: 2 });
+    });
+
+    test('容错 AI 生成式公式：括号被剥离，未知变量当作 0', () => {
+      expect(dice.parseFormula('(ATK+1d20)-DEF')).toEqual({ count: 1, sides: 20, modifier: 0 });
+    });
+
+    test('容错 ability formula：attack+2d6+5（attack 视为 0）', () => {
+      expect(dice.parseFormula('attack+2d6+5')).toEqual({ count: 2, sides: 6, modifier: 5 });
+    });
+
+    test('容错 magicAttack+d10', () => {
+      expect(dice.parseFormula('magicAttack+d10')).toEqual({ count: 1, sides: 10, modifier: 0 });
     });
   });
 

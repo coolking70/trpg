@@ -1,0 +1,4704 @@
+{
+  "version": "1.0.0",
+  "presetId": "last_shelter_survival",
+  "name": "最后的避难所",
+  "author": "D1 生成",
+  "createdAt": "2026-05-26T15:13:34.153Z",
+  "description": "核冬天后的废土生存。寻找失散的家人、躲避辐射风暴、与突变体抗争——你能撑到春天吗？",
+  "lore": {
+    "worldName": "废土 2087",
+    "era": "大战后 35 年",
+    "background": "85 年前，三大势力的核战略让大半地球归于灰烬。35 年后，幸存者在地下避难所与变异生态间挣扎。你刚收到一封无线电——你弟弟可能还活着。",
+    "rules": "辐射伤害会持续叠加，必须按时服药。突变体强大但行动迟缓。资源管理是关键。",
+    "gmStyle": "冷峻、克制，环境描写偏荒凉细节。情感处用沉默胜过言辞。"
+  },
+  "characters": [
+    {
+      "id": "char_protagonist",
+      "type": "character",
+      "name": "幸存者",
+      "title": "寻弟者",
+      "description": "收到弟弟无线电后离开避难所的普通人。",
+      "stats": {
+        "hp": 130,
+        "mp": 30,
+        "attack": 14,
+        "defense": 10,
+        "magicAttack": 5,
+        "magicDefense": 9,
+        "speed": 11,
+        "luck": 6,
+        "hpCurrent": 130,
+        "mpCurrent": 30
+      },
+      "abilities": [
+        {
+          "id": "sv_aimed_shot",
+          "name": "瞄准射击",
+          "type": "active",
+          "cost": {
+            "mp": 4
+          },
+          "effect": {
+            "damage": {
+              "formula": "attack+d8+3"
+            }
+          }
+        },
+        {
+          "id": "sv_bandage",
+          "name": "包扎",
+          "type": "active",
+          "cost": {
+            "mp": 5
+          },
+          "cooldown": 2,
+          "effect": {
+            "heal": {
+              "formula": "25"
+            }
+          }
+        },
+        {
+          "id": "sv_focus",
+          "name": "凝神",
+          "type": "active",
+          "cost": {
+            "mp": 3
+          },
+          "effect": {
+            "applyStatus": {
+              "type": "buff",
+              "stat": "attack",
+              "value": 5,
+              "duration": 3
+            },
+            "target": "self"
+          }
+        }
+      ],
+      "inventory": [
+        "item_pistol_9mm",
+        "item_stimpak",
+        "item_stimpak",
+        "item_water",
+        "item_water",
+        "item_brother_photo"
+      ],
+      "equipment": {
+        "weapon": "item_pistol_9mm",
+        "armor": "item_leather_jkt",
+        "accessory": null
+      },
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "level": 1,
+      "experience": 0,
+      "statusEffects": [],
+      "tags": [],
+      "notes": ""
+    }
+  ],
+  "enemies": [
+    {
+      "id": "enemy_raider",
+      "type": "enemy",
+      "name": "掠夺者",
+      "description": "",
+      "stats": {
+        "hp": 50,
+        "mp": 0,
+        "attack": 12,
+        "defense": 5,
+        "magicAttack": 0,
+        "magicDefense": 4,
+        "speed": 8,
+        "luck": 1,
+        "hpCurrent": 50,
+        "mpCurrent": 0
+      },
+      "abilities": [],
+      "lootTable": [
+        {
+          "itemId": "item_scrap_metal",
+          "dropRate": 0.5
+        },
+        {
+          "itemId": "item_pistol_9mm",
+          "dropRate": 0.1
+        }
+      ],
+      "behaviorHint": "aggressive",
+      "experienceReward": 12,
+      "difficulty": "normal",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [],
+      "notes": ""
+    },
+    {
+      "id": "enemy_raider_chief",
+      "type": "enemy",
+      "name": "掠夺者头目",
+      "description": "",
+      "stats": {
+        "hp": 120,
+        "mp": 0,
+        "attack": 18,
+        "defense": 10,
+        "magicAttack": 0,
+        "magicDefense": 4,
+        "speed": 8,
+        "luck": 1,
+        "hpCurrent": 120,
+        "mpCurrent": 0
+      },
+      "abilities": [
+        {
+          "id": "rc_burst",
+          "name": "点射",
+          "type": "active",
+          "effect": {
+            "damage": {
+              "formula": "attack+d8+2"
+            }
+          }
+        }
+      ],
+      "lootTable": [
+        {
+          "itemId": "item_smg",
+          "dropRate": 0.3
+        },
+        {
+          "itemId": "item_combat_armor",
+          "dropRate": 0.4
+        }
+      ],
+      "behaviorHint": "aggressive",
+      "experienceReward": 60,
+      "difficulty": "hard",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [],
+      "notes": ""
+    },
+    {
+      "id": "enemy_ghoul_wild",
+      "type": "enemy",
+      "name": "野尸鬼",
+      "description": "",
+      "stats": {
+        "hp": 35,
+        "mp": 0,
+        "attack": 9,
+        "defense": 3,
+        "magicAttack": 0,
+        "magicDefense": 4,
+        "speed": 11,
+        "luck": 1,
+        "hpCurrent": 35,
+        "mpCurrent": 0
+      },
+      "abilities": [],
+      "lootTable": [],
+      "behaviorHint": "aggressive",
+      "experienceReward": 8,
+      "difficulty": "normal",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [],
+      "notes": ""
+    },
+    {
+      "id": "enemy_ghoul_glowing",
+      "type": "enemy",
+      "name": "辐光尸鬼",
+      "description": "",
+      "stats": {
+        "hp": 60,
+        "mp": 0,
+        "attack": 14,
+        "defense": 6,
+        "magicAttack": 12,
+        "magicDefense": 4,
+        "speed": 8,
+        "luck": 1,
+        "hpCurrent": 60,
+        "mpCurrent": 0
+      },
+      "abilities": [
+        {
+          "id": "rad_burst",
+          "name": "辐射爆发",
+          "type": "active",
+          "cost": {
+            "mp": 0
+          },
+          "effect": {
+            "damage": {
+              "formula": "magicAttack+d6"
+            },
+            "aoe": true,
+            "target": "all_enemies",
+            "applyStatus": {
+              "type": "dot",
+              "stat": "hp",
+              "value": 3,
+              "duration": 3
+            }
+          }
+        }
+      ],
+      "lootTable": [],
+      "behaviorHint": "aggressive",
+      "experienceReward": 25,
+      "difficulty": "normal",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [],
+      "notes": ""
+    },
+    {
+      "id": "enemy_mole_rat",
+      "type": "enemy",
+      "name": "巨鼠",
+      "description": "",
+      "stats": {
+        "hp": 28,
+        "mp": 0,
+        "attack": 8,
+        "defense": 2,
+        "magicAttack": 0,
+        "magicDefense": 4,
+        "speed": 13,
+        "luck": 1,
+        "hpCurrent": 28,
+        "mpCurrent": 0
+      },
+      "abilities": [],
+      "lootTable": [],
+      "behaviorHint": "aggressive",
+      "experienceReward": 6,
+      "difficulty": "normal",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [],
+      "notes": ""
+    },
+    {
+      "id": "enemy_radroach",
+      "type": "enemy",
+      "name": "辐光蟑螂",
+      "description": "",
+      "stats": {
+        "hp": 12,
+        "mp": 0,
+        "attack": 5,
+        "defense": 1,
+        "magicAttack": 0,
+        "magicDefense": 4,
+        "speed": 15,
+        "luck": 1,
+        "hpCurrent": 12,
+        "mpCurrent": 0
+      },
+      "abilities": [],
+      "lootTable": [],
+      "behaviorHint": "aggressive",
+      "experienceReward": 3,
+      "difficulty": "normal",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [],
+      "notes": ""
+    },
+    {
+      "id": "enemy_super_mutant",
+      "type": "enemy",
+      "name": "超级变种人",
+      "description": "",
+      "stats": {
+        "hp": 150,
+        "mp": 0,
+        "attack": 20,
+        "defense": 10,
+        "magicAttack": 0,
+        "magicDefense": 4,
+        "speed": 8,
+        "luck": 1,
+        "hpCurrent": 150,
+        "mpCurrent": 0
+      },
+      "abilities": [],
+      "lootTable": [],
+      "behaviorHint": "aggressive",
+      "experienceReward": 70,
+      "difficulty": "hard",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [],
+      "notes": ""
+    },
+    {
+      "id": "enemy_deathclaw",
+      "type": "enemy",
+      "name": "死亡爪",
+      "description": "",
+      "stats": {
+        "hp": 200,
+        "mp": 0,
+        "attack": 28,
+        "defense": 14,
+        "magicAttack": 0,
+        "magicDefense": 4,
+        "speed": 16,
+        "luck": 1,
+        "hpCurrent": 200,
+        "mpCurrent": 0
+      },
+      "abilities": [
+        {
+          "id": "dc_claw",
+          "name": "撕裂",
+          "type": "active",
+          "effect": {
+            "damage": {
+              "formula": "attack+2d6"
+            },
+            "applyStatus": {
+              "type": "debuff",
+              "stat": "defense",
+              "value": 3,
+              "duration": 2
+            }
+          }
+        }
+      ],
+      "lootTable": [],
+      "behaviorHint": "aggressive",
+      "experienceReward": 120,
+      "difficulty": "boss",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [
+        "boss"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "enemy_robot_sentry",
+      "type": "enemy",
+      "name": "废墟哨兵机",
+      "description": "",
+      "stats": {
+        "hp": 80,
+        "mp": 0,
+        "attack": 16,
+        "defense": 14,
+        "magicAttack": 0,
+        "magicDefense": 14,
+        "speed": 8,
+        "luck": 1,
+        "hpCurrent": 80,
+        "mpCurrent": 0
+      },
+      "abilities": [],
+      "lootTable": [],
+      "behaviorHint": "aggressive",
+      "experienceReward": 40,
+      "difficulty": "normal",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [
+        "robot"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "enemy_mutant_lord",
+      "type": "enemy",
+      "name": "变种领主 莱昂",
+      "description": "",
+      "stats": {
+        "hp": 320,
+        "mp": 0,
+        "attack": 26,
+        "defense": 18,
+        "magicAttack": 18,
+        "magicDefense": 14,
+        "speed": 11,
+        "luck": 1,
+        "hpCurrent": 320,
+        "mpCurrent": 0
+      },
+      "abilities": [
+        {
+          "id": "ml_swing",
+          "name": "巨锤横扫",
+          "type": "active",
+          "effect": {
+            "damage": {
+              "formula": "attack+d10"
+            }
+          }
+        }
+      ],
+      "lootTable": [],
+      "behaviorHint": "aggressive",
+      "experienceReward": 400,
+      "difficulty": "boss",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [
+        "mutant",
+        "boss",
+        "final"
+      ],
+      "notes": "",
+      "phases": [
+        {
+          "id": "mutated_50",
+          "hpThreshold": 0.5,
+          "statBoosts": {
+            "attack": 6
+          },
+          "narrative": "🩸 莱昂身上长出第二只手臂——突变在加深！",
+          "abilities": [
+            {
+              "id": "ml_quake",
+              "name": "废土震荡",
+              "type": "active",
+              "effect": {
+                "damage": {
+                  "formula": "2d10+10"
+                },
+                "aoe": true,
+                "target": "all_enemies"
+              }
+            }
+          ]
+        },
+        {
+          "id": "frenzy_25",
+          "hpThreshold": 0.25,
+          "statBoosts": {
+            "speed": 6,
+            "attack": 4
+          },
+          "narrative": "☢ 莱昂全身辐射光泛起，他已不再是人。",
+          "abilities": [
+            {
+              "id": "ml_meltdown",
+              "name": "熔融",
+              "type": "active",
+              "effect": {
+                "damage": {
+                  "formula": "3d8+15"
+                },
+                "aoe": true,
+                "target": "all_enemies",
+                "applyStatus": {
+                  "type": "dot",
+                  "stat": "hp",
+                  "value": 6,
+                  "duration": 3
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "items": [
+    {
+      "id": "item_pistol_9mm",
+      "type": "item",
+      "name": "9mm 手枪",
+      "itemType": "weapon",
+      "description": "弹匣 12 发。",
+      "equipSlot": "weapon",
+      "statModifiers": {
+        "attack": 5
+      },
+      "consumeEffect": null,
+      "buyPrice": 80,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": []
+    },
+    {
+      "id": "item_rifle_hunting",
+      "type": "item",
+      "name": "猎枪",
+      "itemType": "weapon",
+      "description": "",
+      "equipSlot": "weapon",
+      "statModifiers": {
+        "attack": 9,
+        "speed": -1
+      },
+      "consumeEffect": null,
+      "buyPrice": 200,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": []
+    },
+    {
+      "id": "item_smg",
+      "type": "item",
+      "name": "突击步枪",
+      "itemType": "weapon",
+      "description": "",
+      "equipSlot": "weapon",
+      "statModifiers": {
+        "attack": 12
+      },
+      "consumeEffect": null,
+      "buyPrice": 400,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": [
+        "military"
+      ]
+    },
+    {
+      "id": "item_combat_knife",
+      "type": "item",
+      "name": "战术匕首",
+      "itemType": "weapon",
+      "description": "",
+      "equipSlot": "weapon",
+      "statModifiers": {
+        "attack": 4,
+        "speed": 2
+      },
+      "consumeEffect": null,
+      "buyPrice": 30,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": []
+    },
+    {
+      "id": "item_leather_jkt",
+      "type": "item",
+      "name": "皮夹克",
+      "itemType": "armor",
+      "description": "",
+      "equipSlot": "armor",
+      "statModifiers": {
+        "defense": 3
+      },
+      "consumeEffect": null,
+      "buyPrice": 40,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": []
+    },
+    {
+      "id": "item_combat_armor",
+      "type": "item",
+      "name": "战术背心",
+      "itemType": "armor",
+      "description": "",
+      "equipSlot": "armor",
+      "statModifiers": {
+        "defense": 7
+      },
+      "consumeEffect": null,
+      "buyPrice": 200,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": [
+        "military"
+      ]
+    },
+    {
+      "id": "item_geiger",
+      "type": "item",
+      "name": "盖革计数器",
+      "itemType": "accessory",
+      "description": "",
+      "equipSlot": "accessory",
+      "statModifiers": {
+        "luck": 2
+      },
+      "consumeEffect": null,
+      "buyPrice": 0,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": [
+        "detector"
+      ]
+    },
+    {
+      "id": "item_radlight",
+      "type": "item",
+      "name": "放射灯",
+      "itemType": "accessory",
+      "description": "",
+      "equipSlot": "accessory",
+      "statModifiers": {
+        "magicDefense": 3
+      },
+      "consumeEffect": null,
+      "buyPrice": 0,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": []
+    },
+    {
+      "id": "item_stimpak",
+      "type": "item",
+      "name": "医疗针",
+      "itemType": "consumable",
+      "description": "",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": {
+        "type": "heal",
+        "stat": "hp",
+        "value": 50
+      },
+      "buyPrice": 20,
+      "sellPrice": 0,
+      "stackable": true,
+      "tags": []
+    },
+    {
+      "id": "item_rad_pill",
+      "type": "item",
+      "name": "辐射药",
+      "itemType": "consumable",
+      "description": "",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": {
+        "type": "heal",
+        "stat": "hp",
+        "value": 15
+      },
+      "buyPrice": 12,
+      "sellPrice": 0,
+      "stackable": true,
+      "tags": [
+        "anti_radiation"
+      ]
+    },
+    {
+      "id": "item_water",
+      "type": "item",
+      "name": "净化水",
+      "itemType": "consumable",
+      "description": "",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": {
+        "type": "heal",
+        "stat": "hp",
+        "value": 8
+      },
+      "buyPrice": 3,
+      "sellPrice": 0,
+      "stackable": true,
+      "tags": []
+    },
+    {
+      "id": "item_can_food",
+      "type": "item",
+      "name": "军用罐头",
+      "itemType": "consumable",
+      "description": "",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": {
+        "type": "heal",
+        "stat": "hp",
+        "value": 20
+      },
+      "buyPrice": 8,
+      "sellPrice": 0,
+      "stackable": true,
+      "tags": []
+    },
+    {
+      "id": "item_smoke_grenade",
+      "type": "item",
+      "name": "烟雾弹",
+      "itemType": "consumable",
+      "description": "",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": {
+        "type": "escape_combat",
+        "hpPenaltyPct": 0.1
+      },
+      "buyPrice": 35,
+      "sellPrice": 0,
+      "stackable": true,
+      "tags": [
+        "utility"
+      ]
+    },
+    {
+      "id": "item_emp_grenade",
+      "type": "item",
+      "name": "EMP 手雷",
+      "itemType": "consumable",
+      "description": "",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": null,
+      "buyPrice": 60,
+      "sellPrice": 0,
+      "stackable": true,
+      "tags": [
+        "utility"
+      ]
+    },
+    {
+      "id": "item_scrap_metal",
+      "type": "item",
+      "name": "金属碎片",
+      "itemType": "material",
+      "description": "",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": null,
+      "buyPrice": 0,
+      "sellPrice": 3,
+      "stackable": true,
+      "tags": []
+    },
+    {
+      "id": "item_circuit",
+      "type": "item",
+      "name": "电路板",
+      "itemType": "material",
+      "description": "",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": null,
+      "buyPrice": 0,
+      "sellPrice": 15,
+      "stackable": true,
+      "tags": [
+        "tech"
+      ]
+    },
+    {
+      "id": "item_pure_water",
+      "type": "item",
+      "name": "纯水",
+      "itemType": "material",
+      "description": "",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": null,
+      "buyPrice": 0,
+      "sellPrice": 8,
+      "stackable": true,
+      "tags": [
+        "rare"
+      ]
+    },
+    {
+      "id": "item_mutant_organ",
+      "type": "item",
+      "name": "突变体器官",
+      "itemType": "material",
+      "description": "",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": null,
+      "buyPrice": 0,
+      "sellPrice": 25,
+      "stackable": true,
+      "tags": [
+        "monster_part"
+      ]
+    },
+    {
+      "id": "item_radio",
+      "type": "item",
+      "name": "军用无线电",
+      "itemType": "quest",
+      "description": "弟弟的最后通讯设备。",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": null,
+      "buyPrice": 0,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": [
+        "main"
+      ]
+    },
+    {
+      "id": "item_vault_key",
+      "type": "item",
+      "name": "避难所门禁卡",
+      "itemType": "quest",
+      "description": "\"控制中心\" 的访问令牌。",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": null,
+      "buyPrice": 0,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": [
+        "main"
+      ]
+    },
+    {
+      "id": "item_brother_photo",
+      "type": "item",
+      "name": "弟弟的照片",
+      "itemType": "quest",
+      "description": "他笑着对你比 V。",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": null,
+      "buyPrice": 0,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": [
+        "main"
+      ]
+    },
+    {
+      "id": "item_old_map",
+      "type": "item",
+      "name": "战前地图",
+      "itemType": "quest",
+      "description": "85 年前的城市规划。",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": null,
+      "buyPrice": 0,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": []
+    }
+  ],
+  "events": [
+    {
+      "id": "ev_intro_vault",
+      "type": "event",
+      "name": "门关上的瞬间",
+      "description": "避难所大门最终合上。你回头看了一眼，但门后已无人挥手。无线电里再次传来弟弟的声音：\"...坐标 13.8 东...救命...\"",
+      "eventType": "story",
+      "priority": 100,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_vault_door"
+          ],
+          "excludeCompletedEvents": [
+            "ev_intro_vault"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "抬头看天，向南出发",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "你深吸一口可呼吸过滤的空气。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "quest_accepted",
+                  "value": true
+                },
+                {
+                  "type": "add_item",
+                  "itemId": "item_radio"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main",
+        "intro"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_intro_raider",
+      "type": "event",
+      "name": "篝火残灰",
+      "description": "你的旧伙伴们都死了。最后一台收音机里传来你弟弟的声音——他还活着。",
+      "eventType": "story",
+      "priority": 100,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_raider_camp_ruin"
+          ],
+          "excludeCompletedEvents": [
+            "ev_intro_raider"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "收拾武器出发",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "你最后看了一眼篝火。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "quest_accepted",
+                  "value": true
+                },
+                {
+                  "type": "add_item",
+                  "itemId": "item_radio"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main",
+        "intro"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_intro_drifter",
+      "type": "event",
+      "name": "山下的火光",
+      "description": "你看见废墟城市深处亮起一束橙色火光——和弟弟说的一模一样。",
+      "eventType": "story",
+      "priority": 100,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_wanderers_hill"
+          ],
+          "excludeCompletedEvents": [
+            "ev_intro_drifter"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "下山去找",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "你拄着步枪走下山坡。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "quest_accepted",
+                  "value": true
+                },
+                {
+                  "type": "add_item",
+                  "itemId": "item_radio"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main",
+        "intro"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_eva_lead",
+      "type": "event",
+      "name": "艾娃医生的线索",
+      "description": "艾娃听完你的故事后皱眉：\"你弟弟的频率？那是控制中心的——他们最近在做实验。\"",
+      "eventType": "story",
+      "priority": 90,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_clinic"
+          ],
+          "requireVariables": {
+            "quest_accepted": true
+          },
+          "excludeCompletedEvents": [
+            "ev_eva_lead"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "我要找他",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "\"先帮我个忙，\"她说，\"地铁里有人受困。\"",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "seek_brother",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_metro_rescue",
+      "type": "event",
+      "name": "地铁隧道的呼救",
+      "description": "隧道深处有人压在残骸下。是个改造人——他能动眼睛但腿断了。",
+      "eventType": "story",
+      "priority": 85,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_metro_tunnel2"
+          ],
+          "requireVariables": {
+            "seek_brother": true
+          },
+          "excludeCompletedEvents": [
+            "ev_metro_rescue"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "帮他出来",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "你撬开钢梁。改造人喘息着报上自己的名字：马库斯。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "saved_marcus",
+                  "value": true
+                },
+                {
+                  "type": "recruit_companion",
+                  "npcId": "npc_marcus"
+                },
+                {
+                  "type": "set_worldFlag",
+                  "name": "metro_cleared",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "太危险了，先走",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "你转身。他没有责备的眼神——只有平静的失望。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "left_marcus",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_oasis_meet",
+      "type": "event",
+      "name": "绿洲的米拉",
+      "description": "米拉用狙击枪准星对准你的额头。\"说出你的名字和来意。否则我开枪。\"",
+      "eventType": "story",
+      "priority": 80,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_oasis"
+          ],
+          "requireVariables": {
+            "quest_accepted": true
+          },
+          "excludeCompletedEvents": [
+            "ev_oasis_meet"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "我也在找控制中心",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "她放下枪：\"那或许我们能合作。\"",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "mira_agreed",
+                  "value": true
+                },
+                {
+                  "type": "recruit_companion",
+                  "npcId": "npc_mira"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "我只是路过",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "\"那就快走。\"她重新举起枪。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_lab_truth",
+      "type": "event",
+      "name": "生物实验室的真相",
+      "description": "波尔教授在浮空显示屏前。\"你弟弟？他自愿的——基因混编可能让人类对辐射免疫。但代价是......\"",
+      "eventType": "story",
+      "priority": 90,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_control_lab"
+          ],
+          "excludeCompletedEvents": [
+            "ev_lab_truth"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "有没有解药？",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "他点头：\"冷冻舱里那瓶蓝色。\"",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "has_cure",
+                  "value": true
+                },
+                {
+                  "type": "set_worldFlag",
+                  "name": "cure_obtained",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "我会毁掉这里",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "波尔后退一步：\"你不明白...这是人类未来。\"",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_security_reactor",
+      "type": "event",
+      "name": "反应堆守卫",
+      "description": "哨兵机识别你的身份——立即开火。",
+      "eventType": "story",
+      "priority": 100,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_control_reactor"
+          ],
+          "excludeCompletedEvents": [
+            "ev_security_reactor"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "战斗",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "能量爆裂。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_robot_sentry",
+                    "enemy_robot_sentry"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main",
+        "boss"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_core_final",
+      "type": "event",
+      "name": "与莱昂的最后对峙",
+      "description": "弟弟（或他剩下的部分）转过身。一半的脸还能让你认出。\"你...真的来了？\" 然后他的喉咙发出咕噜声——开始失控。",
+      "eventType": "story",
+      "priority": 100,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_control_core"
+          ],
+          "excludeCompletedEvents": [
+            "ev_core_final"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "试着用解药",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "\"快——给我！\" 他几乎在哭。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "tried_cure",
+                  "value": true
+                },
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_mutant_lord"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "我无法救你——动手吧",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "他闭眼，似乎松了口气：\" \"",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_mutant_lord"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main",
+        "boss",
+        "epilogue"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_ending",
+      "type": "event",
+      "name": "终章",
+      "description": "故事到达了它的尽头。",
+      "eventType": "story",
+      "priority": 100,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_ending_save_brother",
+            "scene_ending_end_him",
+            "scene_ending_become"
+          ],
+          "excludeCompletedEvents": [
+            "ev_ending"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "让命运成为定数",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "残留的人继续走下去。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "game_complete",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main",
+        "epilogue",
+        "ending"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_rest_bar",
+      "type": "event",
+      "name": "霓虹酒馆 — 过夜",
+      "description": "老板西门擦着杯子：\"住一晚？10 个瓶盖。\"",
+      "eventType": "story",
+      "priority": 80,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_neon_bar"
+          ],
+          "excludeCompletedEvents": [
+            "ev_rest_bar"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "住下（回满 HP/MP）",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "一夜无梦。",
+              "effects": [
+                {
+                  "type": "heal",
+                  "target": "all",
+                  "value": 999
+                },
+                {
+                  "type": "advance_time",
+                  "value": 8
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "不了。",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "他耸肩。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": true,
+      "maxOccurrences": 99,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "rest"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_rest_oasis",
+      "type": "event",
+      "name": "绿洲老妇人的茅屋",
+      "description": "老妇人煮着粥。\"想坐一会儿？\"",
+      "eventType": "story",
+      "priority": 70,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_oasis"
+          ],
+          "excludeCompletedEvents": [
+            "ev_rest_oasis"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "坐下休息",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "炉火映在她皱纹里。",
+              "effects": [
+                {
+                  "type": "heal",
+                  "target": "all",
+                  "value": 999
+                },
+                {
+                  "type": "advance_time",
+                  "value": 6
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "我得走",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "她点点头。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": true,
+      "maxOccurrences": 99,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "rest"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_12",
+      "type": "event",
+      "name": "黑市闲谈",
+      "description": "\"听说控制中心在做奇怪实验。\"",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_blackmarket"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_12"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "gossip"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_13",
+      "type": "event",
+      "name": "诊所阴影",
+      "description": "一个改造人正在更换液压关节。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_clinic"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_13"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "vignette"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_14",
+      "type": "event",
+      "name": "酒馆传闻",
+      "description": "醉汉嘟囔着\"变种领主\"的名字。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_neon_bar"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_14"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "hint"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_15",
+      "type": "event",
+      "name": "空油罐",
+      "description": "加油站只剩几个生锈的油桶。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_gas_station"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_15"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "搜索",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "你找到一些金属。",
+              "effects": [
+                {
+                  "type": "add_item",
+                  "itemId": "item_scrap_metal"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_16",
+      "type": "event",
+      "name": "屋顶风",
+      "description": "风把残破的旗帜吹得猎猎作响。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_rooftop_camp"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_16"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "vignette"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_17",
+      "type": "event",
+      "name": "广播残音",
+      "description": "\"...3 号站台请注意...\"",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_subway_station"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_17"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "hint"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_18",
+      "type": "event",
+      "name": "隧道脚步",
+      "description": "远处传来轻微的拖拽声。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_metro_tunnel1"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_18"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "小心前进",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "辐光蟑螂出现！",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_radroach",
+                    "enemy_radroach",
+                    "enemy_radroach"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_19",
+      "type": "event",
+      "name": "药店货架",
+      "description": "一堆翻倒的货架。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_pharmacy"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_19"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "搜索",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "找到一些药品。",
+              "effects": [
+                {
+                  "type": "add_item",
+                  "itemId": "item_stimpak"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_20",
+      "type": "event",
+      "name": "焦黑书页",
+      "description": "一本被烧的书残留半页\"基因混编技术...\"",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_old_library"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_20"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "记下",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "你折好书页。",
+              "effects": [
+                {
+                  "type": "set_worldFlag",
+                  "name": "know_genemix",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "arcane",
+        "hint"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_21",
+      "type": "event",
+      "name": "阴影伏击",
+      "description": "阴影里走出几个掠夺者。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_dark_alley"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_21"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "应战",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "战斗",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_raider",
+                    "enemy_raider"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_22",
+      "type": "event",
+      "name": "掠夺者王",
+      "description": "废弃公寓顶层，掠夺者王坐在那里。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_collapsed_apt"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_22"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "挑战",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "战斗",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_raider_chief",
+                    "enemy_raider"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "boss"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_23",
+      "type": "event",
+      "name": "塌方",
+      "description": "高架桥已经裂了。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_highway_overpass"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_23"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "vignette"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_24",
+      "type": "event",
+      "name": "广播塔",
+      "description": "塔下散落着工具。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_radio_tower"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_24"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "检查",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "你拿到电路板。",
+              "effects": [
+                {
+                  "type": "add_item",
+                  "itemId": "item_circuit"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_25",
+      "type": "event",
+      "name": "尘暴",
+      "description": "远处看到尘暴在移动。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_road1"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_25"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "weather"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_26",
+      "type": "event",
+      "name": "废车",
+      "description": "路边一辆翻倒的卡车。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_road2"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_26"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "搜",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "你找到罐头和水。",
+              "effects": [
+                {
+                  "type": "add_item",
+                  "itemId": "item_can_food"
+                },
+                {
+                  "type": "add_item",
+                  "itemId": "item_water"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_27",
+      "type": "event",
+      "name": "洞内残骸",
+      "description": "尸鬼隐士盘坐着。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_radstorm_cave"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_27"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "npc"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_28",
+      "type": "event",
+      "name": "塌桥渡口",
+      "description": "桥下流水浑浊。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_collapsed_bridge"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_28"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "vignette"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_29",
+      "type": "event",
+      "name": "化工废液",
+      "description": "空气里有刺鼻气味。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_old_factory"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_29"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "快通过",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "勉强避开。",
+              "effects": []
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "搜索",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "你受到辐射污染。",
+              "effects": [
+                {
+                  "type": "damage",
+                  "target": "all",
+                  "value": 10
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_30",
+      "type": "event",
+      "name": "辐射田·震源",
+      "description": "辐光从地下渗出。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_irradiated_field"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_30"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "radiation"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_31",
+      "type": "event",
+      "name": "混凝土堡",
+      "description": "废弃的军事掩体。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_concrete_bunker"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_31"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "搜",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "找到一张地图。",
+              "effects": [
+                {
+                  "type": "add_item",
+                  "itemId": "item_old_map"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_32",
+      "type": "event",
+      "name": "坠机残骸",
+      "description": "机舱里发现一张门禁卡。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_aircraft_crash"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_32"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "收起",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "关键证物。",
+              "effects": [
+                {
+                  "type": "add_item",
+                  "itemId": "item_vault_key"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_33",
+      "type": "event",
+      "name": "山口风口",
+      "description": "风穿过狭窄的山口。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_mountain_pass"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_33"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "vignette"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_34",
+      "type": "event",
+      "name": "保安系统",
+      "description": "门口的保安机已经损坏。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_control_security"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_34"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续前进",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "保安机突然启动！",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_robot_sentry"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_35",
+      "type": "event",
+      "name": "档案库",
+      "description": "尘封的资料堆。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_control_archive"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_35"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "查阅关于弟弟的记录",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "你看到了他实验前的照片。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "has_brother_memory",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_combat_scene_dark_alley_enemy_raider",
+      "type": "event",
+      "name": "掠夺者小队",
+      "description": "掠夺者小队冲了出来。",
+      "eventType": "story",
+      "priority": 25,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_dark_alley"
+          ],
+          "excludeCompletedEvents": [
+            "ev_combat_scene_dark_alley_enemy_raider"
+          ],
+          "probability": 0.15
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "应战",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "战斗。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_raider",
+                    "enemy_raider"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": true,
+      "maxOccurrences": 99,
+      "aiPromptHint": "",
+      "tags": [
+        "combat",
+        "random"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_combat_scene_metro_tunnel1_enemy_mole_rat",
+      "type": "event",
+      "name": "巨鼠群",
+      "description": "巨鼠群冲了出来。",
+      "eventType": "story",
+      "priority": 25,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_metro_tunnel1"
+          ],
+          "excludeCompletedEvents": [
+            "ev_combat_scene_metro_tunnel1_enemy_mole_rat"
+          ],
+          "probability": 0.15
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "应战",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "战斗。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_mole_rat",
+                    "enemy_mole_rat"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": true,
+      "maxOccurrences": 99,
+      "aiPromptHint": "",
+      "tags": [
+        "combat",
+        "random"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_combat_scene_road1_enemy_ghoul_wild",
+      "type": "event",
+      "name": "尸鬼游荡群",
+      "description": "尸鬼游荡群冲了出来。",
+      "eventType": "story",
+      "priority": 25,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_road1"
+          ],
+          "excludeCompletedEvents": [
+            "ev_combat_scene_road1_enemy_ghoul_wild"
+          ],
+          "probability": 0.15
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "应战",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "战斗。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_ghoul_wild",
+                    "enemy_ghoul_wild"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": true,
+      "maxOccurrences": 99,
+      "aiPromptHint": "",
+      "tags": [
+        "combat",
+        "random"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_combat_scene_irradiated_field_enemy_ghoul_glowing",
+      "type": "event",
+      "name": "辐光尸鬼",
+      "description": "辐光尸鬼冲了出来。",
+      "eventType": "story",
+      "priority": 25,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_irradiated_field"
+          ],
+          "excludeCompletedEvents": [
+            "ev_combat_scene_irradiated_field_enemy_ghoul_glowing"
+          ],
+          "probability": 0.15
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "应战",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "战斗。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_ghoul_glowing"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": true,
+      "maxOccurrences": 99,
+      "aiPromptHint": "",
+      "tags": [
+        "combat",
+        "random"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_combat_scene_old_factory_enemy_super_mutant",
+      "type": "event",
+      "name": "超级变种人",
+      "description": "超级变种人冲了出来。",
+      "eventType": "story",
+      "priority": 25,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_old_factory"
+          ],
+          "excludeCompletedEvents": [
+            "ev_combat_scene_old_factory_enemy_super_mutant"
+          ],
+          "probability": 0.15
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "应战",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "战斗。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_super_mutant"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": true,
+      "maxOccurrences": 99,
+      "aiPromptHint": "",
+      "tags": [
+        "combat",
+        "random"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_combat_scene_concrete_bunker_enemy_deathclaw",
+      "type": "event",
+      "name": "死亡爪",
+      "description": "死亡爪冲了出来。",
+      "eventType": "story",
+      "priority": 25,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_concrete_bunker"
+          ],
+          "excludeCompletedEvents": [
+            "ev_combat_scene_concrete_bunker_enemy_deathclaw"
+          ],
+          "probability": 0.15
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "应战",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "战斗。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_deathclaw"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": true,
+      "maxOccurrences": 99,
+      "aiPromptHint": "",
+      "tags": [
+        "combat",
+        "random"
+      ],
+      "notes": ""
+    }
+  ],
+  "scenes": [
+    {
+      "id": "scene_vault_door",
+      "name": "避难所大门",
+      "type": "spawn",
+      "icon": "🚪",
+      "description": "厚重的金属门缓缓合上。外面是 35 年没人见过的太阳。你的呼吸罩在面罩里。",
+      "coords": {
+        "x": -8,
+        "y": 0
+      },
+      "connections": [
+        {
+          "to": "scene_collapsed_square",
+          "label": "走下避难所地面"
+        }
+      ],
+      "events": [
+        "ev_intro_vault"
+      ],
+      "vignettes": [],
+      "tags": [
+        "safe",
+        "main"
+      ]
+    },
+    {
+      "id": "scene_raider_camp_ruin",
+      "name": "废弃掠夺者营",
+      "type": "spawn",
+      "icon": "🔥",
+      "description": "篝火已熄。你的旧伙伴们都死了——只剩你和那台旧无线电。",
+      "coords": {
+        "x": -8,
+        "y": 2
+      },
+      "connections": [
+        {
+          "to": "scene_collapsed_square",
+          "label": "徒步穿越废土"
+        }
+      ],
+      "events": [
+        "ev_intro_raider"
+      ],
+      "vignettes": [],
+      "tags": [
+        "main"
+      ]
+    },
+    {
+      "id": "scene_wanderers_hill",
+      "name": "流浪者高地",
+      "type": "spawn",
+      "icon": "⛰",
+      "description": "风穿过你的破雨衣。山下能看见废墟城市的轮廓——你今天必须下去。",
+      "coords": {
+        "x": -8,
+        "y": 4
+      },
+      "connections": [
+        {
+          "to": "scene_collapsed_square",
+          "label": "下山进城"
+        }
+      ],
+      "events": [
+        "ev_intro_drifter"
+      ],
+      "vignettes": [],
+      "tags": [
+        "main"
+      ]
+    },
+    {
+      "id": "scene_collapsed_square",
+      "name": "坍塌广场",
+      "type": "settlement",
+      "icon": "🏙",
+      "description": "昔日的中央广场，巨大喷泉只剩一具被锈蚀的钢筋骨架。这是幸存者交换情报的地方。",
+      "coords": {
+        "x": 0,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_vault_door",
+          "label": "返回 避难所大门"
+        },
+        {
+          "to": "scene_raider_camp_ruin",
+          "label": "返回 废弃掠夺者营"
+        },
+        {
+          "to": "scene_wanderers_hill",
+          "label": "返回 流浪者高地"
+        },
+        {
+          "to": "scene_blackmarket",
+          "label": "溜进黑市"
+        },
+        {
+          "to": "scene_clinic",
+          "label": "前往诊所"
+        },
+        {
+          "to": "scene_neon_bar",
+          "label": "走进酒馆"
+        },
+        {
+          "to": "scene_gas_station",
+          "label": "东去加油站"
+        },
+        {
+          "to": "scene_rooftop_camp",
+          "label": "上楼到屋顶"
+        },
+        {
+          "to": "scene_dark_alley",
+          "label": "走进阴影"
+        }
+      ],
+      "events": [],
+      "vignettes": [],
+      "tags": [
+        "safe",
+        "main",
+        "hub"
+      ]
+    },
+    {
+      "id": "scene_blackmarket",
+      "name": "地下黑市",
+      "type": "settlement",
+      "icon": "🏬",
+      "description": "钢筋撑起的地下空间，挂着 80 年代海报的残片。买卖一切——从子弹到记忆。",
+      "coords": {
+        "x": 1,
+        "y": 0
+      },
+      "connections": [
+        {
+          "to": "scene_collapsed_square",
+          "label": "返回 坍塌广场"
+        },
+        {
+          "to": "scene_pharmacy",
+          "label": "后门通向药店"
+        }
+      ],
+      "events": [
+        "ev_small_12"
+      ],
+      "vignettes": [],
+      "tags": [
+        "safe",
+        "shop"
+      ]
+    },
+    {
+      "id": "scene_clinic",
+      "name": "废墟诊所",
+      "type": "settlement",
+      "icon": "⚕",
+      "description": "昏黄灯光下，一位戴着护目镜的医生在缝合伤口。她不收钱，只要故事。",
+      "coords": {
+        "x": -1,
+        "y": 0
+      },
+      "connections": [
+        {
+          "to": "scene_collapsed_square",
+          "label": "返回 坍塌广场"
+        },
+        {
+          "to": "scene_old_library",
+          "label": "取道图书馆"
+        }
+      ],
+      "events": [
+        "ev_eva_lead",
+        "ev_small_13"
+      ],
+      "vignettes": [],
+      "tags": [
+        "safe",
+        "shop",
+        "medic"
+      ]
+    },
+    {
+      "id": "scene_neon_bar",
+      "name": "霓虹酒馆",
+      "type": "inn",
+      "icon": "🍷",
+      "description": "霓虹\"OPEN\"招牌还会闪烁。老板是个改造人，记得所有人的名字。",
+      "coords": {
+        "x": 0,
+        "y": 2
+      },
+      "connections": [
+        {
+          "to": "scene_collapsed_square",
+          "label": "返回 坍塌广场"
+        }
+      ],
+      "events": [
+        "ev_rest_bar",
+        "ev_small_14"
+      ],
+      "vignettes": [],
+      "tags": [
+        "safe",
+        "inn",
+        "camp",
+        "rest_point"
+      ]
+    },
+    {
+      "id": "scene_gas_station",
+      "name": "加油站站口",
+      "type": "wilderness",
+      "icon": "⛽",
+      "description": "",
+      "coords": {
+        "x": 2,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_collapsed_square",
+          "label": "返回 坍塌广场"
+        },
+        {
+          "to": "scene_subway_station",
+          "label": "深入站内"
+        },
+        {
+          "to": "scene_highway_overpass",
+          "label": "走上高架"
+        }
+      ],
+      "events": [
+        "ev_small_15"
+      ],
+      "vignettes": [],
+      "tags": [
+        "main"
+      ]
+    },
+    {
+      "id": "scene_rooftop_camp",
+      "name": "屋顶营地",
+      "type": "wilderness",
+      "icon": "🏕",
+      "description": "",
+      "coords": {
+        "x": 0,
+        "y": -1
+      },
+      "connections": [
+        {
+          "to": "scene_collapsed_square",
+          "label": "返回 坍塌广场"
+        }
+      ],
+      "events": [
+        "ev_small_16"
+      ],
+      "vignettes": [],
+      "tags": [
+        "camp"
+      ]
+    },
+    {
+      "id": "scene_subway_station",
+      "name": "地铁站",
+      "type": "settlement",
+      "icon": "🚇",
+      "description": "",
+      "coords": {
+        "x": 3,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_gas_station",
+          "label": "返回 加油站站口"
+        },
+        {
+          "to": "scene_metro_tunnel1",
+          "label": "下到地铁隧道"
+        }
+      ],
+      "events": [
+        "ev_small_17"
+      ],
+      "vignettes": [],
+      "tags": [
+        "main"
+      ]
+    },
+    {
+      "id": "scene_metro_tunnel1",
+      "name": "地铁隧道 1",
+      "type": "wilderness",
+      "icon": "🕳",
+      "description": "",
+      "coords": {
+        "x": 4,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_subway_station",
+          "label": "返回 地铁站"
+        },
+        {
+          "to": "scene_metro_tunnel2",
+          "label": "继续深入"
+        }
+      ],
+      "events": [
+        "ev_small_18",
+        "ev_combat_scene_metro_tunnel1_enemy_mole_rat"
+      ],
+      "vignettes": [],
+      "tags": [
+        "dungeon",
+        "main"
+      ]
+    },
+    {
+      "id": "scene_metro_tunnel2",
+      "name": "地铁隧道 2",
+      "type": "wilderness",
+      "icon": "🕳",
+      "description": "",
+      "coords": {
+        "x": 5,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_metro_tunnel1",
+          "label": "返回 地铁隧道 1"
+        }
+      ],
+      "events": [
+        "ev_metro_rescue"
+      ],
+      "vignettes": [],
+      "tags": [
+        "dungeon"
+      ]
+    },
+    {
+      "id": "scene_pharmacy",
+      "name": "废弃药店",
+      "type": "wilderness",
+      "icon": "💊",
+      "description": "",
+      "coords": {
+        "x": 2,
+        "y": 2
+      },
+      "connections": [
+        {
+          "to": "scene_blackmarket",
+          "label": "返回 地下黑市"
+        }
+      ],
+      "events": [
+        "ev_small_19"
+      ],
+      "vignettes": [],
+      "tags": [
+        "shop_loot"
+      ]
+    },
+    {
+      "id": "scene_old_library",
+      "name": "坍塌图书馆",
+      "type": "vignette",
+      "icon": "📚",
+      "description": "",
+      "coords": {
+        "x": 1,
+        "y": 2
+      },
+      "connections": [
+        {
+          "to": "scene_clinic",
+          "label": "返回 废墟诊所"
+        }
+      ],
+      "events": [
+        "ev_small_20"
+      ],
+      "vignettes": [],
+      "tags": [
+        "arcane"
+      ]
+    },
+    {
+      "id": "scene_dark_alley",
+      "name": "阴暗小巷",
+      "type": "combat",
+      "icon": "🌃",
+      "description": "",
+      "coords": {
+        "x": 2,
+        "y": 3
+      },
+      "connections": [
+        {
+          "to": "scene_collapsed_square",
+          "label": "返回 坍塌广场"
+        },
+        {
+          "to": "scene_collapsed_apt",
+          "label": "攀上残楼"
+        }
+      ],
+      "events": [
+        "ev_small_21",
+        "ev_combat_scene_dark_alley_enemy_raider"
+      ],
+      "vignettes": [],
+      "tags": [
+        "combat"
+      ]
+    },
+    {
+      "id": "scene_collapsed_apt",
+      "name": "废弃公寓楼",
+      "type": "dungeon",
+      "icon": "🏚",
+      "description": "",
+      "coords": {
+        "x": 3,
+        "y": 2
+      },
+      "connections": [
+        {
+          "to": "scene_dark_alley",
+          "label": "返回 阴暗小巷"
+        }
+      ],
+      "events": [
+        "ev_small_22"
+      ],
+      "vignettes": [],
+      "tags": [
+        "dungeon"
+      ]
+    },
+    {
+      "id": "scene_highway_overpass",
+      "name": "高架桥",
+      "type": "wilderness",
+      "icon": "🛣",
+      "description": "",
+      "coords": {
+        "x": 4,
+        "y": 0
+      },
+      "connections": [
+        {
+          "to": "scene_gas_station",
+          "label": "返回 加油站站口"
+        },
+        {
+          "to": "scene_radio_tower",
+          "label": "走向广播塔"
+        }
+      ],
+      "events": [
+        "ev_small_23"
+      ],
+      "vignettes": [],
+      "tags": [
+        "main"
+      ]
+    },
+    {
+      "id": "scene_radio_tower",
+      "name": "广播塔",
+      "type": "settlement",
+      "icon": "📡",
+      "description": "",
+      "coords": {
+        "x": 5,
+        "y": 0
+      },
+      "connections": [
+        {
+          "to": "scene_highway_overpass",
+          "label": "返回 高架桥"
+        },
+        {
+          "to": "scene_road1",
+          "label": "出城西行"
+        }
+      ],
+      "events": [
+        "ev_small_24"
+      ],
+      "vignettes": [],
+      "tags": [
+        "main",
+        "arcane"
+      ]
+    },
+    {
+      "id": "scene_road1",
+      "name": "废土公路",
+      "type": "wilderness",
+      "icon": "🛤",
+      "description": "",
+      "coords": {
+        "x": 6,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_radio_tower",
+          "label": "返回 广播塔"
+        },
+        {
+          "to": "scene_road2",
+          "label": "继续北行"
+        },
+        {
+          "to": "scene_radstorm_cave",
+          "label": "钻入岩缝"
+        }
+      ],
+      "events": [
+        "ev_small_25",
+        "ev_combat_scene_road1_enemy_ghoul_wild"
+      ],
+      "vignettes": [],
+      "tags": [
+        "main"
+      ]
+    },
+    {
+      "id": "scene_road2",
+      "name": "废土公路·北",
+      "type": "wilderness",
+      "icon": "🛤",
+      "description": "",
+      "coords": {
+        "x": 7,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_road1",
+          "label": "返回 废土公路"
+        },
+        {
+          "to": "scene_oasis",
+          "label": "走进绿洲"
+        },
+        {
+          "to": "scene_collapsed_bridge",
+          "label": "穿过塌桥"
+        },
+        {
+          "to": "scene_mountain_pass",
+          "label": "上山"
+        }
+      ],
+      "events": [
+        "ev_small_26"
+      ],
+      "vignettes": [],
+      "tags": [
+        "main"
+      ]
+    },
+    {
+      "id": "scene_oasis",
+      "name": "辐射绿洲",
+      "type": "settlement",
+      "icon": "🌴",
+      "description": "反常的小片绿地。一个戴着旧式呼吸罩的老妇人住在这里。",
+      "coords": {
+        "x": 7,
+        "y": 2
+      },
+      "connections": [
+        {
+          "to": "scene_road2",
+          "label": "返回 废土公路·北"
+        }
+      ],
+      "events": [
+        "ev_oasis_meet",
+        "ev_rest_oasis"
+      ],
+      "vignettes": [],
+      "tags": [
+        "safe",
+        "camp",
+        "rest_point"
+      ]
+    },
+    {
+      "id": "scene_radstorm_cave",
+      "name": "避辐射洞",
+      "type": "wilderness",
+      "icon": "🕳",
+      "description": "",
+      "coords": {
+        "x": 8,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_road1",
+          "label": "返回 废土公路"
+        }
+      ],
+      "events": [
+        "ev_small_27"
+      ],
+      "vignettes": [],
+      "tags": [
+        "camp"
+      ]
+    },
+    {
+      "id": "scene_collapsed_bridge",
+      "name": "塌桥渡口",
+      "type": "wilderness",
+      "icon": "🌉",
+      "description": "",
+      "coords": {
+        "x": 8,
+        "y": 2
+      },
+      "connections": [
+        {
+          "to": "scene_road2",
+          "label": "返回 废土公路·北"
+        },
+        {
+          "to": "scene_old_factory",
+          "label": "走进化工厂"
+        }
+      ],
+      "events": [
+        "ev_small_28"
+      ],
+      "vignettes": [],
+      "tags": [
+        "main"
+      ]
+    },
+    {
+      "id": "scene_old_factory",
+      "name": "旧化工厂",
+      "type": "dungeon",
+      "icon": "🏭",
+      "description": "",
+      "coords": {
+        "x": 9,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_collapsed_bridge",
+          "label": "返回 塌桥渡口"
+        },
+        {
+          "to": "scene_irradiated_field",
+          "label": "走入辐射田",
+          "gated": {
+            "hint": "没有防护衣进去太危险",
+            "requireVariables": {
+              "has_rad_suit": true
+            }
+          }
+        },
+        {
+          "to": "scene_aircraft_crash",
+          "label": "听到求救信号绕过去",
+          "discovered": false
+        }
+      ],
+      "events": [
+        "ev_small_29",
+        "ev_combat_scene_old_factory_enemy_super_mutant"
+      ],
+      "vignettes": [],
+      "tags": [
+        "main",
+        "dungeon"
+      ]
+    },
+    {
+      "id": "scene_mountain_pass",
+      "name": "群山隘口",
+      "type": "wilderness",
+      "icon": "⛰",
+      "description": "",
+      "coords": {
+        "x": 8,
+        "y": 0
+      },
+      "connections": [
+        {
+          "to": "scene_road2",
+          "label": "返回 废土公路·北"
+        },
+        {
+          "to": "scene_concrete_bunker",
+          "label": "深入混凝土堡"
+        }
+      ],
+      "events": [
+        "ev_small_33"
+      ],
+      "vignettes": [],
+      "tags": [
+        "main"
+      ]
+    },
+    {
+      "id": "scene_concrete_bunker",
+      "name": "混凝土堡",
+      "type": "dungeon",
+      "icon": "🏛",
+      "description": "",
+      "coords": {
+        "x": 9,
+        "y": 0
+      },
+      "connections": [
+        {
+          "to": "scene_mountain_pass",
+          "label": "返回 群山隘口"
+        },
+        {
+          "to": "scene_control_facade",
+          "label": "深入控制中心区域",
+          "gated": {
+            "hint": "需要避难所门禁卡",
+            "requireItems": [
+              "item_vault_key"
+            ]
+          }
+        }
+      ],
+      "events": [
+        "ev_small_31",
+        "ev_combat_scene_concrete_bunker_enemy_deathclaw"
+      ],
+      "vignettes": [],
+      "tags": [
+        "main",
+        "dungeon"
+      ]
+    },
+    {
+      "id": "scene_aircraft_crash",
+      "name": "坠机现场",
+      "type": "vignette",
+      "icon": "✈",
+      "description": "",
+      "coords": {
+        "x": 10,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_old_factory",
+          "label": "返回 旧化工厂"
+        }
+      ],
+      "events": [
+        "ev_small_32"
+      ],
+      "vignettes": [],
+      "tags": [
+        "hidden"
+      ]
+    },
+    {
+      "id": "scene_irradiated_field",
+      "name": "辐射田",
+      "type": "wilderness",
+      "icon": "☢",
+      "description": "",
+      "coords": {
+        "x": 9,
+        "y": 2
+      },
+      "connections": [
+        {
+          "to": "scene_old_factory",
+          "label": "返回 旧化工厂"
+        }
+      ],
+      "events": [
+        "ev_small_30",
+        "ev_combat_scene_irradiated_field_enemy_ghoul_glowing"
+      ],
+      "vignettes": [],
+      "tags": [
+        "radiation"
+      ]
+    },
+    {
+      "id": "scene_control_facade",
+      "name": "控制中心外墙",
+      "type": "wilderness",
+      "icon": "🏛",
+      "description": "",
+      "coords": {
+        "x": 11,
+        "y": 0
+      },
+      "connections": [
+        {
+          "to": "scene_concrete_bunker",
+          "label": "返回 混凝土堡"
+        },
+        {
+          "to": "scene_control_lobby",
+          "label": "推开大门"
+        }
+      ],
+      "events": [],
+      "vignettes": [],
+      "tags": [
+        "main",
+        "endgame"
+      ]
+    },
+    {
+      "id": "scene_control_lobby",
+      "name": "控制中心大厅",
+      "type": "dungeon",
+      "icon": "🏛",
+      "description": "",
+      "coords": {
+        "x": 12,
+        "y": 0
+      },
+      "connections": [
+        {
+          "to": "scene_control_facade",
+          "label": "返回 控制中心外墙"
+        },
+        {
+          "to": "scene_control_security",
+          "label": "走入保安室"
+        },
+        {
+          "to": "scene_control_archive",
+          "label": "查看档案"
+        },
+        {
+          "to": "scene_control_reactor",
+          "label": "走向反应堆"
+        }
+      ],
+      "events": [],
+      "vignettes": [],
+      "tags": [
+        "main",
+        "endgame"
+      ]
+    },
+    {
+      "id": "scene_control_security",
+      "name": "保安室",
+      "type": "combat",
+      "icon": "🔒",
+      "description": "",
+      "coords": {
+        "x": 12,
+        "y": -1
+      },
+      "connections": [
+        {
+          "to": "scene_control_lobby",
+          "label": "返回 控制中心大厅"
+        }
+      ],
+      "events": [
+        "ev_small_34"
+      ],
+      "vignettes": [],
+      "tags": [
+        "endgame"
+      ]
+    },
+    {
+      "id": "scene_control_archive",
+      "name": "档案库",
+      "type": "vignette",
+      "icon": "📦",
+      "description": "",
+      "coords": {
+        "x": 12,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_control_lobby",
+          "label": "返回 控制中心大厅"
+        }
+      ],
+      "events": [
+        "ev_small_35"
+      ],
+      "vignettes": [],
+      "tags": [
+        "endgame"
+      ]
+    },
+    {
+      "id": "scene_control_reactor",
+      "name": "反应堆",
+      "type": "combat",
+      "icon": "☢",
+      "description": "",
+      "coords": {
+        "x": 13,
+        "y": 0
+      },
+      "connections": [
+        {
+          "to": "scene_control_lobby",
+          "label": "返回 控制中心大厅"
+        },
+        {
+          "to": "scene_control_lab",
+          "label": "穿过实验室"
+        }
+      ],
+      "events": [
+        "ev_security_reactor"
+      ],
+      "vignettes": [],
+      "tags": [
+        "endgame",
+        "main"
+      ]
+    },
+    {
+      "id": "scene_control_lab",
+      "name": "生物实验室",
+      "type": "dungeon",
+      "icon": "🧪",
+      "description": "",
+      "coords": {
+        "x": 13,
+        "y": -1
+      },
+      "connections": [
+        {
+          "to": "scene_control_reactor",
+          "label": "返回 反应堆"
+        },
+        {
+          "to": "scene_control_upper",
+          "label": "上到上层"
+        }
+      ],
+      "events": [
+        "ev_lab_truth"
+      ],
+      "vignettes": [],
+      "tags": [
+        "endgame",
+        "main"
+      ]
+    },
+    {
+      "id": "scene_control_upper",
+      "name": "上层走廊",
+      "type": "dungeon",
+      "icon": "🛗",
+      "description": "",
+      "coords": {
+        "x": 14,
+        "y": 0
+      },
+      "connections": [
+        {
+          "to": "scene_control_lab",
+          "label": "返回 生物实验室"
+        },
+        {
+          "to": "scene_control_core",
+          "label": "推开核心控制室门"
+        }
+      ],
+      "events": [],
+      "vignettes": [],
+      "tags": [
+        "endgame",
+        "main"
+      ]
+    },
+    {
+      "id": "scene_control_core",
+      "name": "核心控制台",
+      "type": "combat",
+      "icon": "🎛",
+      "description": "巨大的反应堆主控制台静静运转。变种领主莱昂——你曾经的弟弟——正站在控制台前，全身扭曲变异。一旦你按下开战，就没有回头路。",
+      "coords": {
+        "x": 15,
+        "y": 0
+      },
+      "connections": [
+        {
+          "to": "scene_control_upper",
+          "label": "返回 上层走廊"
+        },
+        {
+          "to": "scene_ending_save_brother",
+          "label": "试图救他",
+          "gated": {
+            "requireVariables": {
+              "has_cure": true
+            }
+          }
+        },
+        {
+          "to": "scene_ending_end_him",
+          "label": "扣下扳机"
+        },
+        {
+          "to": "scene_ending_become",
+          "label": "与他同归",
+          "gated": {
+            "requireVariables": {
+              "saved_companion": true,
+              "has_brother_memory": true
+            }
+          }
+        }
+      ],
+      "events": [
+        "ev_core_final"
+      ],
+      "vignettes": [],
+      "tags": [
+        "endgame",
+        "main",
+        "boss_room"
+      ]
+    },
+    {
+      "id": "scene_ending_save_brother",
+      "name": "黎明前的拥抱",
+      "type": "ending",
+      "icon": "🤝",
+      "description": "你救下了弟弟——或他剩下的部分。两兄弟在反应堆冷却的余晖里相拥。世界仍然破碎，但有了希望。",
+      "coords": {
+        "x": 17,
+        "y": 0
+      },
+      "connections": [],
+      "events": [
+        "ev_ending"
+      ],
+      "vignettes": [],
+      "tags": [
+        "ending",
+        "main"
+      ]
+    },
+    {
+      "id": "scene_ending_end_him",
+      "name": "终结突变",
+      "type": "ending",
+      "icon": "☠",
+      "description": "你扣下了扳机。最后一发子弹，给你深爱的人。你转身走出反应堆，没有回头。",
+      "coords": {
+        "x": 17,
+        "y": 1
+      },
+      "connections": [],
+      "events": [
+        "ev_ending"
+      ],
+      "vignettes": [],
+      "tags": [
+        "ending",
+        "main"
+      ]
+    },
+    {
+      "id": "scene_ending_become",
+      "name": "同归",
+      "type": "ending",
+      "icon": "☢",
+      "description": "反应堆熔融，你与弟弟一同消逝。废土上多了一道无人知晓的伤痕。",
+      "coords": {
+        "x": 17,
+        "y": -1
+      },
+      "connections": [],
+      "events": [
+        "ev_ending"
+      ],
+      "vignettes": [],
+      "tags": [
+        "ending",
+        "main"
+      ]
+    }
+  ],
+  "npcs": [
+    {
+      "id": "npc_doctor_eva",
+      "type": "npc",
+      "name": "艾娃医生",
+      "title": "",
+      "description": "",
+      "icon": "⚕",
+      "personality": "tired_compassionate",
+      "recruitable": false,
+      "spawnScene": "scene_clinic",
+      "initialInventory": [],
+      "giftPreferences": {
+        "tag:rare": "love",
+        "item_pure_water": "love"
+      },
+      "schedule": [],
+      "abilities": [],
+      "dialogueTree": null,
+      "tags": [
+        "medic",
+        "hub"
+      ]
+    },
+    {
+      "id": "npc_bartender",
+      "type": "npc",
+      "name": "老板·西门",
+      "title": "",
+      "description": "",
+      "icon": "🍷",
+      "personality": "cynical_listener",
+      "recruitable": false,
+      "spawnScene": "scene_neon_bar",
+      "initialInventory": [],
+      "giftPreferences": {},
+      "schedule": [],
+      "abilities": [],
+      "dialogueTree": null,
+      "tags": [
+        "hub",
+        "cybernetic"
+      ]
+    },
+    {
+      "id": "npc_trader",
+      "type": "npc",
+      "name": "商人·黎",
+      "title": "",
+      "description": "",
+      "icon": "🏬",
+      "personality": "shrewd",
+      "recruitable": false,
+      "spawnScene": "scene_blackmarket",
+      "initialInventory": [],
+      "giftPreferences": {},
+      "schedule": [],
+      "abilities": [],
+      "dialogueTree": null,
+      "tags": [
+        "hub"
+      ]
+    },
+    {
+      "id": "npc_mira",
+      "type": "npc",
+      "name": "米拉",
+      "title": "",
+      "description": "",
+      "icon": "🎯",
+      "personality": "wary_loyal",
+      "recruitable": true,
+      "spawnScene": "scene_oasis",
+      "initialInventory": [],
+      "giftPreferences": {
+        "item_smg": "love",
+        "tag:military": "like"
+      },
+      "schedule": [],
+      "stats": {
+        "hp": 95,
+        "mp": 25,
+        "attack": 16,
+        "defense": 7,
+        "magicAttack": 5,
+        "magicDefense": 7,
+        "speed": 14,
+        "luck": 7
+      },
+      "abilities": [
+        {
+          "id": "mira_snipe",
+          "name": "精准爆头",
+          "type": "active",
+          "cost": {
+            "mp": 6
+          },
+          "effect": {
+            "damage": {
+              "formula": "attack+2d6+5"
+            }
+          }
+        },
+        {
+          "id": "mira_supress",
+          "name": "压制射击",
+          "type": "active",
+          "cost": {
+            "mp": 4
+          },
+          "effect": {
+            "damage": {
+              "formula": "attack+d6"
+            },
+            "applyStatus": {
+              "type": "debuff",
+              "stat": "attack",
+              "value": 4,
+              "duration": 2
+            }
+          }
+        }
+      ],
+      "dialogueTree": null,
+      "tags": [
+        "companion",
+        "sniper"
+      ]
+    },
+    {
+      "id": "npc_marcus",
+      "type": "npc",
+      "name": "马库斯",
+      "title": "",
+      "description": "",
+      "icon": "🤖",
+      "personality": "stoic_kind",
+      "recruitable": true,
+      "spawnScene": "scene_radio_tower",
+      "initialInventory": [],
+      "giftPreferences": {},
+      "schedule": [],
+      "stats": {
+        "hp": 140,
+        "mp": 15,
+        "attack": 17,
+        "defense": 13,
+        "magicAttack": 3,
+        "magicDefense": 10,
+        "speed": 8,
+        "luck": 4
+      },
+      "abilities": [
+        {
+          "id": "mc_shield",
+          "name": "机能屏障",
+          "type": "active",
+          "cost": {
+            "mp": 5
+          },
+          "effect": {
+            "applyStatus": {
+              "type": "buff",
+              "stat": "defense",
+              "value": 8,
+              "duration": 3
+            },
+            "target": "self"
+          }
+        },
+        {
+          "id": "mc_overcharge",
+          "name": "过载",
+          "type": "active",
+          "cost": {
+            "mp": 8
+          },
+          "cooldown": 3,
+          "effect": {
+            "damage": {
+              "formula": "attack+2d8"
+            }
+          }
+        }
+      ],
+      "dialogueTree": null,
+      "tags": [
+        "companion",
+        "augmented"
+      ]
+    },
+    {
+      "id": "npc_doc_pol",
+      "type": "npc",
+      "name": "波尔教授",
+      "title": "",
+      "description": "",
+      "icon": "🧪",
+      "personality": "fanatic_scientist",
+      "recruitable": false,
+      "spawnScene": "scene_control_lab",
+      "initialInventory": [],
+      "giftPreferences": {},
+      "schedule": [],
+      "abilities": [],
+      "dialogueTree": null,
+      "tags": [
+        "scientist"
+      ]
+    },
+    {
+      "id": "npc_old_woman",
+      "type": "npc",
+      "name": "绿洲老妇人",
+      "title": "",
+      "description": "",
+      "icon": "👵",
+      "personality": "",
+      "recruitable": false,
+      "spawnScene": "scene_oasis",
+      "initialInventory": [],
+      "giftPreferences": {
+        "item_pure_water": "love"
+      },
+      "schedule": [],
+      "abilities": [],
+      "dialogueTree": null,
+      "tags": [
+        "rest",
+        "mysterious"
+      ]
+    },
+    {
+      "id": "npc_radio_voice",
+      "type": "npc",
+      "name": "无线电的声音",
+      "title": "",
+      "description": "",
+      "icon": "📻",
+      "personality": "",
+      "recruitable": false,
+      "spawnScene": "scene_raider_camp_ruin",
+      "initialInventory": [],
+      "giftPreferences": {},
+      "schedule": [],
+      "abilities": [],
+      "dialogueTree": null,
+      "tags": [
+        "quest_giver"
+      ]
+    },
+    {
+      "id": "npc_ghoul_hermit",
+      "type": "npc",
+      "name": "尸鬼隐士",
+      "title": "",
+      "description": "",
+      "icon": "☢",
+      "personality": "",
+      "recruitable": false,
+      "spawnScene": "scene_radstorm_cave",
+      "initialInventory": [],
+      "giftPreferences": {},
+      "schedule": [],
+      "abilities": [],
+      "dialogueTree": null,
+      "tags": [
+        "ghoul"
+      ]
+    },
+    {
+      "id": "npc_raider_lord",
+      "type": "npc",
+      "name": "掠夺者王",
+      "title": "",
+      "description": "",
+      "icon": "🗡",
+      "personality": "",
+      "recruitable": false,
+      "spawnScene": "scene_collapsed_apt",
+      "initialInventory": [],
+      "giftPreferences": {},
+      "schedule": [],
+      "abilities": [],
+      "dialogueTree": null,
+      "tags": [
+        "antagonist"
+      ]
+    },
+    {
+      "id": "npc_brother",
+      "type": "npc",
+      "name": "马太（弟弟）",
+      "title": "",
+      "description": "",
+      "icon": "👤",
+      "personality": "",
+      "recruitable": false,
+      "spawnScene": "scene_control_core",
+      "initialInventory": [],
+      "giftPreferences": {},
+      "schedule": [],
+      "abilities": [],
+      "dialogueTree": null,
+      "tags": [
+        "main",
+        "family"
+      ]
+    },
+    {
+      "id": "npc_caravaneer",
+      "type": "npc",
+      "name": "商队车把式",
+      "title": "",
+      "description": "",
+      "icon": "🚚",
+      "personality": "",
+      "recruitable": false,
+      "spawnScene": "scene_road2",
+      "initialInventory": [],
+      "giftPreferences": {},
+      "schedule": [],
+      "abilities": [],
+      "dialogueTree": null,
+      "tags": [
+        "hub"
+      ]
+    }
+  ],
+  "npcRelations": [
+    {
+      "from": "npc_doctor_eva",
+      "to": "npc_bartender",
+      "strength": 0.5,
+      "note": "老朋友"
+    },
+    {
+      "from": "npc_marcus",
+      "to": "npc_mira",
+      "strength": 0.4,
+      "note": "战场同袍"
+    },
+    {
+      "from": "npc_radio_voice",
+      "to": "npc_brother",
+      "strength": 0.9,
+      "note": "同一个人？"
+    },
+    {
+      "from": "npc_doc_pol",
+      "to": "npc_brother",
+      "strength": -0.7,
+      "note": "把他变成这样的人"
+    },
+    {
+      "from": "npc_raider_lord",
+      "to": "npc_doctor_eva",
+      "strength": -0.5,
+      "note": "抢过她的物资"
+    }
+  ],
+  "startingOptions": {
+    "races": [
+      {
+        "id": "normal",
+        "name": "普通人",
+        "icon": "🧑",
+        "tags": [
+          "race:normal"
+        ],
+        "description": "从前的普通生活让你保留了一些人性。"
+      },
+      {
+        "id": "ghoul",
+        "name": "尸鬼后裔",
+        "icon": "☢",
+        "tags": [
+          "race:ghoul",
+          "rad_resistant"
+        ],
+        "statBonus": {
+          "hp": -10,
+          "defense": 2,
+          "magicDefense": 6
+        },
+        "description": "辐射没有杀死你，但也改写了你。免疫低剂量辐射。"
+      },
+      {
+        "id": "augmented",
+        "name": "改造人",
+        "icon": "🤖",
+        "tags": [
+          "race:augmented",
+          "cybernetic"
+        ],
+        "statBonus": {
+          "attack": 3,
+          "hp": 10,
+          "luck": -2
+        },
+        "description": "战前科技的产物——金属的身体，褪色的灵魂。"
+      }
+    ],
+    "origins": [
+      {
+        "id": "vault",
+        "name": "避难所原住民",
+        "icon": "🏚",
+        "tags": [
+          "origin:vault",
+          "literate"
+        ],
+        "description": "从未见过太阳，但读过很多书。"
+      },
+      {
+        "id": "raider",
+        "name": "前掠夺者",
+        "icon": "🗡",
+        "tags": [
+          "origin:raider",
+          "street_wise"
+        ],
+        "statBonus": {
+          "attack": 2,
+          "magicDefense": -2
+        },
+        "description": "你曾经做过糟糕的事。"
+      },
+      {
+        "id": "doctor",
+        "name": "游医",
+        "icon": "⚕",
+        "tags": [
+          "origin:doctor",
+          "medic"
+        ],
+        "statBonus": {
+          "magicAttack": 3
+        },
+        "description": "残破的世界里仍想救人。"
+      }
+    ],
+    "backgrounds": [
+      {
+        "id": "scavenger",
+        "name": "拾荒者",
+        "icon": "🔧",
+        "tags": [
+          "bg:scavenger"
+        ],
+        "statBonus": {
+          "luck": 3
+        },
+        "description": "能从垃圾堆里淘出宝贝。"
+      },
+      {
+        "id": "sniper",
+        "name": "冷狙",
+        "icon": "🎯",
+        "tags": [
+          "bg:sniper"
+        ],
+        "statBonus": {
+          "attack": 3,
+          "speed": 1
+        },
+        "description": "一击必杀。"
+      },
+      {
+        "id": "survivor",
+        "name": "老兵",
+        "icon": "⚔",
+        "tags": [
+          "bg:survivor",
+          "weapon_trained"
+        ],
+        "statBonus": {
+          "hp": 15,
+          "defense": 2
+        },
+        "description": "挨过的子弹比你吃的子弹多。"
+      }
+    ],
+    "faiths": [
+      {
+        "id": "atom",
+        "name": "原子信徒",
+        "icon": "☢",
+        "tags": [
+          "faith:atom"
+        ],
+        "description": "辐射是终极洗礼。"
+      },
+      {
+        "id": "old_world",
+        "name": "旧世怀念者",
+        "icon": "📻",
+        "tags": [
+          "faith:old_world"
+        ],
+        "description": "相信文明还能回来。"
+      },
+      {
+        "id": "none",
+        "name": "虚无",
+        "icon": "🚫",
+        "tags": [
+          "faith:none",
+          "skeptic"
+        ],
+        "description": "没人会来救你。只有你自己。"
+      }
+    ]
+  },
+  "startingSceneRules": [
+    {
+      "when": {
+        "tags": [
+          "origin:vault"
+        ]
+      },
+      "sceneId": "scene_vault_door"
+    },
+    {
+      "when": {
+        "tags": [
+          "origin:raider"
+        ]
+      },
+      "sceneId": "scene_raider_camp_ruin"
+    },
+    {
+      "default": "scene_wanderers_hill"
+    }
+  ],
+  "combatMode": "solo",
+  "aiHooks": {
+    "sceneArrival": "optional",
+    "eventResolve": "optional",
+    "npcDialogue": "optional",
+    "vignette": "never",
+    "worldRipple": "optional"
+  },
+  "startingSceneId": "scene_wanderers_hill",
+  "displayMode": "scene-graph",
+  "rules": {
+    "diceType": "d20",
+    "combatFormula": "(attack + dice) - defense",
+    "maxPartySize": 3,
+    "startingGold": 0
+  },
+  "aiConfig": {
+    "temperature": 0.6,
+    "maxResponseTokens": 900,
+    "useStructuredOutput": true,
+    "language": "zh-CN"
+  }
+}

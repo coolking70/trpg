@@ -130,6 +130,47 @@ describe('ProgressionSystem', () => {
       const r = sys.useItem({ activeCharacters: [char] }, 'pot', 'c1', 'c1');
       expect(r.success).toBe(false);
     });
+
+    // Phase 26C — escape_combat
+    test('escape_combat 道具：扣全队 HP 一定百分比 + 标记结束战斗', () => {
+      const sys = makeSystem([
+        { id: 'smoke', type: 'item', name: '烟雾弹',
+          consumeEffect: { type: 'escape_combat', hpPenaltyPct: 0.20 } },
+      ]);
+      const a = makeChar({ id: 'a', inventory: ['smoke'], stats: { hp: 100, hpCurrent: 80, mp: 0, mpCurrent: 0, attack: 10, defense: 5, magicAttack: 0, magicDefense: 0, speed: 10, luck: 0 } });
+      const b = makeChar({ id: 'b', inventory: [], stats: { hp: 80, hpCurrent: 60, mp: 0, mpCurrent: 0, attack: 8, defense: 4, magicAttack: 0, magicDefense: 0, speed: 8, luck: 0 } });
+      const gs = { activeCharacters: [a, b], activeCombat: { enemies: [], log: [] } };
+      const r = sys.useItem(gs, 'smoke', 'a', 'a');
+      expect(r.success).toBe(true);
+      expect(r.effect.requiresCombatEnd).toBe('flee');
+      // a: 80 - 100*0.2 = 80-20 = 60
+      // b: 60 - 80*0.2 = 60-16 = 44
+      expect(a.stats.hpCurrent).toBe(60);
+      expect(b.stats.hpCurrent).toBe(44);
+      // 道具消耗
+      expect(a.inventory).toEqual([]);
+    });
+
+    test('escape_combat 在非战斗时拒绝', () => {
+      const sys = makeSystem([
+        { id: 'smoke', type: 'item', name: '烟雾弹', consumeEffect: { type: 'escape_combat' } },
+      ]);
+      const a = makeChar({ inventory: ['smoke'] });
+      const r = sys.useItem({ activeCharacters: [a], activeCombat: null }, 'smoke', 'c1', 'c1');
+      expect(r.success).toBe(false);
+      expect(r.reason).toContain('不在战斗');
+    });
+
+    test('escape_combat 永不把队员打死（最少留 1 HP）', () => {
+      const sys = makeSystem([
+        { id: 'smoke', type: 'item', name: '烟雾弹', consumeEffect: { type: 'escape_combat', hpPenaltyPct: 0.50 } },
+      ]);
+      const a = makeChar({ inventory: ['smoke'], stats: { hp: 100, hpCurrent: 10, mp: 0, mpCurrent: 0, attack: 10, defense: 5, magicAttack: 0, magicDefense: 0, speed: 10, luck: 0 } });
+      const gs = { activeCharacters: [a], activeCombat: { enemies: [], log: [] } };
+      sys.useItem(gs, 'smoke', 'c1', 'c1');
+      // 10 - 50 = -40 → clamp to 1
+      expect(a.stats.hpCurrent).toBe(1);
+    });
   });
 
   describe('equipItem / unequipItem 装备', () => {

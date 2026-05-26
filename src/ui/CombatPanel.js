@@ -7,13 +7,17 @@
 import './CombatPanel.css';
 
 export class CombatPanel {
-  constructor(containerElement, eventSystem) {
+  constructor(containerElement, eventSystem, engine = null) {
     this.container = containerElement;
     this.eventSystem = eventSystem;
+    this.engine = engine;
     this.gameState = null;
 
     /** @type {string|null} 待选目标的行动类型: 'attack' | 'ability:<id>' | null */
     this.pendingActionType = null;
+
+    /** @type {boolean} 是否显示物品菜单 */
+    this._showItemMenu = false;
 
     /** @type {boolean} 是否处于显示状态 */
     this._visible = false;
@@ -201,6 +205,16 @@ export class CombatPanel {
       bar.appendChild(btn);
     }
 
+    // 使用道具（消耗品）
+    const usableItems = this._getUsableItems(actor);
+    if (usableItems.length > 0) {
+      const itemBtn = this._makeButton(`🧪 使用道具 (${usableItems.length})`, '', () => {
+        this._showItemMenu = !this._showItemMenu;
+        this._render();
+      });
+      bar.appendChild(itemBtn);
+    }
+
     // 逃跑
     bar.appendChild(this._makeButton('↩ 逃跑', 'btn--danger', () => {
       this.eventSystem.publish('combat:playerAction', {
@@ -209,7 +223,49 @@ export class CombatPanel {
       });
     }));
 
+    // 物品菜单（展开时）
+    if (this._showItemMenu && usableItems.length > 0) {
+      const menu = document.createElement('div');
+      menu.className = 'combat-panel__item-menu';
+      for (const u of usableItems) {
+        const btn = this._makeButton(`${u.icon || '🧪'} ${u.name} [${u.ownerName} 持有]`, '', () => {
+          this.eventSystem.publish('combat:playerAction', {
+            actionType: 'use_item',
+            actorId: actor.id,
+            itemId: u.itemId,
+            ownerCharId: u.ownerId,
+            targetCharId: actor.id,
+          });
+          this._showItemMenu = false;
+        });
+        btn.title = u.description || '';
+        menu.appendChild(btn);
+      }
+      bar.appendChild(menu);
+    }
+
     return bar;
+  }
+
+  /** 取队伍中所有可用的消耗品（含 owner 上下文） */
+  _getUsableItems(actor) {
+    const out = [];
+    if (!this.gameState || !this.engine) return out;
+    const cm = this.engine.getSystem('CardManager');
+    if (!cm) return out;
+    for (const c of (this.gameState.activeCharacters || [])) {
+      for (const iid of (c.inventory || [])) {
+        const card = cm.getCard(iid);
+        if (!card || card.type !== 'item') continue;
+        if (!card.consumeEffect) continue;
+        out.push({
+          itemId: card.id, name: card.name, icon: card.icon,
+          description: card.description,
+          ownerId: c.id, ownerName: c.name,
+        });
+      }
+    }
+    return out;
   }
 
   _renderTargetSelector() {

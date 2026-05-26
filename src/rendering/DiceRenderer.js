@@ -58,9 +58,14 @@ export class DiceRenderer {
     this._animate = this._animate.bind(this);
   }
 
-  /** 初始化Three.js场景 */
+  /** 初始化Three.js场景；resultElement 每次 init 都重建（被 _finishAnimation 抹掉过） */
   init() {
-    if (this.scene) return;
+    if (this.scene && this.resultElement) return;
+    if (this.scene) {
+      // 场景在，只重建结果元素
+      this._buildResultElement();
+      return;
+    }
 
     // 场景
     this.scene = new THREE.Scene();
@@ -89,22 +94,32 @@ export class DiceRenderer {
     backLight.position.set(-2, -1, -3);
     this.scene.add(backLight);
 
-    // 结果显示元素
+    this._buildResultElement();
+  }
+
+  _buildResultElement() {
+    // 大号结果数字（叠在骰子上方中央，最显眼）
     this.resultElement = document.createElement('div');
     this.resultElement.className = 'dice-result';
     this.resultElement.style.cssText = `
       position: absolute;
-      bottom: 25%;
+      top: 50%;
       left: 50%;
-      transform: translateX(-50%);
-      font-size: 48px;
-      font-weight: bold;
+      transform: translate(-50%, -50%);
+      font-size: 96px;
+      font-weight: 900;
       color: #fff;
-      text-shadow: 0 0 20px rgba(139,92,246,0.8), 0 2px 8px rgba(0,0,0,0.5);
+      text-shadow:
+        0 0 28px rgba(139,92,246,0.95),
+        0 0 12px rgba(255,255,255,0.7),
+        0 4px 10px rgba(0,0,0,0.85);
       opacity: 0;
-      transition: opacity 0.3s ease;
+      transition: opacity 0.25s ease, transform 0.25s ease;
       pointer-events: none;
       font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      line-height: 1;
+      letter-spacing: 0.02em;
     `;
   }
 
@@ -223,29 +238,59 @@ export class DiceRenderer {
         if (elapsed > 2.0) {
           this.animationPhase = 'showing';
 
-          // 显示结果
+          // 拼装结果文本：大号点数 + 公式 + 判定结果
           const result = this._diceResult;
           const total = result.total;
-          const formula = result.formula;
-          let resultText = `${total}`;
-          if (result.modifier !== 0) {
-            resultText = `${result.subtotal} ${result.modifier >= 0 ? '+' : ''}${result.modifier} = ${total}`;
+          const formula = result.formula || '';
+          const subTextParts = [];
+          if (formula) subTextParts.push(formula);
+          if (result.modifier !== undefined && result.modifier !== 0) {
+            subTextParts.push(`${result.subtotal}${result.modifier >= 0 ? '+' : ''}${result.modifier}`);
           }
+          let badge = '';
           if (result.target !== undefined) {
-            resultText += result.success ? ' 成功!' : ' 失败';
+            badge = result.success
+              ? `<span style="color:#4ade80;font-size:24px;margin-left:8px;text-shadow:0 0 12px rgba(74,222,128,0.8)">✓ 成功</span>`
+              : `<span style="color:#f87171;font-size:24px;margin-left:8px;text-shadow:0 0 12px rgba(248,113,113,0.8)">✗ 失败</span>`;
           }
-
           this.resultElement.innerHTML = `
-            <div style="font-size:14px;color:#a0a0b8;margin-bottom:4px">${formula}</div>
-            <div>${resultText}</div>
+            <div style="font-size:14px;color:#cbd5e1;margin-bottom:6px;font-weight:500;letter-spacing:0.04em;text-shadow:0 2px 4px rgba(0,0,0,0.6)">${subTextParts.join(' · ')}</div>
+            <div style="display:flex;align-items:baseline;justify-content:center">${total}${badge}</div>
           `;
           this.resultElement.style.opacity = '1';
+          this.resultElement.style.transform = 'translate(-50%, -50%) scale(1.0)';
+          // 弹一下
+          requestAnimationFrame(() => {
+            this.resultElement.style.transform = 'translate(-50%, -50%) scale(1.1)';
+            setTimeout(() => {
+              if (this.resultElement) this.resultElement.style.transform = 'translate(-50%, -50%) scale(1.0)';
+            }, 180);
+          });
         }
       } else if (this.animationPhase === 'showing') {
-        // 缓慢自转展示（2-4秒）
+        // 缓慢自转展示，同时骰子逐渐淡出 — 让中央的数字凸显出来
         this.diceMesh.rotation.y += 0.01;
+        const showElapsed = elapsed - 2.0;  // 从进入 showing 起算
+        // 0~1.2 秒保持，1.2~1.8 秒淡出
+        const fadeStart = 1.2, fadeDur = 0.6;
+        if (showElapsed > fadeStart) {
+          const t = Math.min(1, (showElapsed - fadeStart) / fadeDur);
+          const opacity = 1 - t;
+          if (this.diceMesh.material) {
+            this.diceMesh.material.transparent = true;
+            this.diceMesh.material.opacity = opacity;
+            // 边框也跟随
+            this.diceMesh.children.forEach(ch => {
+              if (ch.material) {
+                ch.material.transparent = true;
+                ch.material.opacity = opacity * 0.3;
+              }
+            });
+          }
+        }
 
-        if (elapsed > 3.5) {
+        // 展示总时长 1.8 秒后结束（原来 1.5 秒，稍延一点让玩家看清）
+        if (showElapsed > 1.8) {
           this._finishAnimation();
           return;
         }
@@ -256,7 +301,7 @@ export class DiceRenderer {
     this.animationFrameId = requestAnimationFrame(this._animate);
   }
 
-  /** 结束动画 */
+  /** 结束动画：渐出 → 清掉 canvas/结果元素 → 清空 WebGL framebuffer */
   _finishAnimation() {
     this.isAnimating = false;
     this.animationPhase = 'idle';
@@ -266,15 +311,38 @@ export class DiceRenderer {
       this.animationFrameId = null;
     }
 
-    // 淡出后清理
+    // 立刻让结果数字开始淡出（与下方的清理并行）
+    if (this.resultElement) this.resultElement.style.opacity = '0';
+
+    // 300ms 后做实质清理：把骰子/canvas/result 从 DOM 拿掉，并清空 WebGL
     setTimeout(() => {
-      this.container.classList.remove('active');
-      this.resultElement.style.opacity = '0';
+      // 把骰子从场景移除，避免下一次显示时残留旧网格
+      if (this.diceMesh && this.scene) {
+        this.scene.remove(this.diceMesh);
+        try { this.diceMesh.geometry.dispose(); } catch { /* */ }
+        try { this.diceMesh.material.dispose(); } catch { /* */ }
+        this.diceMesh = null;
+      }
+
+      // 把容器清干净 — canvas 和 resultElement 都被一并移除
+      if (this.container) {
+        this.container.classList.remove('active');
+        this.container.innerHTML = '';
+      }
+
+      // 清空 WebGL framebuffer，下次显示时是干净的初始帧
+      if (this.renderer) {
+        this.renderer.clear();
+      }
+
+      // resultElement 现在已经脱离 DOM，下次 animateRoll 会重建
+      this.resultElement = null;
+
       if (this._resolve) {
         this._resolve();
         this._resolve = null;
       }
-    }, 300);
+    }, 280);
   }
 
   /** 立即停止动画 */

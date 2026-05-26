@@ -65,9 +65,16 @@ export class RenderEngine extends GameSystem {
     this.ctx = canvas.getContext('2d');
     this.resizeCanvas();
     this.bindEvents();
+
+    // ResizeObserver 监听 canvas 父容器尺寸变化 — 兼容初始布局延迟落定的情况
+    // （比如首次 loadPreset 时 parent 还没拿到最终宽高，导致 _centerMapOnPlayer 算偏）
+    if (typeof ResizeObserver !== 'undefined' && canvas.parentElement) {
+      this._resizeObserver = new ResizeObserver(() => this.resizeCanvas());
+      this._resizeObserver.observe(canvas.parentElement);
+    }
   }
 
-  /** 调整Canvas尺寸以匹配容器 */
+  /** 调整Canvas尺寸以匹配容器，并通知订阅者重新居中 */
   resizeCanvas() {
     if (!this.canvas) return;
     const parent = this.canvas.parentElement;
@@ -75,6 +82,12 @@ export class RenderEngine extends GameSystem {
 
     const dpr = window.devicePixelRatio || 1;
     const rect = parent.getBoundingClientRect();
+
+    // 0 尺寸时跳过，避免污染 viewport（如初始挂载 / display:none 时）
+    if (rect.width === 0 || rect.height === 0) return;
+
+    const widthChanged = this.viewport.width !== rect.width;
+    const heightChanged = this.viewport.height !== rect.height;
 
     this.canvas.width = rect.width * dpr;
     this.canvas.height = rect.height * dpr;
@@ -85,6 +98,14 @@ export class RenderEngine extends GameSystem {
     this.viewport.height = rect.height;
 
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // 尺寸真的变了 → 通知监听者（main.js 会重新居中场景图）
+    if ((widthChanged || heightChanged) && this.eventSystem) {
+      this.eventSystem.publish('render:resize', {
+        width: rect.width,
+        height: rect.height,
+      });
+    }
   }
 
   /** 绑定DOM事件（鼠标 + 触控，Phase 14 移动端适配） */
@@ -155,6 +176,10 @@ export class RenderEngine extends GameSystem {
       this.canvas.removeEventListener('touchcancel', this._onTouchEnd);
     }
     window.removeEventListener('resize', this._onResize);
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
+      this._resizeObserver = null;
+    }
   }
 
   /** 鼠标按下 */

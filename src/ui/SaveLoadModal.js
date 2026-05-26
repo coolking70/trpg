@@ -94,13 +94,28 @@ export class SaveLoadModal {
       const meta = existing.meta || {};
       const dt = existing.savedAt ? new Date(existing.savedAt).toLocaleString('zh-CN', { hour12: false }) : '';
 
+      // 当前位置：场景名优先 > 章节标签 > 章节 ID > 格子坐标
+      let locationLabel = '';
+      if (meta.currentSceneName) {
+        locationLabel = meta.currentSceneName;
+        if (meta.totalSceneCount > 0) {
+          locationLabel += ` (${meta.visitedSceneCount}/${meta.totalSceneCount})`;
+        }
+      } else if (meta.lastChapterLabel) {
+        locationLabel = meta.lastChapterLabel;
+      } else if (meta.lastChapter) {
+        locationLabel = meta.lastChapter;
+      } else if (meta.playerPosition) {
+        locationLabel = `(${meta.playerPosition.x}, ${meta.playerPosition.y})`;
+      }
+
       row.innerHTML = `
         <div class="save-slot__main">
           <div class="save-slot__name">${tmpl.isAuto ? '🔄 ' : ''}${existing.name || tmpl.defaultName}</div>
           <div class="save-slot__meta">
             <span>${dt}</span>
             <span>回合 ${meta.turnNumber || 1}</span>
-            ${meta.lastChapter ? `<span>${meta.lastChapter}</span>` : ''}
+            ${locationLabel ? `<span>📍 ${locationLabel}</span>` : ''}
             ${meta.gold !== undefined ? `<span>💰 ${meta.gold}</span>` : ''}
           </div>
           <div class="save-slot__party">${meta.partyHpSummary || ''}</div>

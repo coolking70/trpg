@@ -100,10 +100,13 @@ export class CombatSystem extends GameSystem {
 
     // 投掷攻击骰
     const attackRoll = this.diceSystem.roll('d20');
-    const attackTotal = attackRoll.total + attacker.stats.attack;
+    // Phase 26C — buff/debuff 影响 stat
+    const effAtk = this.getEffectiveStat(attacker, 'attack');
+    const effDef = this.getEffectiveStat(target, 'defense');
+    const attackTotal = attackRoll.total + effAtk;
 
     // 计算伤害
-    const rawDamage = Math.max(0, attackTotal - target.stats.defense);
+    const rawDamage = Math.max(0, attackTotal - effDef);
     const damageRoll = this.diceSystem.roll('d6');
     const finalDamage = rawDamage + damageRoll.total;
 
@@ -161,66 +164,182 @@ export class CombatSystem extends GameSystem {
       caster.stats.mpCurrent -= ability.cost.mp;
     }
 
-    const target = this.findCombatant(gameState, targetId);
-    if (!target) return { success: false, reason: '目标不存在' };
+    // Phase 26C — AOE / 多目标技能
+    //   ability.effect.aoe = true   → 打全场敌人（伤害类）或回全队（治疗类）
+    //   ability.effect.target='all_enemies' / 'all_allies' / 'self' / 'single' (默认)
+    const targetMode = ability.effect?.target || (ability.effect?.aoe ? (ability.effect?.heal ? 'all_allies' : 'all_enemies') : 'single');
+    const targets = this._resolveTargets(gameState, caster, targetId, targetMode);
+    if (targets.length === 0) return { success: false, reason: '目标不存在' };
 
-    // 计算效果
-    let damage = 0;
-    let healing = 0;
-    let details = '';
-
-    if (ability.effect && ability.effect.damage) {
-      const formula = ability.effect.damage.formula || 'attack';
-      const evaluated = this.diceSystem.evaluateExpression(formula, {
-        attack: caster.stats.attack,
-        magicAttack: caster.stats.magicAttack,
-        defense: target.stats.defense,
-        magicDefense: target.stats.magicDefense,
-      });
-      damage = Math.max(1, evaluated.result);
-      details = evaluated.details;
-
-      const actual = Math.min(target.stats.hpCurrent, damage);
-      target.stats.hpCurrent -= actual;
-      damage = actual;
+    // 多目标 → 聚合 result.subResults，主 result 取第一目标兼容旧 UI
+    const subResults = [];
+    for (const target of targets) {
+      const r = this._applyAbilityToOne(gameState, caster, ability, target);
+      subResults.push(r);
     }
 
-    if (ability.effect && ability.effect.heal) {
-      const formula = ability.effect.heal.formula || '10';
-      const evaluated = this.diceSystem.evaluateExpression(formula, {
-        magicAttack: caster.stats.magicAttack,
-      });
-      const maxHeal = target.stats.hp - target.stats.hpCurrent;
-      healing = Math.min(maxHeal, Math.max(0, evaluated.result));
-      target.stats.hpCurrent += healing;
-      details = evaluated.details;
-    }
-
+    const primary = subResults[0];
     const result = {
       success: true,
       casterId,
-      targetId,
+      targetId: primary.targetId,
       casterName: caster.name,
-      targetName: target.name,
+      targetName: primary.targetName,
       abilityName: ability.name,
-      damage,
-      healing,
-      details,
-      targetHpAfter: target.stats.hpCurrent,
-      targetDefeated: target.stats.hpCurrent <= 0,
+      damage: primary.damage,
+      healing: primary.healing,
+      details: primary.details,
+      targetHpAfter: primary.targetHpAfter,
+      targetDefeated: primary.targetDefeated,
       mpCost: ability.cost?.mp || 0,
       casterMpAfter: caster.stats.mpCurrent,
+      isAoe: targets.length > 1,
+      subResults,
     };
 
     if (gameState.activeCombat) {
       gameState.activeCombat.log.push(result);
     }
 
+    // status 应用到全部目标
+    if (ability.effect && ability.effect.applyStatus) {
+      const s = ability.effect.applyStatus;
+      for (const target of targets) {
+        this.applyStatusEffect(target, {
+          type: s.type || 'buff',
+          stat: s.stat,
+          value: s.value || 0,
+          duration: s.duration || 3,
+          source: caster.name,
+        });
+      }
+      result.statusApplied = s.type;
+    }
+
     if (this.eventSystem) {
       this.eventSystem.publish('combat:ability', result);
     }
-
     return result;
+  }
+
+  /**
+   * Phase 26C — 解析技能的目标集合
+   */
+  _resolveTargets(gameState, caster, singleTargetId, mode) {
+    const combat = gameState.activeCombat;
+    if (mode === 'self') return [caster];
+    if (mode === 'all_enemies') {
+      return (combat?.enemies || []).filter(e => e.stats.hpCurrent > 0);
+    }
+    if (mode === 'all_allies') {
+      return (gameState.activeCharacters || []).filter(c => c.stats.hpCurrent > 0);
+    }
+    if (mode === 'random_enemy') {
+      const alive = (combat?.enemies || []).filter(e => e.stats.hpCurrent > 0);
+      if (alive.length === 0) return [];
+      return [alive[Math.floor(Math.random() * alive.length)]];
+    }
+    // 默认 single
+    const t = this.findCombatant(gameState, singleTargetId);
+    return t ? [t] : [];
+  }
+
+  /**
+   * Phase 26C — 把 ability 的伤害/治疗应用到单个目标，返回结果摘要
+   */
+  _applyAbilityToOne(gameState, caster, ability, target) {
+    let damage = 0, healing = 0, details = '';
+    if (ability.effect && ability.effect.damage) {
+      const formula = ability.effect.damage.formula || 'attack';
+      const evaluated = this.diceSystem.evaluateExpression(formula, {
+        attack: this.getEffectiveStat(caster, 'attack'),
+        magicAttack: this.getEffectiveStat(caster, 'magicAttack'),
+        defense: this.getEffectiveStat(target, 'defense'),
+        magicDefense: this.getEffectiveStat(target, 'magicDefense'),
+      });
+      damage = Math.max(1, evaluated.result);
+      details = evaluated.details;
+      const actual = Math.min(target.stats.hpCurrent, damage);
+      target.stats.hpCurrent -= actual;
+      damage = actual;
+    }
+    if (ability.effect && ability.effect.heal) {
+      const formula = ability.effect.heal.formula || '10';
+      const evaluated = this.diceSystem.evaluateExpression(formula, {
+        magicAttack: this.getEffectiveStat(caster, 'magicAttack'),
+      });
+      const maxHeal = target.stats.hp - target.stats.hpCurrent;
+      healing = Math.min(maxHeal, Math.max(0, evaluated.result));
+      target.stats.hpCurrent += healing;
+      details = evaluated.details;
+    }
+    return {
+      targetId: target.id, targetName: target.name,
+      damage, healing, details,
+      targetHpAfter: target.stats.hpCurrent,
+      targetDefeated: target.stats.hpCurrent <= 0,
+    };
+  }
+
+  /**
+   * Phase 26C — 取属性"等效值"（base + 所有 buff/debuff stat 修改求和）
+   */
+  getEffectiveStat(combatant, statName) {
+    let base = combatant.stats?.[statName] || 0;
+    for (const e of (combatant.statusEffects || [])) {
+      if ((e.type === 'buff' || e.type === 'debuff') && e.stat === statName && (e.duration || 0) > 0) {
+        base += (e.type === 'buff' ? 1 : -1) * (e.value || 0);
+      }
+    }
+    return Math.max(0, base);
+  }
+
+  /**
+   * Phase 26C — 应用一个 status effect 到 combatant
+   * 同 stat 同 type 已存在 → 续 duration / 取较大 value
+   */
+  applyStatusEffect(combatant, effect) {
+    if (!combatant) return;
+    combatant.statusEffects = combatant.statusEffects || [];
+    const existing = combatant.statusEffects.find(e =>
+      e.type === effect.type && e.stat === effect.stat && (e.duration || 0) > 0);
+    if (existing) {
+      existing.duration = Math.max(existing.duration, effect.duration);
+      existing.value = Math.max(existing.value || 0, effect.value || 0);
+    } else {
+      combatant.statusEffects.push({ ...effect });
+    }
+    if (this.eventSystem) {
+      this.eventSystem.publish('combat:statusApplied', { targetId: combatant.id, effect });
+    }
+  }
+
+  /**
+   * Phase 26C — 处理 combatant 回合开始时的 status ticks（dot 扣血 / buff 倒计时）
+   * 在 nextTurn 推进到该 combatant 后立即调用
+   */
+  _processStatusEffectsTick(combatant) {
+    if (!combatant || !combatant.statusEffects || combatant.statusEffects.length === 0) return [];
+    const ticks = [];
+    for (const e of combatant.statusEffects) {
+      if ((e.duration || 0) <= 0) continue;
+      if (e.type === 'dot') {
+        const dmg = Math.min(combatant.stats.hpCurrent, e.value || 0);
+        combatant.stats.hpCurrent -= dmg;
+        ticks.push({ targetId: combatant.id, targetName: combatant.name, type: 'dot', stat: e.stat || 'hp', amount: dmg, defeated: combatant.stats.hpCurrent <= 0 });
+      } else if (e.type === 'regen') {
+        const heal = Math.min((combatant.stats.hp || 0) - combatant.stats.hpCurrent, e.value || 0);
+        combatant.stats.hpCurrent += heal;
+        ticks.push({ targetId: combatant.id, targetName: combatant.name, type: 'regen', amount: heal });
+      }
+      e.duration--;
+    }
+    // 清理过期
+    combatant.statusEffects = combatant.statusEffects.filter(e => (e.duration || 0) > 0);
+    if (ticks.length > 0 && this.eventSystem) {
+      this.eventSystem.publish('combat:statusTick', { ticks });
+    }
+    return ticks;
   }
 
   /**
@@ -277,7 +396,73 @@ export class CombatSystem extends GameSystem {
     }
 
     const nextActor = combat.turnOrder[combat.currentActorIndex] || null;
-    return { nextActor, newRound, combatEnd: false };
+
+    // Phase 26C — boss 阶段切换（每轮开始时扫描所有 boss enemy）
+    let phaseTransitions = [];
+    if (newRound) {
+      for (const enemy of (combat.enemies || [])) {
+        const t = this._checkPhaseTransition(enemy);
+        if (t) phaseTransitions.push(t);
+      }
+    }
+
+    // Phase 26C — nextActor 的回合开始：触发 status effect ticks（dot 扣血 / regen 回血）
+    let statusTicks = [];
+    if (nextActor) {
+      const entity = this.findCombatant(gameState, nextActor.id);
+      if (entity) {
+        statusTicks = this._processStatusEffectsTick(entity);
+        // tick 可能直接打死 combatant — 此时跳过其回合，递归找下一个
+        if (entity.stats.hpCurrent <= 0) {
+          return this.nextTurn(gameState);
+        }
+      }
+    }
+
+    return { nextActor, newRound, combatEnd: false, statusTicks, phaseTransitions };
+  }
+
+  /**
+   * Phase 26C — Boss 阶段切换检查
+   *   enemy.phases = [{ hpThreshold: 0.5, abilities: [...], statBoosts: { attack: +5, defense: -2 }, narrative: '...' }]
+   *   当 hpCurrent/hp 跨过某 hpThreshold 时切换到该 phase（一次性）
+   */
+  _checkPhaseTransition(enemy) {
+    if (!enemy || !enemy.phases || enemy.phases.length === 0) return null;
+    const ratio = enemy.stats.hpCurrent / Math.max(1, enemy.stats.hp);
+    enemy._activatedPhases = enemy._activatedPhases || new Set();
+    if (typeof enemy._activatedPhases === 'object' && !enemy._activatedPhases.has) {
+      // 反序列化后是普通 object — 兼容
+      enemy._activatedPhases = new Set(Object.keys(enemy._activatedPhases));
+    }
+    // 按 hpThreshold 从高到低排序，找第一个 ratio < threshold 且未激活的
+    const sortedPhases = [...enemy.phases].sort((a, b) => (b.hpThreshold || 0) - (a.hpThreshold || 0));
+    for (const phase of sortedPhases) {
+      const id = phase.id || `phase_${phase.hpThreshold}`;
+      if (enemy._activatedPhases.has(id)) continue;
+      if (ratio < (phase.hpThreshold || 0)) {
+        enemy._activatedPhases.add(id);
+        // 应用 statBoosts
+        if (phase.statBoosts) {
+          for (const [k, v] of Object.entries(phase.statBoosts)) {
+            enemy.stats[k] = (enemy.stats[k] || 0) + v;
+          }
+        }
+        // 追加 abilities
+        if (phase.abilities && phase.abilities.length > 0) {
+          enemy.abilities = [...(enemy.abilities || []), ...phase.abilities];
+        }
+        const transition = {
+          enemyId: enemy.id, enemyName: enemy.name,
+          phaseId: id, hpThreshold: phase.hpThreshold,
+          statBoosts: phase.statBoosts || {},
+          narrative: phase.narrative || `${enemy.name} 进入新形态！`,
+        };
+        if (this.eventSystem) this.eventSystem.publish('combat:phaseTransition', transition);
+        return transition;
+      }
+    }
+    return null;
   }
 
   /**

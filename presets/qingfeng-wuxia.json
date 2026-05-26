@@ -1,0 +1,3925 @@
+{
+  "version": "1.0.0",
+  "presetId": "qingfeng_wuxia",
+  "name": "青锋录",
+  "author": "D2 生成",
+  "createdAt": "2026-05-26T15:18:22.918Z",
+  "description": "江湖少年寻师踪、夺秘籍的武侠群像。三大门派之争，一场血雨腥风。",
+  "lore": {
+    "worldName": "中州武林",
+    "era": "永和三十年",
+    "background": "少林、武当、华山三大门派分治中原武林二十余载。三个月前，掌门师父被刺，唯一线索是一柄断剑——剑身刻着\"青锋\"二字。你怀揣师父遗物，踏上寻凶之路。",
+    "rules": "内功修为决定一切。每日修炼可提升经脉，但贸然挑战上乘高手只有死路一条。",
+    "gmStyle": "古典文言中夹白话，景物用极简笔触，情感重含蓄克制。"
+  },
+  "characters": [
+    {
+      "id": "char_protagonist",
+      "type": "character",
+      "name": "主角",
+      "title": "寻师者",
+      "description": "师父刚死，你是他唯一的弟子。",
+      "stats": {
+        "hp": 130,
+        "mp": 40,
+        "attack": 14,
+        "defense": 9,
+        "magicAttack": 8,
+        "magicDefense": 9,
+        "speed": 12,
+        "luck": 6,
+        "hpCurrent": 130,
+        "mpCurrent": 40
+      },
+      "abilities": [
+        {
+          "id": "pg_strike",
+          "name": "基础剑法",
+          "type": "active",
+          "cost": {
+            "mp": 3
+          },
+          "effect": {
+            "damage": {
+              "formula": "attack+d6+2"
+            }
+          }
+        },
+        {
+          "id": "pg_inner",
+          "name": "运功",
+          "type": "active",
+          "cost": {
+            "mp": 5
+          },
+          "cooldown": 2,
+          "effect": {
+            "applyStatus": {
+              "type": "buff",
+              "stat": "attack",
+              "value": 5,
+              "duration": 3
+            },
+            "target": "self"
+          }
+        },
+        {
+          "id": "pg_heal",
+          "name": "吐纳调息",
+          "type": "active",
+          "cost": {
+            "mp": 8
+          },
+          "cooldown": 3,
+          "effect": {
+            "heal": {
+              "formula": "30"
+            }
+          }
+        }
+      ],
+      "inventory": [
+        "item_iron_sword",
+        "item_jin_pill",
+        "item_jin_pill",
+        "item_broken_sword"
+      ],
+      "equipment": {
+        "weapon": "item_iron_sword",
+        "armor": "item_silk_robe",
+        "accessory": null
+      },
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "level": 1,
+      "experience": 0,
+      "statusEffects": [],
+      "tags": [],
+      "notes": ""
+    }
+  ],
+  "enemies": [
+    {
+      "id": "enemy_bandit",
+      "type": "enemy",
+      "name": "山贼",
+      "description": "",
+      "stats": {
+        "hp": 40,
+        "mp": 0,
+        "attack": 11,
+        "defense": 4,
+        "magicAttack": 0,
+        "magicDefense": 4,
+        "speed": 8,
+        "luck": 1,
+        "hpCurrent": 40,
+        "mpCurrent": 0
+      },
+      "abilities": [],
+      "lootTable": [],
+      "behaviorHint": "aggressive",
+      "experienceReward": 10,
+      "difficulty": "normal",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [],
+      "notes": ""
+    },
+    {
+      "id": "enemy_bandit_chief",
+      "type": "enemy",
+      "name": "山贼头目",
+      "description": "",
+      "stats": {
+        "hp": 100,
+        "mp": 0,
+        "attack": 16,
+        "defense": 8,
+        "magicAttack": 0,
+        "magicDefense": 4,
+        "speed": 8,
+        "luck": 1,
+        "hpCurrent": 100,
+        "mpCurrent": 0
+      },
+      "abilities": [],
+      "lootTable": [],
+      "behaviorHint": "aggressive",
+      "experienceReward": 50,
+      "difficulty": "hard",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [],
+      "notes": ""
+    },
+    {
+      "id": "enemy_wolf",
+      "type": "enemy",
+      "name": "黑风山狼",
+      "description": "",
+      "stats": {
+        "hp": 32,
+        "mp": 0,
+        "attack": 9,
+        "defense": 3,
+        "magicAttack": 0,
+        "magicDefense": 4,
+        "speed": 13,
+        "luck": 1,
+        "hpCurrent": 32,
+        "mpCurrent": 0
+      },
+      "abilities": [],
+      "lootTable": [],
+      "behaviorHint": "aggressive",
+      "experienceReward": 8,
+      "difficulty": "normal",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [],
+      "notes": ""
+    },
+    {
+      "id": "enemy_swordsman",
+      "type": "enemy",
+      "name": "剑客",
+      "description": "",
+      "stats": {
+        "hp": 60,
+        "mp": 0,
+        "attack": 14,
+        "defense": 7,
+        "magicAttack": 0,
+        "magicDefense": 4,
+        "speed": 8,
+        "luck": 1,
+        "hpCurrent": 60,
+        "mpCurrent": 0
+      },
+      "abilities": [
+        {
+          "id": "sw_thrust",
+          "name": "刺击",
+          "type": "active",
+          "effect": {
+            "damage": {
+              "formula": "attack+d6+2"
+            }
+          }
+        }
+      ],
+      "lootTable": [],
+      "behaviorHint": "aggressive",
+      "experienceReward": 18,
+      "difficulty": "normal",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [],
+      "notes": ""
+    },
+    {
+      "id": "enemy_inner_disciple",
+      "type": "enemy",
+      "name": "内门弟子",
+      "description": "",
+      "stats": {
+        "hp": 80,
+        "mp": 0,
+        "attack": 16,
+        "defense": 9,
+        "magicAttack": 0,
+        "magicDefense": 8,
+        "speed": 8,
+        "luck": 1,
+        "hpCurrent": 80,
+        "mpCurrent": 0
+      },
+      "abilities": [],
+      "lootTable": [],
+      "behaviorHint": "aggressive",
+      "experienceReward": 30,
+      "difficulty": "normal",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [],
+      "notes": ""
+    },
+    {
+      "id": "enemy_shadow_killer",
+      "type": "enemy",
+      "name": "暗影杀手",
+      "description": "",
+      "stats": {
+        "hp": 70,
+        "mp": 0,
+        "attack": 18,
+        "defense": 6,
+        "magicAttack": 0,
+        "magicDefense": 4,
+        "speed": 16,
+        "luck": 1,
+        "hpCurrent": 70,
+        "mpCurrent": 0
+      },
+      "abilities": [
+        {
+          "id": "sk_backstab",
+          "name": "背刺",
+          "type": "active",
+          "effect": {
+            "damage": {
+              "formula": "attack+2d8+3"
+            }
+          }
+        }
+      ],
+      "lootTable": [],
+      "behaviorHint": "aggressive",
+      "experienceReward": 35,
+      "difficulty": "normal",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [],
+      "notes": ""
+    },
+    {
+      "id": "enemy_qigong_master",
+      "type": "enemy",
+      "name": "气功宗师",
+      "description": "",
+      "stats": {
+        "hp": 140,
+        "mp": 0,
+        "attack": 20,
+        "defense": 12,
+        "magicAttack": 18,
+        "magicDefense": 14,
+        "speed": 8,
+        "luck": 1,
+        "hpCurrent": 140,
+        "mpCurrent": 0
+      },
+      "abilities": [
+        {
+          "id": "qm_palm",
+          "name": "气功掌",
+          "type": "active",
+          "cost": {
+            "mp": 5
+          },
+          "effect": {
+            "damage": {
+              "formula": "magicAttack+2d6"
+            },
+            "aoe": true,
+            "target": "all_enemies"
+          }
+        }
+      ],
+      "lootTable": [],
+      "behaviorHint": "aggressive",
+      "experienceReward": 80,
+      "difficulty": "hard",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [],
+      "notes": ""
+    },
+    {
+      "id": "enemy_demon_blade",
+      "type": "enemy",
+      "name": "魔教刀客",
+      "description": "",
+      "stats": {
+        "hp": 90,
+        "mp": 0,
+        "attack": 18,
+        "defense": 8,
+        "magicAttack": 0,
+        "magicDefense": 4,
+        "speed": 8,
+        "luck": 1,
+        "hpCurrent": 90,
+        "mpCurrent": 0
+      },
+      "abilities": [
+        {
+          "id": "db_slash",
+          "name": "血祭斩",
+          "type": "active",
+          "effect": {
+            "damage": {
+              "formula": "attack+d10+4"
+            },
+            "applyStatus": {
+              "type": "dot",
+              "stat": "hp",
+              "value": 4,
+              "duration": 3
+            }
+          }
+        }
+      ],
+      "lootTable": [],
+      "behaviorHint": "aggressive",
+      "experienceReward": 40,
+      "difficulty": "normal",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [],
+      "notes": ""
+    },
+    {
+      "id": "enemy_cult_lord",
+      "type": "enemy",
+      "name": "邪教教主·凌霜",
+      "description": "",
+      "stats": {
+        "hp": 280,
+        "mp": 0,
+        "attack": 24,
+        "defense": 16,
+        "magicAttack": 24,
+        "magicDefense": 14,
+        "speed": 13,
+        "luck": 1,
+        "hpCurrent": 280,
+        "mpCurrent": 0
+      },
+      "abilities": [
+        {
+          "id": "cl_qi_sword",
+          "name": "剑气",
+          "type": "active",
+          "effect": {
+            "damage": {
+              "formula": "attack+d10+5"
+            }
+          }
+        }
+      ],
+      "lootTable": [],
+      "behaviorHint": "aggressive",
+      "experienceReward": 350,
+      "difficulty": "boss",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [
+        "boss",
+        "final"
+      ],
+      "notes": "",
+      "phases": [
+        {
+          "id": "inner_unsealed",
+          "hpThreshold": 0.66,
+          "statBoosts": {
+            "attack": 4,
+            "magicAttack": 4
+          },
+          "narrative": "⚡ 凌霜运起紫色内息——他在解封更深的内功！",
+          "abilities": [
+            {
+              "id": "cl_qi_storm",
+              "name": "剑气狂风",
+              "type": "active",
+              "effect": {
+                "damage": {
+                  "formula": "2d8+10"
+                },
+                "aoe": true,
+                "target": "all_enemies"
+              }
+            }
+          ]
+        },
+        {
+          "id": "death_strike",
+          "hpThreshold": 0.33,
+          "statBoosts": {
+            "speed": 6,
+            "attack": 6
+          },
+          "narrative": "🔥 凌霜浑身血红，眼中已无人性——他要拼命了。",
+          "abilities": [
+            {
+              "id": "cl_qi_blood",
+              "name": "血祭剑诀",
+              "type": "active",
+              "effect": {
+                "damage": {
+                  "formula": "3d8+12"
+                },
+                "aoe": true,
+                "target": "all_enemies",
+                "applyStatus": {
+                  "type": "dot",
+                  "stat": "hp",
+                  "value": 5,
+                  "duration": 3
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "items": [
+    {
+      "id": "item_iron_sword",
+      "type": "item",
+      "name": "铁剑",
+      "itemType": "weapon",
+      "description": "",
+      "equipSlot": "weapon",
+      "statModifiers": {
+        "attack": 5
+      },
+      "consumeEffect": null,
+      "buyPrice": 30,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": []
+    },
+    {
+      "id": "item_jade_sword",
+      "type": "item",
+      "name": "青锋剑",
+      "itemType": "weapon",
+      "description": "",
+      "equipSlot": "weapon",
+      "statModifiers": {
+        "attack": 10,
+        "speed": 2
+      },
+      "consumeEffect": null,
+      "buyPrice": 300,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": [
+        "legendary"
+      ]
+    },
+    {
+      "id": "item_taichi_blade",
+      "type": "item",
+      "name": "太极剑",
+      "itemType": "weapon",
+      "description": "",
+      "equipSlot": "weapon",
+      "statModifiers": {
+        "attack": 8,
+        "magicAttack": 4
+      },
+      "consumeEffect": null,
+      "buyPrice": 250,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": []
+    },
+    {
+      "id": "item_long_staff",
+      "type": "item",
+      "name": "齐眉棒",
+      "itemType": "weapon",
+      "description": "",
+      "equipSlot": "weapon",
+      "statModifiers": {
+        "attack": 6,
+        "defense": 2
+      },
+      "consumeEffect": null,
+      "buyPrice": 60,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": []
+    },
+    {
+      "id": "item_silk_robe",
+      "type": "item",
+      "name": "锦袍",
+      "itemType": "armor",
+      "description": "",
+      "equipSlot": "armor",
+      "statModifiers": {
+        "defense": 3,
+        "magicDefense": 1
+      },
+      "consumeEffect": null,
+      "buyPrice": 50,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": []
+    },
+    {
+      "id": "item_iron_armor",
+      "type": "item",
+      "name": "银线甲",
+      "itemType": "armor",
+      "description": "",
+      "equipSlot": "armor",
+      "statModifiers": {
+        "defense": 7
+      },
+      "consumeEffect": null,
+      "buyPrice": 200,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": []
+    },
+    {
+      "id": "item_jade_amulet",
+      "type": "item",
+      "name": "玉佩",
+      "itemType": "accessory",
+      "description": "",
+      "equipSlot": "accessory",
+      "statModifiers": {
+        "magicDefense": 4,
+        "luck": 1
+      },
+      "consumeEffect": null,
+      "buyPrice": 0,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": []
+    },
+    {
+      "id": "item_jin_pill",
+      "type": "item",
+      "name": "金创药",
+      "itemType": "consumable",
+      "description": "",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": {
+        "type": "heal",
+        "stat": "hp",
+        "value": 40
+      },
+      "buyPrice": 20,
+      "sellPrice": 0,
+      "stackable": true,
+      "tags": []
+    },
+    {
+      "id": "item_xilong_pill",
+      "type": "item",
+      "name": "续龙丹",
+      "itemType": "consumable",
+      "description": "",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": {
+        "type": "heal",
+        "stat": "hp",
+        "value": 80
+      },
+      "buyPrice": 80,
+      "sellPrice": 0,
+      "stackable": true,
+      "tags": []
+    },
+    {
+      "id": "item_qi_pill",
+      "type": "item",
+      "name": "聚气丹",
+      "itemType": "consumable",
+      "description": "",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": {
+        "type": "heal",
+        "stat": "mp",
+        "value": 30
+      },
+      "buyPrice": 40,
+      "sellPrice": 0,
+      "stackable": true,
+      "tags": []
+    },
+    {
+      "id": "item_smoke_powder",
+      "type": "item",
+      "name": "迷烟散",
+      "itemType": "consumable",
+      "description": "",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": {
+        "type": "escape_combat",
+        "hpPenaltyPct": 0.05
+      },
+      "buyPrice": 60,
+      "sellPrice": 0,
+      "stackable": true,
+      "tags": [
+        "utility"
+      ]
+    },
+    {
+      "id": "item_wine",
+      "type": "item",
+      "name": "女儿红",
+      "itemType": "consumable",
+      "description": "",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": {
+        "type": "buff",
+        "stat": "attack",
+        "value": 3,
+        "duration": 3
+      },
+      "buyPrice": 10,
+      "sellPrice": 0,
+      "stackable": true,
+      "tags": []
+    },
+    {
+      "id": "item_skill_book_a",
+      "type": "item",
+      "name": "《九阳真经》残页",
+      "itemType": "quest",
+      "description": "少林失窃的秘籍残页。",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": null,
+      "buyPrice": 0,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": [
+        "legendary"
+      ]
+    },
+    {
+      "id": "item_skill_book_b",
+      "type": "item",
+      "name": "《太极心诀》",
+      "itemType": "quest",
+      "description": "武当祖师秘传。",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": null,
+      "buyPrice": 0,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": [
+        "legendary"
+      ]
+    },
+    {
+      "id": "item_skill_book_c",
+      "type": "item",
+      "name": "《独孤九剑》",
+      "itemType": "quest",
+      "description": "华山剑客失传剑诀。",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": null,
+      "buyPrice": 0,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": [
+        "legendary"
+      ]
+    },
+    {
+      "id": "item_broken_sword",
+      "type": "item",
+      "name": "断剑",
+      "itemType": "quest",
+      "description": "青锋断剑，师父遗物，剑身刻\"青锋\"。",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": null,
+      "buyPrice": 0,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": []
+    },
+    {
+      "id": "item_token_inner",
+      "type": "item",
+      "name": "内门令牌",
+      "itemType": "quest",
+      "description": "可进入门派内堂。",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": null,
+      "buyPrice": 0,
+      "sellPrice": 0,
+      "stackable": false,
+      "tags": []
+    }
+  ],
+  "events": [
+    {
+      "id": "ev_intro_shaolin",
+      "type": "event",
+      "name": "罗汉堂的早课",
+      "description": "师父的遗体停在堂中。掌门方丈拿出一柄断剑，剑身刻\"青锋\"二字。\"此剑非中原之物——你下山去查。\"",
+      "eventType": "story",
+      "priority": 100,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_shaolin_gate"
+          ],
+          "excludeCompletedEvents": [
+            "ev_intro_shaolin"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "弟子谨遵掌门嘱托",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "你下山，带上师父的断剑。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "quest_accepted",
+                  "value": true
+                },
+                {
+                  "type": "add_item",
+                  "itemId": "item_broken_sword"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main",
+        "intro"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_intro_wudang",
+      "type": "event",
+      "name": "真武峰前一拜",
+      "description": "师父的牌位前，你看见一柄你从未见过的断剑。",
+      "eventType": "story",
+      "priority": 100,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_wudang_peak"
+          ],
+          "excludeCompletedEvents": [
+            "ev_intro_wudang"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "下山查清此事",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "云雾在脚下散开。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "quest_accepted",
+                  "value": true
+                },
+                {
+                  "type": "add_item",
+                  "itemId": "item_broken_sword"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main",
+        "intro"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_intro_huashan",
+      "type": "event",
+      "name": "剑石峰风",
+      "description": "师父最后给你的，是一柄断剑。剑身刻\"青锋\"——这是邪教的暗号。",
+      "eventType": "story",
+      "priority": 100,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_huashan_summit"
+          ],
+          "excludeCompletedEvents": [
+            "ev_intro_huashan"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "出华山查仇",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "剑回腰间。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "quest_accepted",
+                  "value": true
+                },
+                {
+                  "type": "add_item",
+                  "itemId": "item_broken_sword"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main",
+        "intro"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_intro_lone",
+      "type": "event",
+      "name": "客栈一念",
+      "description": "酒入愁肠化为剑。你看着断剑上的\"青锋\"二字。",
+      "eventType": "story",
+      "priority": 100,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_jianghu_inn"
+          ],
+          "excludeCompletedEvents": [
+            "ev_intro_lone"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "查个明白",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "你掏出最后几钱银子，起身。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "quest_accepted",
+                  "value": true
+                },
+                {
+                  "type": "add_item",
+                  "itemId": "item_broken_sword"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main",
+        "intro"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_yuan_lead",
+      "type": "event",
+      "name": "元长老的线索",
+      "description": "元长老看着你的断剑：\"此剑出自西北燕子峡——一个叫凌霜的人，正是邪教的下任教主。\"",
+      "eventType": "story",
+      "priority": 90,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_jiangcheng_tavern"
+          ],
+          "requireVariables": {
+            "quest_accepted": true
+          },
+          "excludeCompletedEvents": [
+            "ev_yuan_lead"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "我必杀他",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "元长老叹气：\"先去拿青溪村萧家的剑——她和你目标一致。\"",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "know_lingshuang",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_xiao_recruit",
+      "type": "event",
+      "name": "萧若雪的恨",
+      "description": "青溪村萧家——她父亲也是死于凌霜剑下。她的剑已半年未出鞘。",
+      "eventType": "story",
+      "priority": 85,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_qingxi_village"
+          ],
+          "requireVariables": {
+            "know_lingshuang": true
+          },
+          "excludeCompletedEvents": [
+            "ev_xiao_recruit"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "我们一起去燕子峡",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "她合剑入鞘：\"好。\"",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "xiao_joined",
+                  "value": true
+                },
+                {
+                  "type": "recruit_companion",
+                  "npcId": "npc_xiao"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "我自己去",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "她不语。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_tomb_secret",
+      "type": "event",
+      "name": "古墓秘籍",
+      "description": "古墓深处，《独孤九剑》的卷轴静静躺着——还有一个打坐的武当道人。",
+      "eventType": "story",
+      "priority": 80,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_old_tomb"
+          ],
+          "excludeCompletedEvents": [
+            "ev_tomb_secret"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "收下卷轴，对道人行礼",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "道人睁眼：\"你来了。我陪你去燕子峡。\"",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "has_skill_book",
+                  "value": true
+                },
+                {
+                  "type": "add_item",
+                  "itemId": "item_skill_book_c"
+                },
+                {
+                  "type": "recruit_companion",
+                  "npcId": "npc_zhuang"
+                },
+                {
+                  "type": "set_variable",
+                  "name": "zhuang_joined",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "吸取剑诀血力",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "一股黑色气流灌入你的内息——你的剑路变了。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "learn_blood_art",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_bandit_intercept",
+      "type": "event",
+      "name": "燕子峡山贼",
+      "description": "黑风寨主拦在峡口：\"想过去？留命来！\"",
+      "eventType": "story",
+      "priority": 90,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_swallow_ravine"
+          ],
+          "excludeCompletedEvents": [
+            "ev_bandit_intercept"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "动手",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "剑光霎然。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_bandit_chief",
+                    "enemy_bandit",
+                    "enemy_bandit"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main",
+        "boss"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_outer_breakthrough",
+      "type": "event",
+      "name": "魔教外院突破",
+      "description": "外院守卫看见你的剑，立时拔刀。",
+      "eventType": "story",
+      "priority": 85,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_cult_outer"
+          ],
+          "excludeCompletedEvents": [
+            "ev_outer_breakthrough"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "硬闯",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "一阵厮杀。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_inner_disciple",
+                    "enemy_inner_disciple",
+                    "enemy_swordsman"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_vault_take",
+      "type": "event",
+      "name": "秘库取籍",
+      "description": "秘库里——少林《九阳真经》与武当《太极心诀》失窃版本都在！",
+      "eventType": "story",
+      "priority": 80,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_cult_vault"
+          ],
+          "excludeCompletedEvents": [
+            "ev_vault_take"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "收回秘籍",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "物归原主。",
+              "effects": [
+                {
+                  "type": "add_item",
+                  "itemId": "item_skill_book_a"
+                },
+                {
+                  "type": "add_item",
+                  "itemId": "item_skill_book_b"
+                },
+                {
+                  "type": "set_variable",
+                  "name": "mercy_pts",
+                  "value": 3
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_inner_qigong_master",
+      "type": "event",
+      "name": "禁地宗师",
+      "description": "一位白衣老者拦住你：\"凌霜不在。但我在。\"他运起气功。",
+      "eventType": "story",
+      "priority": 90,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_cult_inner"
+          ],
+          "excludeCompletedEvents": [
+            "ev_inner_qigong_master"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "硬碰",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "气劲对撞。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_qigong_master"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main",
+        "boss"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_final_lingshuang",
+      "type": "event",
+      "name": "与凌霜的对决",
+      "description": "凌霜转身。他比你想象中年轻——只不过 30 出头。\"你师父最后那一刻，叫了你的名字。\"",
+      "eventType": "story",
+      "priority": 100,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_cult_altar"
+          ],
+          "excludeCompletedEvents": [
+            "ev_final_lingshuang"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "出剑",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "剑光接剑光。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_cult_lord"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main",
+        "boss",
+        "epilogue"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_ending",
+      "type": "event",
+      "name": "终章",
+      "description": "剑收回鞘。",
+      "eventType": "story",
+      "priority": 100,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_ending_revenge",
+            "scene_ending_mercy",
+            "scene_ending_demon"
+          ],
+          "excludeCompletedEvents": [
+            "ev_ending"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "让命运成为定数",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "故事至此。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "game_complete",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main",
+        "epilogue",
+        "ending"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_rest_inn",
+      "type": "event",
+      "name": "客栈打尖",
+      "description": "老板招呼你：\"住一晚？5 钱银子。\"",
+      "eventType": "story",
+      "priority": 80,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_jiangcheng_inn"
+          ],
+          "excludeCompletedEvents": [
+            "ev_rest_inn"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "住一晚（回满）",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "一夜好眠。",
+              "effects": [
+                {
+                  "type": "heal",
+                  "target": "all",
+                  "value": 999
+                },
+                {
+                  "type": "advance_time",
+                  "value": 8
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "不了",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "老板转身。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": true,
+      "maxOccurrences": 99,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "rest"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_rest_hut",
+      "type": "event",
+      "name": "樵夫木屋",
+      "description": "老樵夫煮着粥：\"坐一会儿吧。\"",
+      "eventType": "story",
+      "priority": 70,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_woodcutter_hut"
+          ],
+          "excludeCompletedEvents": [
+            "ev_rest_hut"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "坐下休息",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "炉火映在他白发上。",
+              "effects": [
+                {
+                  "type": "heal",
+                  "target": "all",
+                  "value": 999
+                },
+                {
+                  "type": "advance_time",
+                  "value": 6
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "辞行",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "他点头。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": true,
+      "maxOccurrences": 99,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "rest"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_15",
+      "type": "event",
+      "name": "说书声",
+      "description": "茶楼说书人正讲\"青锋断剑案\"。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_jiangcheng_square"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_15"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "gossip"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_16",
+      "type": "event",
+      "name": "茶香",
+      "description": "一壶毛尖刚泡好。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_jiangcheng_tavern"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_16"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "vignette"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_17",
+      "type": "event",
+      "name": "锻铁声",
+      "description": "铁老在打一柄剑。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_jiangcheng_smithy"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_17"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "vignette"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_18",
+      "type": "event",
+      "name": "草药味",
+      "description": "柳姑娘在称药。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_jiangcheng_herbal"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_18"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "npc"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_19",
+      "type": "event",
+      "name": "镖局公告",
+      "description": "\"护送商人去渡口，赏银 50 两。\"",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_jiangcheng_guild"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_19"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "接下",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "镖局头目点头。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "have_caravan_job",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_20",
+      "type": "event",
+      "name": "路边野花",
+      "description": "春花满径。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_road_north"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_20"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "vignette"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_21",
+      "type": "event",
+      "name": "林中暗影",
+      "description": "一个黑影掠过。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_dark_forest"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_21"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "追",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "影子消失了，但你在地上拾到玉佩。",
+              "effects": [
+                {
+                  "type": "add_item",
+                  "itemId": "item_jade_amulet"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_22",
+      "type": "event",
+      "name": "峡谷风",
+      "description": "峡谷里风很大。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_swallow_ravine"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_22"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "vignette"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_23",
+      "type": "event",
+      "name": "村口井",
+      "description": "村妇在井边洗衣。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_qingxi_village"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_23"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "vignette"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_24",
+      "type": "event",
+      "name": "碑文",
+      "description": "一块石碑刻着\"独孤求败\"四字。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_old_tomb"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_24"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "hint"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_25",
+      "type": "event",
+      "name": "渡口老者",
+      "description": "老者在钓鱼。\"年轻人，过河？\"",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_river_crossing"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_25"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "npc"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_26",
+      "type": "event",
+      "name": "柴垛",
+      "description": "柴薪堆得整齐。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_woodcutter_hut"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_26"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "vignette"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_27",
+      "type": "event",
+      "name": "魔教石碑",
+      "description": "\"非教内人，杀无赦\"",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_cult_outer"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_27"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "hint"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_28",
+      "type": "event",
+      "name": "议事厅遗物",
+      "description": "一堆刺杀计划。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_cult_hall"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_28"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "查看",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "你看到师父名字也在其中。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "know_assassinate_plan",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_small_29",
+      "type": "event",
+      "name": "禁地阴风",
+      "description": "寒气逼人。",
+      "eventType": "story",
+      "priority": 30,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_cult_inner"
+          ],
+          "excludeCompletedEvents": [
+            "ev_small_29"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "继续",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "没有特别的事情发生。",
+              "effects": []
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "side",
+        "arcane"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_combat_scene_dark_forest_enemy_wolf",
+      "type": "event",
+      "name": "山中狼群",
+      "description": "山中狼群冲了过来。",
+      "eventType": "story",
+      "priority": 25,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_dark_forest"
+          ],
+          "excludeCompletedEvents": [
+            "ev_combat_scene_dark_forest_enemy_wolf"
+          ],
+          "probability": 0.15
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "应战",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "战斗。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_wolf",
+                    "enemy_wolf"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": true,
+      "maxOccurrences": 99,
+      "aiPromptHint": "",
+      "tags": [
+        "combat",
+        "random"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_combat_scene_swallow_ravine_enemy_bandit",
+      "type": "event",
+      "name": "小股山贼",
+      "description": "小股山贼冲了过来。",
+      "eventType": "story",
+      "priority": 25,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_swallow_ravine"
+          ],
+          "excludeCompletedEvents": [
+            "ev_combat_scene_swallow_ravine_enemy_bandit"
+          ],
+          "probability": 0.15
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "应战",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "战斗。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_bandit",
+                    "enemy_bandit"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": true,
+      "maxOccurrences": 99,
+      "aiPromptHint": "",
+      "tags": [
+        "combat",
+        "random"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_combat_scene_old_tomb_enemy_swordsman",
+      "type": "event",
+      "name": "古墓守卫",
+      "description": "古墓守卫冲了过来。",
+      "eventType": "story",
+      "priority": 25,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_old_tomb"
+          ],
+          "excludeCompletedEvents": [
+            "ev_combat_scene_old_tomb_enemy_swordsman"
+          ],
+          "probability": 0.15
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "应战",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "战斗。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_swordsman"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": true,
+      "maxOccurrences": 99,
+      "aiPromptHint": "",
+      "tags": [
+        "combat",
+        "random"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_combat_scene_cult_outer_enemy_inner_disciple",
+      "type": "event",
+      "name": "外院弟子",
+      "description": "外院弟子冲了过来。",
+      "eventType": "story",
+      "priority": 25,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_cult_outer"
+          ],
+          "excludeCompletedEvents": [
+            "ev_combat_scene_cult_outer_enemy_inner_disciple"
+          ],
+          "probability": 0.15
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "应战",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "战斗。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_inner_disciple"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": true,
+      "maxOccurrences": 99,
+      "aiPromptHint": "",
+      "tags": [
+        "combat",
+        "random"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_combat_scene_cult_inner_enemy_demon_blade",
+      "type": "event",
+      "name": "魔教刀客",
+      "description": "魔教刀客冲了过来。",
+      "eventType": "story",
+      "priority": 25,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_cult_inner"
+          ],
+          "excludeCompletedEvents": [
+            "ev_combat_scene_cult_inner_enemy_demon_blade"
+          ],
+          "probability": 0.15
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "应战",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "战斗。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_demon_blade"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": true,
+      "maxOccurrences": 99,
+      "aiPromptHint": "",
+      "tags": [
+        "combat",
+        "random"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_combat_scene_road_east_enemy_bandit",
+      "type": "event",
+      "name": "马匪",
+      "description": "马匪冲了过来。",
+      "eventType": "story",
+      "priority": 25,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_road_east"
+          ],
+          "excludeCompletedEvents": [
+            "ev_combat_scene_road_east_enemy_bandit"
+          ],
+          "probability": 0.15
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "应战",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "战斗。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_bandit",
+                    "enemy_bandit",
+                    "enemy_bandit"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": true,
+      "maxOccurrences": 99,
+      "aiPromptHint": "",
+      "tags": [
+        "combat",
+        "random"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ev_inner_token",
+      "type": "event",
+      "name": "宗师遗物",
+      "description": "宗师倒地，从他怀中掉出一枚内门令牌。",
+      "eventType": "story",
+      "priority": 85,
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_cult_inner"
+          ],
+          "requireCompletedEvents": [
+            "ev_inner_qigong_master"
+          ],
+          "excludeCompletedEvents": [
+            "ev_inner_token"
+          ],
+          "probability": 1
+        }
+      },
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "收下",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "令牌入怀。",
+              "effects": [
+                {
+                  "type": "add_item",
+                  "itemId": "item_token_inner"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "",
+      "tags": [
+        "main"
+      ],
+      "notes": ""
+    }
+  ],
+  "scenes": [
+    {
+      "id": "scene_shaolin_gate",
+      "name": "少林山门",
+      "type": "spawn",
+      "icon": "🪷",
+      "description": "万年古寺。晨钟在山雾中回响。师父的遗体停在罗汉堂。",
+      "coords": {
+        "x": -8,
+        "y": 0
+      },
+      "connections": [
+        {
+          "to": "scene_jiangcheng_square",
+          "label": "下山进城"
+        }
+      ],
+      "events": [
+        "ev_intro_shaolin"
+      ],
+      "vignettes": [],
+      "tags": [
+        "safe",
+        "main",
+        "sect"
+      ]
+    },
+    {
+      "id": "scene_wudang_peak",
+      "name": "武当真武峰",
+      "type": "spawn",
+      "icon": "☯",
+      "description": "雾峰之巅。师父曾在此教你\"以柔克刚\"。",
+      "coords": {
+        "x": -8,
+        "y": 2
+      },
+      "connections": [
+        {
+          "to": "scene_jiangcheng_square",
+          "label": "下武当"
+        }
+      ],
+      "events": [
+        "ev_intro_wudang"
+      ],
+      "vignettes": [],
+      "tags": [
+        "safe",
+        "main",
+        "sect"
+      ]
+    },
+    {
+      "id": "scene_huashan_summit",
+      "name": "华山论剑顶",
+      "type": "spawn",
+      "icon": "🗡",
+      "description": "剑石峰顶。风很大，云在脚下。",
+      "coords": {
+        "x": -8,
+        "y": 4
+      },
+      "connections": [
+        {
+          "to": "scene_jiangcheng_square",
+          "label": "出华山"
+        }
+      ],
+      "events": [
+        "ev_intro_huashan"
+      ],
+      "vignettes": [],
+      "tags": [
+        "safe",
+        "main",
+        "sect"
+      ]
+    },
+    {
+      "id": "scene_jianghu_inn",
+      "name": "江湖客栈",
+      "type": "spawn",
+      "icon": "🍶",
+      "description": "你独自坐在角落，桌上摆着师父的断剑。",
+      "coords": {
+        "x": -8,
+        "y": 6
+      },
+      "connections": [
+        {
+          "to": "scene_jiangcheng_square",
+          "label": "走出客栈"
+        }
+      ],
+      "events": [
+        "ev_intro_lone"
+      ],
+      "vignettes": [],
+      "tags": [
+        "safe",
+        "main",
+        "inn"
+      ]
+    },
+    {
+      "id": "scene_jiangcheng_square",
+      "name": "江城广场",
+      "type": "settlement",
+      "icon": "🏘",
+      "description": "江城是中州武林的咽喉。茶楼酒馆里说着各家派的故事。",
+      "coords": {
+        "x": 0,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_shaolin_gate",
+          "label": "返回 少林山门"
+        },
+        {
+          "to": "scene_wudang_peak",
+          "label": "返回 武当真武峰"
+        },
+        {
+          "to": "scene_huashan_summit",
+          "label": "返回 华山论剑顶"
+        },
+        {
+          "to": "scene_jianghu_inn",
+          "label": "返回 江湖客栈"
+        },
+        {
+          "to": "scene_jiangcheng_tavern",
+          "label": "走进茶楼"
+        },
+        {
+          "to": "scene_jiangcheng_smithy",
+          "label": "走向铁铺"
+        },
+        {
+          "to": "scene_jiangcheng_herbal",
+          "label": "走入药堂"
+        },
+        {
+          "to": "scene_jiangcheng_guild",
+          "label": "走向镖局"
+        },
+        {
+          "to": "scene_jiangcheng_inn",
+          "label": "住进客栈"
+        },
+        {
+          "to": "scene_road_north",
+          "label": "北出江城"
+        },
+        {
+          "to": "scene_road_east",
+          "label": "东出江城"
+        }
+      ],
+      "events": [
+        "ev_small_15"
+      ],
+      "vignettes": [],
+      "tags": [
+        "safe",
+        "main",
+        "hub"
+      ]
+    },
+    {
+      "id": "scene_jiangcheng_tavern",
+      "name": "春风茶楼",
+      "type": "settlement",
+      "icon": "🍵",
+      "description": "说书人正在讲三月前的\"青锋断剑案\"。",
+      "coords": {
+        "x": 1,
+        "y": 0
+      },
+      "connections": [
+        {
+          "to": "scene_jiangcheng_square",
+          "label": "返回 江城广场"
+        }
+      ],
+      "events": [
+        "ev_yuan_lead",
+        "ev_small_16"
+      ],
+      "vignettes": [],
+      "tags": [
+        "safe"
+      ]
+    },
+    {
+      "id": "scene_jiangcheng_smithy",
+      "name": "铁匠铺",
+      "type": "settlement",
+      "icon": "🔨",
+      "description": "",
+      "coords": {
+        "x": 1,
+        "y": 2
+      },
+      "connections": [
+        {
+          "to": "scene_jiangcheng_square",
+          "label": "返回 江城广场"
+        }
+      ],
+      "events": [
+        "ev_small_17"
+      ],
+      "vignettes": [],
+      "tags": [
+        "safe",
+        "shop"
+      ]
+    },
+    {
+      "id": "scene_jiangcheng_herbal",
+      "name": "万药堂",
+      "type": "settlement",
+      "icon": "🌿",
+      "description": "",
+      "coords": {
+        "x": -1,
+        "y": 0
+      },
+      "connections": [
+        {
+          "to": "scene_jiangcheng_square",
+          "label": "返回 江城广场"
+        }
+      ],
+      "events": [
+        "ev_small_18"
+      ],
+      "vignettes": [],
+      "tags": [
+        "safe",
+        "shop",
+        "medic"
+      ]
+    },
+    {
+      "id": "scene_jiangcheng_guild",
+      "name": "镖局",
+      "type": "settlement",
+      "icon": "📜",
+      "description": "",
+      "coords": {
+        "x": -1,
+        "y": 2
+      },
+      "connections": [
+        {
+          "to": "scene_jiangcheng_square",
+          "label": "返回 江城广场"
+        }
+      ],
+      "events": [
+        "ev_small_19"
+      ],
+      "vignettes": [],
+      "tags": [
+        "safe",
+        "hub"
+      ]
+    },
+    {
+      "id": "scene_jiangcheng_inn",
+      "name": "客栈",
+      "type": "inn",
+      "icon": "🛏",
+      "description": "",
+      "coords": {
+        "x": 0,
+        "y": 2
+      },
+      "connections": [
+        {
+          "to": "scene_jiangcheng_square",
+          "label": "返回 江城广场"
+        }
+      ],
+      "events": [
+        "ev_rest_inn"
+      ],
+      "vignettes": [],
+      "tags": [
+        "safe",
+        "inn",
+        "rest_point"
+      ]
+    },
+    {
+      "id": "scene_road_north",
+      "name": "官道北段",
+      "type": "wilderness",
+      "icon": "🛤",
+      "description": "",
+      "coords": {
+        "x": 2,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_jiangcheng_square",
+          "label": "返回 江城广场"
+        },
+        {
+          "to": "scene_dark_forest",
+          "label": "进入松林"
+        }
+      ],
+      "events": [
+        "ev_small_20"
+      ],
+      "vignettes": [],
+      "tags": [
+        "main"
+      ]
+    },
+    {
+      "id": "scene_road_east",
+      "name": "官道东段",
+      "type": "wilderness",
+      "icon": "🛤",
+      "description": "",
+      "coords": {
+        "x": 0,
+        "y": 3
+      },
+      "connections": [
+        {
+          "to": "scene_jiangcheng_square",
+          "label": "返回 江城广场"
+        },
+        {
+          "to": "scene_qingxi_village",
+          "label": "到达青溪村"
+        },
+        {
+          "to": "scene_river_crossing",
+          "label": "走到渡口"
+        }
+      ],
+      "events": [
+        "ev_combat_scene_road_east_enemy_bandit"
+      ],
+      "vignettes": [],
+      "tags": [
+        "main"
+      ]
+    },
+    {
+      "id": "scene_dark_forest",
+      "name": "幽暗松林",
+      "type": "wilderness",
+      "icon": "🌲",
+      "description": "",
+      "coords": {
+        "x": 3,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_road_north",
+          "label": "返回 官道北段"
+        },
+        {
+          "to": "scene_swallow_ravine",
+          "label": "深入峡谷"
+        },
+        {
+          "to": "scene_woodcutter_hut",
+          "label": "寻木屋"
+        }
+      ],
+      "events": [
+        "ev_small_21",
+        "ev_combat_scene_dark_forest_enemy_wolf"
+      ],
+      "vignettes": [],
+      "tags": [
+        "forest"
+      ]
+    },
+    {
+      "id": "scene_swallow_ravine",
+      "name": "燕子峡",
+      "type": "wilderness",
+      "icon": "🪨",
+      "description": "",
+      "coords": {
+        "x": 4,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_dark_forest",
+          "label": "返回 幽暗松林"
+        },
+        {
+          "to": "scene_old_tomb",
+          "label": "走入古墓"
+        }
+      ],
+      "events": [
+        "ev_bandit_intercept",
+        "ev_small_22",
+        "ev_combat_scene_swallow_ravine_enemy_bandit"
+      ],
+      "vignettes": [],
+      "tags": [
+        "forest",
+        "main"
+      ]
+    },
+    {
+      "id": "scene_qingxi_village",
+      "name": "青溪村",
+      "type": "settlement",
+      "icon": "🏘",
+      "description": "",
+      "coords": {
+        "x": 1,
+        "y": 3
+      },
+      "connections": [
+        {
+          "to": "scene_road_east",
+          "label": "返回 官道东段"
+        }
+      ],
+      "events": [
+        "ev_xiao_recruit",
+        "ev_small_23"
+      ],
+      "vignettes": [],
+      "tags": [
+        "safe"
+      ]
+    },
+    {
+      "id": "scene_old_tomb",
+      "name": "古墓",
+      "type": "dungeon",
+      "icon": "⚰",
+      "description": "",
+      "coords": {
+        "x": 5,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_swallow_ravine",
+          "label": "返回 燕子峡"
+        },
+        {
+          "to": "scene_cult_outer",
+          "label": "深入魔教总坛",
+          "gated": {
+            "hint": "需要内门令牌",
+            "requireItems": [
+              "item_token_inner"
+            ]
+          }
+        }
+      ],
+      "events": [
+        "ev_tomb_secret",
+        "ev_small_24",
+        "ev_combat_scene_old_tomb_enemy_swordsman"
+      ],
+      "vignettes": [],
+      "tags": [
+        "arcane",
+        "main"
+      ]
+    },
+    {
+      "id": "scene_river_crossing",
+      "name": "渡口",
+      "type": "wilderness",
+      "icon": "🌊",
+      "description": "",
+      "coords": {
+        "x": -1,
+        "y": 3
+      },
+      "connections": [
+        {
+          "to": "scene_road_east",
+          "label": "返回 官道东段"
+        }
+      ],
+      "events": [
+        "ev_small_25"
+      ],
+      "vignettes": [],
+      "tags": []
+    },
+    {
+      "id": "scene_woodcutter_hut",
+      "name": "樵夫木屋",
+      "type": "settlement",
+      "icon": "🛖",
+      "description": "",
+      "coords": {
+        "x": 4,
+        "y": 0
+      },
+      "connections": [
+        {
+          "to": "scene_dark_forest",
+          "label": "返回 幽暗松林"
+        }
+      ],
+      "events": [
+        "ev_rest_hut",
+        "ev_small_26"
+      ],
+      "vignettes": [],
+      "tags": [
+        "npc",
+        "safe",
+        "rest_point"
+      ]
+    },
+    {
+      "id": "scene_cult_outer",
+      "name": "魔教外院",
+      "type": "dungeon",
+      "icon": "🏯",
+      "description": "",
+      "coords": {
+        "x": 6,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_old_tomb",
+          "label": "返回 古墓"
+        },
+        {
+          "to": "scene_cult_hall",
+          "label": "推开重门"
+        }
+      ],
+      "events": [
+        "ev_outer_breakthrough",
+        "ev_small_27",
+        "ev_combat_scene_cult_outer_enemy_inner_disciple"
+      ],
+      "vignettes": [],
+      "tags": [
+        "main",
+        "dungeon"
+      ]
+    },
+    {
+      "id": "scene_cult_hall",
+      "name": "议事大厅",
+      "type": "dungeon",
+      "icon": "🏯",
+      "description": "",
+      "coords": {
+        "x": 7,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_cult_outer",
+          "label": "返回 魔教外院"
+        },
+        {
+          "to": "scene_cult_vault",
+          "label": "溜进秘库"
+        },
+        {
+          "to": "scene_cult_inner",
+          "label": "深入禁地"
+        }
+      ],
+      "events": [
+        "ev_small_28"
+      ],
+      "vignettes": [],
+      "tags": [
+        "main",
+        "dungeon"
+      ]
+    },
+    {
+      "id": "scene_cult_vault",
+      "name": "秘籍秘库",
+      "type": "vignette",
+      "icon": "📚",
+      "description": "",
+      "coords": {
+        "x": 7,
+        "y": 0
+      },
+      "connections": [
+        {
+          "to": "scene_cult_hall",
+          "label": "返回 议事大厅"
+        }
+      ],
+      "events": [
+        "ev_vault_take"
+      ],
+      "vignettes": [],
+      "tags": [
+        "main"
+      ]
+    },
+    {
+      "id": "scene_cult_inner",
+      "name": "禁地深处",
+      "type": "dungeon",
+      "icon": "⛩",
+      "description": "",
+      "coords": {
+        "x": 8,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_cult_hall",
+          "label": "返回 议事大厅"
+        },
+        {
+          "to": "scene_cult_altar",
+          "label": "走向祭坛"
+        }
+      ],
+      "events": [
+        "ev_inner_qigong_master",
+        "ev_small_29",
+        "ev_combat_scene_cult_inner_enemy_demon_blade",
+        "ev_inner_token"
+      ],
+      "vignettes": [],
+      "tags": [
+        "main",
+        "dungeon"
+      ]
+    },
+    {
+      "id": "scene_cult_altar",
+      "name": "血祭祭坛",
+      "type": "combat",
+      "icon": "🩸",
+      "description": "黑色巨大祭坛。邪教教主凌霜披紫色斗篷站在中央——他正是杀师父的真凶。一旦上阵，绝无和解可能。",
+      "coords": {
+        "x": 9,
+        "y": 1
+      },
+      "connections": [
+        {
+          "to": "scene_cult_inner",
+          "label": "返回 禁地深处"
+        },
+        {
+          "to": "scene_ending_revenge",
+          "label": "为师父报仇"
+        },
+        {
+          "to": "scene_ending_mercy",
+          "label": "放过凌霜",
+          "gated": {
+            "requireVariables": {
+              "mercy_pts": 3
+            }
+          }
+        },
+        {
+          "to": "scene_ending_demon",
+          "label": "吸他内力",
+          "gated": {
+            "requireVariables": {
+              "learn_blood_art": true
+            }
+          }
+        }
+      ],
+      "events": [
+        "ev_final_lingshuang"
+      ],
+      "vignettes": [],
+      "tags": [
+        "main",
+        "boss_room"
+      ]
+    },
+    {
+      "id": "scene_ending_revenge",
+      "name": "青锋归位",
+      "type": "ending",
+      "icon": "🗡",
+      "description": "你用师父的断剑（接好的）斩下凌霜的头颅。江湖的风从此为你让路。",
+      "coords": {
+        "x": 11,
+        "y": 0
+      },
+      "connections": [],
+      "events": [
+        "ev_ending"
+      ],
+      "vignettes": [],
+      "tags": [
+        "ending",
+        "main"
+      ]
+    },
+    {
+      "id": "scene_ending_mercy",
+      "name": "佛门一念",
+      "type": "ending",
+      "icon": "🪷",
+      "description": "你放下了仇恨。把凌霜交给少林处置。剑挂回腰间，从此不再出鞘。",
+      "coords": {
+        "x": 11,
+        "y": 1
+      },
+      "connections": [],
+      "events": [
+        "ev_ending"
+      ],
+      "vignettes": [],
+      "tags": [
+        "ending",
+        "main"
+      ]
+    },
+    {
+      "id": "scene_ending_demon",
+      "name": "入魔",
+      "type": "ending",
+      "icon": "☠",
+      "description": "你吸收了凌霜的内力。然而《血祭剑诀》开始反噬——你成了下一个邪教教主。",
+      "coords": {
+        "x": 11,
+        "y": 2
+      },
+      "connections": [],
+      "events": [
+        "ev_ending"
+      ],
+      "vignettes": [],
+      "tags": [
+        "ending",
+        "main"
+      ]
+    }
+  ],
+  "npcs": [
+    {
+      "id": "npc_master_yuan",
+      "type": "npc",
+      "name": "元长老",
+      "title": "",
+      "description": "",
+      "icon": "👴",
+      "personality": "wise_patient",
+      "recruitable": false,
+      "spawnScene": "scene_jiangcheng_tavern",
+      "initialInventory": [],
+      "giftPreferences": {},
+      "schedule": [],
+      "abilities": [],
+      "dialogueTree": null,
+      "tags": [
+        "mentor",
+        "quest_giver"
+      ]
+    },
+    {
+      "id": "npc_blacksmith",
+      "type": "npc",
+      "name": "铁老",
+      "title": "",
+      "description": "",
+      "icon": "🔨",
+      "personality": "gruff",
+      "recruitable": false,
+      "spawnScene": "scene_jiangcheng_smithy",
+      "initialInventory": [],
+      "giftPreferences": {
+        "tag:legendary": "love"
+      },
+      "schedule": [],
+      "abilities": [],
+      "dialogueTree": null,
+      "tags": [
+        "shop"
+      ]
+    },
+    {
+      "id": "npc_herbalist",
+      "type": "npc",
+      "name": "柳姑娘",
+      "title": "",
+      "description": "",
+      "icon": "🌿",
+      "personality": "gentle",
+      "recruitable": false,
+      "spawnScene": "scene_jiangcheng_herbal",
+      "initialInventory": [],
+      "giftPreferences": {},
+      "schedule": [],
+      "abilities": [],
+      "dialogueTree": null,
+      "tags": [
+        "shop",
+        "medic"
+      ]
+    },
+    {
+      "id": "npc_innkeeper",
+      "type": "npc",
+      "name": "客栈老板",
+      "title": "",
+      "description": "",
+      "icon": "🍶",
+      "personality": "",
+      "recruitable": false,
+      "spawnScene": "scene_jiangcheng_inn",
+      "initialInventory": [],
+      "giftPreferences": {},
+      "schedule": [],
+      "abilities": [],
+      "dialogueTree": null,
+      "tags": [
+        "hub"
+      ]
+    },
+    {
+      "id": "npc_woodcutter",
+      "type": "npc",
+      "name": "老樵夫",
+      "title": "",
+      "description": "",
+      "icon": "🪓",
+      "personality": "",
+      "recruitable": false,
+      "spawnScene": "scene_woodcutter_hut",
+      "initialInventory": [],
+      "giftPreferences": {},
+      "schedule": [],
+      "abilities": [],
+      "dialogueTree": null,
+      "tags": [
+        "quest"
+      ]
+    },
+    {
+      "id": "npc_xiao",
+      "type": "npc",
+      "name": "萧若雪",
+      "title": "",
+      "description": "",
+      "icon": "🗡",
+      "personality": "fierce_sad",
+      "recruitable": true,
+      "spawnScene": "scene_qingxi_village",
+      "initialInventory": [],
+      "giftPreferences": {},
+      "schedule": [],
+      "stats": {
+        "hp": 110,
+        "mp": 35,
+        "attack": 17,
+        "defense": 7,
+        "magicAttack": 6,
+        "magicDefense": 8,
+        "speed": 16,
+        "luck": 6
+      },
+      "abilities": [
+        {
+          "id": "xs_sword",
+          "name": "九阴白骨爪",
+          "type": "active",
+          "cost": {
+            "mp": 6
+          },
+          "effect": {
+            "damage": {
+              "formula": "attack+d10+3"
+            }
+          }
+        },
+        {
+          "id": "xs_dance",
+          "name": "剑舞",
+          "type": "active",
+          "cost": {
+            "mp": 10
+          },
+          "cooldown": 3,
+          "effect": {
+            "damage": {
+              "formula": "attack+2d6"
+            },
+            "aoe": true,
+            "target": "all_enemies"
+          }
+        }
+      ],
+      "dialogueTree": null,
+      "tags": [
+        "companion",
+        "huashan"
+      ]
+    },
+    {
+      "id": "npc_zhuang",
+      "type": "npc",
+      "name": "庄无为",
+      "title": "",
+      "description": "",
+      "icon": "☯",
+      "personality": "serene",
+      "recruitable": true,
+      "spawnScene": "scene_old_tomb",
+      "initialInventory": [],
+      "giftPreferences": {},
+      "schedule": [],
+      "stats": {
+        "hp": 130,
+        "mp": 50,
+        "attack": 13,
+        "defense": 11,
+        "magicAttack": 18,
+        "magicDefense": 16,
+        "speed": 10,
+        "luck": 5
+      },
+      "abilities": [
+        {
+          "id": "zw_taichi",
+          "name": "太极推手",
+          "type": "active",
+          "cost": {
+            "mp": 6
+          },
+          "effect": {
+            "damage": {
+              "formula": "magicAttack+d6"
+            },
+            "applyStatus": {
+              "type": "debuff",
+              "stat": "attack",
+              "value": 4,
+              "duration": 2
+            }
+          }
+        },
+        {
+          "id": "zw_heal",
+          "name": "生气功",
+          "type": "active",
+          "cost": {
+            "mp": 8
+          },
+          "cooldown": 2,
+          "effect": {
+            "heal": {
+              "formula": "40"
+            }
+          }
+        }
+      ],
+      "dialogueTree": null,
+      "tags": [
+        "companion",
+        "wudang"
+      ]
+    },
+    {
+      "id": "npc_cult_lord",
+      "type": "npc",
+      "name": "凌霜",
+      "title": "",
+      "description": "",
+      "icon": "☠",
+      "personality": "cold_obsessed",
+      "recruitable": false,
+      "spawnScene": "scene_cult_altar",
+      "initialInventory": [],
+      "giftPreferences": {},
+      "schedule": [],
+      "abilities": [],
+      "dialogueTree": null,
+      "tags": [
+        "antagonist",
+        "main"
+      ]
+    },
+    {
+      "id": "npc_master_dead",
+      "type": "npc",
+      "name": "师父（亡）",
+      "title": "",
+      "description": "",
+      "icon": "👻",
+      "personality": "",
+      "recruitable": false,
+      "spawnScene": "scene_jianghu_inn",
+      "initialInventory": [],
+      "giftPreferences": {},
+      "schedule": [],
+      "abilities": [],
+      "dialogueTree": null,
+      "tags": [
+        "memory"
+      ]
+    },
+    {
+      "id": "npc_old_seer",
+      "type": "npc",
+      "name": "渡口老者",
+      "title": "",
+      "description": "",
+      "icon": "🎣",
+      "personality": "",
+      "recruitable": false,
+      "spawnScene": "scene_river_crossing",
+      "initialInventory": [],
+      "giftPreferences": {},
+      "schedule": [],
+      "abilities": [],
+      "dialogueTree": null,
+      "tags": [
+        "mysterious"
+      ]
+    },
+    {
+      "id": "npc_bandit_lord",
+      "type": "npc",
+      "name": "黑风寨主",
+      "title": "",
+      "description": "",
+      "icon": "🗡",
+      "personality": "",
+      "recruitable": false,
+      "spawnScene": "scene_swallow_ravine",
+      "initialInventory": [],
+      "giftPreferences": {},
+      "schedule": [],
+      "abilities": [],
+      "dialogueTree": null,
+      "tags": [
+        "antagonist"
+      ]
+    }
+  ],
+  "npcRelations": [
+    {
+      "from": "npc_xiao",
+      "to": "npc_master_yuan",
+      "strength": 0.6,
+      "note": "元长老曾救过她"
+    },
+    {
+      "from": "npc_zhuang",
+      "to": "npc_master_yuan",
+      "strength": 0.7,
+      "note": "师叔"
+    },
+    {
+      "from": "npc_cult_lord",
+      "to": "npc_master_dead",
+      "strength": -0.9,
+      "note": "杀师仇人"
+    },
+    {
+      "from": "npc_xiao",
+      "to": "npc_cult_lord",
+      "strength": -0.8,
+      "note": "杀父仇人"
+    }
+  ],
+  "startingOptions": {
+    "races": [
+      {
+        "id": "shaolin",
+        "name": "少林俗家弟子",
+        "icon": "🪷",
+        "tags": [
+          "sect:shaolin"
+        ],
+        "statBonus": {
+          "defense": 3,
+          "magicDefense": 3
+        },
+        "description": "禅武双修，专精金钟罩。"
+      },
+      {
+        "id": "wudang",
+        "name": "武当门徒",
+        "icon": "☯",
+        "tags": [
+          "sect:wudang"
+        ],
+        "statBonus": {
+          "magicAttack": 3,
+          "magicDefense": 2
+        },
+        "description": "太极内劲，以柔克刚。"
+      },
+      {
+        "id": "huashan",
+        "name": "华山剑客",
+        "icon": "🗡",
+        "tags": [
+          "sect:huashan"
+        ],
+        "statBonus": {
+          "attack": 3,
+          "speed": 2
+        },
+        "description": "剑走偏锋，攻势凌厉。"
+      },
+      {
+        "id": "lone",
+        "name": "独行散修",
+        "icon": "🍃",
+        "tags": [
+          "sect:none"
+        ],
+        "statBonus": {
+          "luck": 3
+        },
+        "description": "无门无派，自行其道。"
+      }
+    ],
+    "origins": [
+      {
+        "id": "noble",
+        "name": "世家子弟",
+        "icon": "🏯",
+        "tags": [
+          "origin:noble",
+          "literate",
+          "wealthy:start"
+        ],
+        "description": "出身豪门，识文断字。"
+      },
+      {
+        "id": "orphan",
+        "name": "孤儿",
+        "icon": "🥀",
+        "tags": [
+          "origin:orphan",
+          "street_wise"
+        ],
+        "statBonus": {
+          "speed": 2
+        },
+        "description": "从小流浪江湖。"
+      },
+      {
+        "id": "farmer",
+        "name": "寒门",
+        "icon": "🌾",
+        "tags": [
+          "origin:farmer"
+        ],
+        "statBonus": {
+          "hp": 20
+        },
+        "description": "体魄健壮，质朴直率。"
+      }
+    ],
+    "backgrounds": [
+      {
+        "id": "sword",
+        "name": "剑术专精",
+        "icon": "⚔",
+        "tags": [
+          "bg:sword"
+        ],
+        "statBonus": {
+          "attack": 3
+        }
+      },
+      {
+        "id": "fist",
+        "name": "内功深厚",
+        "icon": "✊",
+        "tags": [
+          "bg:fist"
+        ],
+        "statBonus": {
+          "magicAttack": 3,
+          "magicDefense": 2
+        }
+      },
+      {
+        "id": "qing",
+        "name": "轻功如风",
+        "icon": "🍃",
+        "tags": [
+          "bg:qing"
+        ],
+        "statBonus": {
+          "speed": 4
+        }
+      },
+      {
+        "id": "doctor",
+        "name": "医术高超",
+        "icon": "⚕",
+        "tags": [
+          "bg:doctor"
+        ],
+        "statBonus": {
+          "magicAttack": 2
+        }
+      }
+    ],
+    "faiths": [
+      {
+        "id": "rongyi",
+        "name": "光明磊落",
+        "icon": "☀",
+        "tags": [
+          "faith:upright"
+        ],
+        "description": "行侠仗义，正气浩然。"
+      },
+      {
+        "id": "fuchen",
+        "name": "隐忍图存",
+        "icon": "🌙",
+        "tags": [
+          "faith:patient"
+        ],
+        "description": "韬光养晦，徐徐图之。"
+      },
+      {
+        "id": "kuang",
+        "name": "快意恩仇",
+        "icon": "🔥",
+        "tags": [
+          "faith:wild"
+        ],
+        "description": "是非分明，恩怨必报。"
+      }
+    ]
+  },
+  "startingSceneRules": [
+    {
+      "when": {
+        "tags": [
+          "sect:shaolin"
+        ]
+      },
+      "sceneId": "scene_shaolin_gate"
+    },
+    {
+      "when": {
+        "tags": [
+          "sect:wudang"
+        ]
+      },
+      "sceneId": "scene_wudang_peak"
+    },
+    {
+      "when": {
+        "tags": [
+          "sect:huashan"
+        ]
+      },
+      "sceneId": "scene_huashan_summit"
+    },
+    {
+      "default": "scene_jianghu_inn"
+    }
+  ],
+  "combatMode": "party",
+  "aiHooks": {
+    "sceneArrival": "optional",
+    "eventResolve": "optional",
+    "npcDialogue": "optional",
+    "vignette": "never",
+    "worldRipple": "optional"
+  },
+  "startingSceneId": "scene_jianghu_inn",
+  "displayMode": "scene-graph",
+  "rules": {
+    "diceType": "d20",
+    "combatFormula": "(attack + dice) - defense",
+    "maxPartySize": 4,
+    "startingGold": 50
+  },
+  "aiConfig": {
+    "temperature": 0.7,
+    "maxResponseTokens": 1000,
+    "useStructuredOutput": true,
+    "language": "zh-CN"
+  }
+}

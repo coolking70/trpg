@@ -20,11 +20,18 @@
   "enemies": [/* 战斗中遇到的敌人 */],
   "items": [/* 物品（武器/防具/消耗品/任务物品） */],
   "events": [/* 剧情和遭遇事件 */],
-  "map": { /* 网格地图 */ }
+  "scenes": [/* 场景图节点（推荐 — 桌游跑团式） */],
+  "startingSceneId": "scene_xxx",
+  "displayMode": "scene-graph",
+  "map": { /* 旧版网格地图（向后兼容，displayMode='grid' 时使用） */ }
 }
 ```
 
-打开 **工具栏 → 📝 编辑器**，可以可视化编辑所有内容。本手册更关注**核心概念和设计原则**。
+**两种地图模型可选**（写 `scenes[]` 优先走场景图）：
+- **场景图（推荐）** — 节点 + 边，每个节点是一段戏。**桌游跑团的感觉**。详见第二章末尾。
+- **网格地图（向后兼容）** — 20×15 格子，触发器靠地形/POI。早期预设可继续用，但叙事密度差。
+
+打开 **工具栏 → 📝 编辑器**，可以可视化编辑大部分内容（场景图当前需要手写 JSON）。本手册更关注**核心概念和设计原则**。
 
 ---
 
@@ -96,13 +103,17 @@
 
 | 时机 | 何时扫描 |
 |---|---|
-| MOVE | 玩家移动到新格子 |
+| **SCENE_ENTER** | **抵达场景节点时（场景图模式）** |
+| MOVE | 玩家移动到新格子（旧 grid 模式） |
 | EVENT_COMPLETE | 一个事件完成后 |
 | COMBAT_END | 战斗结束后 |
 | TURN_END | 每个回合结束 |
 | VARIABLE_CHANGE | `set_variable` 写入变量后 |
 
-**重要规则**：含 `tileTypes` 或 `pointsOfInterest` 的事件**仅在 MOVE 时机评估**。其他时机不会评估空间条件。
+**重要规则**：
+- 含 `inScene` 的事件**仅在 SCENE_ENTER 时机评估**
+- 含 `tileTypes` 或 `pointsOfInterest` 的事件**仅在 MOVE 时机评估**（仅旧 grid 模式有效）
+- **战斗进行中** EVENT_COMPLETE 扫描会被跳过 — 避免"ch9 战斗未结束就把 ch10 黎明叙事写出来"
 
 ### 2.3 优先级
 
@@ -193,9 +204,132 @@ ch_rescue (partyHpBelow: 0.2)
 **模式 D：商店重复触发**
 
 ```
-ch_shop (pointsOfInterest: ['poi_village'], repeatable: true)
-  → 每次进村都可访问
+ch_shop (inScene: ['scene_village'], repeatable: true)
+  → 每次抵达村庄都可访问
 ```
+
+### 2.7 场景图模式（推荐 — 桌游跑团式）
+
+#### 为什么？
+
+旧的 20×15 格子地图里 98% 是空格，玩家走 50 步才碰一次剧情，AI 不得不重复编"道路腐臭、枯树、乌鸦……"模板。**桌游跑团的 GM 不描述"你迈出第 47 步"，而是描述"你们花了大半天抵达林间村落"**。场景图把"地图"升级成"节点 + 边"，每跳一次节点 = 一段戏 = 一次有意义的 AI 叙事。
+
+#### 数据结构
+
+```json
+{
+  "displayMode": "scene-graph",
+  "startingSceneId": "scene_spawn",
+  "scenes": [
+    {
+      "id": "scene_village",
+      "name": "林间村落",
+      "type": "settlement",
+      "icon": "🏘",
+      "coords": { "x": 7, "y": 1 },
+      "description": "雾气缭绕的木屋聚落，村民投来戒备的目光。",
+      "connections": [
+        { "to": "scene_traveler_camp", "label": "沿古道南返" },
+        {
+          "to": "scene_dark_corridor",
+          "label": "沿主路东行，深入森林",
+          "gated": {
+            "requireCompletedEvents": ["ch3_village"],
+            "hint": "你们应该先和村民打个招呼"
+          }
+        }
+      ],
+      "events": ["ch4_shop", "ch3_village"],
+      "vignettes": [
+        "你们再次踏入村落，孩童们好奇地张望。",
+        "村中的炊烟比之前稀薄了几分。"
+      ],
+      "tags": ["safe", "main", "shop"]
+    }
+  ]
+}
+```
+
+#### 字段说明
+
+| 字段 | 必填 | 说明 |
+|---|---|---|
+| `id` | ✓ | 唯一 ID（建议 `scene_xxx`） |
+| `name` | ✓ | 节点名（玩家可见，但 locked-unvisited 时会隐为 `???`） |
+| `type` | 推荐 | `spawn` / `settlement` / `wilderness` / `combat` / `dungeon` / `vignette` / `ending` 之一，影响默认图标 |
+| `icon` | 推荐 | emoji，节点图标 |
+| `coords` | ✓ | 节点屏幕位置（任意单位，仅作可视化用） |
+| `description` | 推荐 | AI 抵达时的写作素材 |
+| `connections[]` | ✓ | 出边 — 想要双向连接就在对方节点写返程 |
+| `events[]` | — | 抵达时按 priority 选第一个未完成的触发 |
+| `vignettes[]` | — | 重访时随机选一条作为本地叙事（**不调 AI，省 token**） |
+| `tags` | — | 用于 QuestTracker 等 UI 过滤 |
+
+#### connections.gated — 门控条件
+
+```json
+{
+  "to": "scene_xxx",
+  "label": "前行",
+  "gated": {
+    "requireVariables": { "knows_dark_knight": true },
+    "requireCompletedEvents": ["ch3_village"],
+    "requireItems": ["item_013"],
+    "hint": "前方阴气逼人，你们还不知道那里隐藏着什么"
+  }
+}
+```
+
+**关键设计**：`hint` 是给玩家看的诗意提示。**绝不要把内部变量名 / 事件 ID / 物品 ID 写到玩家可见的地方**。没写 `hint` 时系统会用通用文案兜底：
+
+| gated 类别 | 默认 fallback 文案 |
+|---|---|
+| 缺变量 | "你们似乎还差一些线索" |
+| 缺前置事件 | "需要先完成某段前置经历" |
+| 缺物品 | "需要先找到某件关键物品" |
+
+写 `hint` 总是比依赖默认更好 — 它让锁定信息成为氛围的一部分而不是技术提示。
+
+#### 事件挂载场景：用 inScene 触发器
+
+把原来的 `tileTypes` / `pointsOfInterest` 改为 `inScene`：
+
+```json
+{
+  "id": "ch3_village",
+  "trigger": {
+    "type": "composite",
+    "condition": {
+      "inScene": ["scene_village"],
+      "excludeCompletedEvents": ["ch3_village"]
+    }
+  }
+}
+```
+
+同一个事件可以挂在**多个**场景上（`inScene: ['scene_a', 'scene_b']`）— 任一抵达即触发。
+
+#### 重访叙事（vignettes）
+
+玩家重新走过已访问的节点时，系统会**随机抽取 vignette 中的一条**作为本地叙事 — 不调 AI。这让重访有质感但成本接近零。如果场景没有 vignettes，重访时只会写"前往 XXX 名字"。
+
+#### 设计 checklist
+
+- [ ] 每个节点都有 description（AI 首次抵达的素材）
+- [ ] 每个非终点节点都有 connections（玩家能走出去）
+- [ ] 主线推进路径上的 gated 都写了 hint（诗意而不剧透）
+- [ ] 重要节点至少 2 条 vignettes（避免重访只有名字）
+- [ ] 主线终结点带 `tags: ['epilogue']` 或 ID 为 `ch10_epilogue` → 触发结算弹窗
+
+#### 节点数量参考
+
+| 复杂度 | 节点数 | 适合 |
+|---|---|---|
+| 短篇 | 5-7 | 单线推进 + 小决策 |
+| 中篇（推荐） | 8-12 | 主线 + 1-2 条支线（治愈者 / 商店） |
+| 长篇 | 15-25 | 多分支、变量门控、章节套娃 |
+
+默认预设"暗黑森林冒险"是 **12 节点**，可作为参考实现。
 
 ---
 

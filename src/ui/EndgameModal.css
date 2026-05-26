@@ -1,0 +1,155 @@
+/**
+ * 主线结算 / 新游戏确认 模态框样式
+ */
+
+.endgame-backdrop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.endgame-modal {
+  background: linear-gradient(160deg, #1f1c3a 0%, #2a1b3d 60%, #1a1330 100%);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  border-radius: 16px;
+  padding: 32px 40px;
+  max-width: 580px;
+  width: calc(100vw - 48px);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.6),
+    0 0 80px rgba(168, 85, 247, 0.25) inset;
+  color: #e8e6f5;
+}
+
+.endgame-modal__header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+.endgame-modal__emoji {
+  font-size: 64px;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+.endgame-modal__title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  background: linear-gradient(135deg, #ffd700 0%, #ffa500 60%, #ff7050 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.endgame-modal__subtitle {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #a0a0c0;
+  letter-spacing: 0.02em;
+}
+
+.endgame-modal__body {
+  margin-bottom: 24px;
+}
+.endgame-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.endgame-modal__cell {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 12px 8px;
+  text-align: center;
+}
+.endgame-modal__cell-icon {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+.endgame-modal__cell-label {
+  font-size: 12px;
+  color: #9090b0;
+  margin-bottom: 4px;
+  letter-spacing: 0.04em;
+}
+.endgame-modal__cell-value {
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.endgame-modal__footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.endgame-modal__footer .btn {
+  flex: 1 1 calc(50% - 5px);
+  min-width: 140px;
+}
+.endgame-modal__footer .btn--danger {
+  flex: 1 1 100%;
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.endgame-modal__footer .btn--danger:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+/* 剧本选择库 */
+.endgame-modal__lib-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #cbd5e1;
+  margin-bottom: 12px;
+  letter-spacing: 0.04em;
+}
+.endgame-modal__lib-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.endgame-modal__lib-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-radius: 10px;
+  padding: 14px 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: inherit;
+  font: inherit;
+}
+.endgame-modal__lib-card:hover {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.6);
+  transform: translateY(-1px);
+}
+.endgame-modal__lib-icon {
+  font-size: 28px;
+  margin-bottom: 6px;
+}
+.endgame-modal__lib-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+.endgame-modal__lib-desc {
+  font-size: 12px;
+  color: #a0a0c0;
+  line-height: 1.4;
+}
+
+@media (max-width: 600px) {
+  .endgame-modal {
+    padding: 24px 20px;
+  }
+  .endgame-modal__title { font-size: 22px; }
+  .endgame-modal__grid { grid-template-columns: repeat(2, 1fr); }
+  .endgame-modal__lib-grid { grid-template-columns: 1fr; }
+}

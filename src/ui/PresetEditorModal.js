@@ -13,6 +13,7 @@ import { renderEnemyEditor } from './editor/EnemyEditor.js';
 import { renderItemEditor } from './editor/ItemEditor.js';
 import { renderEventEditor } from './editor/EventEditor.js';
 import { renderMapEditor } from './editor/MapEditor.js';
+import { renderSceneEditor } from './editor/SceneEditor.js';
 
 const TABS = [
   { id: 'world', label: '🌍 世界观', renderer: renderWorldEditor },
@@ -20,7 +21,8 @@ const TABS = [
   { id: 'enemies', label: '👹 敌人', renderer: renderEnemyEditor },
   { id: 'items', label: '⚔ 物品', renderer: renderItemEditor },
   { id: 'events', label: '📜 事件', renderer: renderEventEditor },
-  { id: 'map', label: '🗺 地图', renderer: renderMapEditor },
+  { id: 'scenes', label: '🗺 场景图', renderer: renderSceneEditor },
+  { id: 'map', label: '⬛ 格子地图', renderer: renderMapEditor },
 ];
 
 export class PresetEditorModal {

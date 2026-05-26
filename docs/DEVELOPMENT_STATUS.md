@@ -8,11 +8,13 @@
 
 ## TL;DR — 30 秒概览
 
-- **是什么**：浏览器端 AI GM TRPG，AI 担任游戏主持人，玩家通过卡牌/地图/文本推进冒险
+- **是什么**：浏览器端 AI GM TRPG，AI 担任游戏主持人，玩家通过卡牌/**场景节点图**/文本推进冒险
 - **技术**：原生 ES Modules + Vite + Three.js (3D 骰子) + Canvas2D，无前端框架
 - **AI 接口**：OpenAI 兼容 `/chat/completions`，实测兼容 OpenAI / DeepSeek / Ollama / 小米 MiMo
-- **当前状态**：9 个 commit、115/115 测试通过、生产就绪、完整 10 章默认主线 + 真实 AI 端到端验证
-- **下一步候选**：移动端适配 / 上线部署 / 多语言 / 社区预设库
+- **当前状态**：Phase 16-25 完成、**Jest 370 / MCP 32 全过**、场景图作为主架构、生产就绪
+- **支持超大型剧本（300+ 节点）**：角色创建 / NPC 关系图 / 故事时间 / 营地对话 / 网状叙事 / IndexedDB 存储 / 编辑器分页 / AI 上下文检索 / 元进度图鉴 / 多结局 / MCP 模板
+- **核心模型**：**场景图**（节点 + 连接 + 门控）— 每次跳节点 = 一段戏 = 一次 AI 抵达叙事；不再有"走 50 格才碰一个剧情"的稀释
+- **下一步候选**：编辑器加场景图可视化编辑 / 真实 API 回归玩测 / 多语言 / 社区预设库
 
 ---
 
@@ -20,12 +22,15 @@
 
 ```bash
 npm install
-npm test          # 115 tests in 7 suites, ~0.5s
+npm test          # 297 tests in 18 suites, ~0.6s
 npm run dev       # localhost:3000
 npm run build     # 生产构建到 dist/
+
+# 纯后端 AI vs AI 完整玩测（场景图版，~120k tokens）
+node scripts/playtest-ai-vs-ai-scene.mjs
 ```
 
-启动后：**⚙ 设置** 填 API key（任意 OpenAI 兼容服务）→ 自动加载"暗黑森林冒险"10 章主线 → 工具栏 🎲 可换随机世界。
+启动后：**⚙ 设置** 填 API key（任意 OpenAI 兼容服务）→ 工具栏 🔄 **新游戏** → 选剧本（默认主线 / 随机森林/荒漠/废墟）→ 节点图地图开局。
 
 ### 关键命令验证
 
@@ -57,8 +62,16 @@ git show <commit> --stat
 | `136d5a6` | **Phase 13 UX 糖** | Toast + 主线进度 + 下一定点建议 |
 | `74e3ae8` | **Phase 11.B Token 面板** | usage 字段采集 + 工具栏指标 + 预算告警 |
 | `6f3be13` | **Bug #9 修复** | 自动存档刷新后未恢复（多槽位与旧单槽 API 不一致） |
+| `96d87cb` | **文档接手指南** | 新增 DEVELOPMENT_STATUS 并同步 AI/创作者手册 |
+| `d7da488` | **Phase 14 移动端 + PWA** | 768px 抽屉布局、触控地图、manifest、viewport/meta |
+| `f6e6b4d` | **小修与打包优化** | prompt 加强、Three.js 独立 chunk、CHANGELOG、coverage 脚本 |
+| `979ba23` | **覆盖率提升** | 新增 core / utils / 多系统测试，覆盖率 37.74% → 62.42% |
+| `b1fc703` | **诊断日志系统** | LogSystem + 工具栏导出 JSON/Markdown + 21 个测试 |
+| _(unreleased)_ | **Phase 15 玩测留痕 + 解析健壮性** | 玩家叙事全程留痕 + AIResponseParser 单行损坏 JSON 宽松抽取 + 修复 6 处裸 JSON 泄露 |
+| _(unreleased)_ | **Phase 16 场景图重构 🎯** | SceneSystem + SceneGraphRenderer + 默认预设重写为 12 节点图 + 剧本选择库（4 个）+ EndgameModal + 修 8 个 bug |
+| _(unreleased)_ | **Phase 17 场景编辑器 + MCP 服务器 + 多结局 🤖** | `SceneEditor.js`（节点 + 出边 + gated 表单 + vignettes）+ `mcp-server/preset-server.mjs`（34 个工具 + batch_apply 原子操作 + 12 烟雾测试）+ ch10_redeemed 救赎结局 + 存档元数据场景图友好化 |
 
-详细玩测发现的 9 个 bug 见第 5 章。
+详细 bug 见第 5 章。
 
 ---
 
@@ -70,10 +83,11 @@ git show <commit> --stat
 EventSystem (100) ────── 发布订阅核心
 CardManager (80) ────── 卡牌 CRUD + 按类型/标签索引
 DiceSystem (70) ──────── 公式解析、优势/劣势、表达式求值
-MapSystem (60) ───────── 网格地图、寻路、迷雾
+MapSystem (60) ───────── 网格地图、寻路、迷雾（向后兼容用）
 CombatSystem (50) ─────── 先攻、攻击、技能、掉落
 TurnManager (40) ──────── 阶段状态机、DoT/HoT 处理
-EventTriggerEngine (35) ─ 6 维度复合触发器
+EventTriggerEngine (35) ─ 7 维度复合触发器（含 inScene）
+SceneSystem (33) ──────── 场景图：节点 / 连接 / 门控 / 旅行（**主路径**）
 AIGMEngine (30) ──────── AI 调用、上下文管理、token 跟踪
 MemorySystem (28) ────── 分层长期记忆（WorldFacts + KeyEvents）
 ProgressionSystem (25) ── 升级、装备、商店
@@ -81,6 +95,7 @@ AllyAIController (22) ─── AI 队友决策（启发式 / LLM）
 DifficultyTracker (21) ── 动态难度（基于战斗表现）
 ImportExportSystem (20) ─ 预设/存档 JSON 导入导出
 RenderEngine (10) ──────── Canvas 视口、最后渲染
+LogSystem (5) ──────────── 被动收集错误/状态并导出诊断报告
 ```
 
 ### 文件层次
@@ -89,13 +104,63 @@ RenderEngine (10) ──────── Canvas 视口、最后渲染
 src/
 ├─ core/              GameEngine / EventSystem / StateManager
 ├─ models/            数据模型 (GamePreset / GameState / *Card)
-├─ systems/           13 个游戏系统（见上）+ WorldGenerator（不是 system）
-├─ rendering/         Canvas 层（MapRenderer / FloatingTextLayer / DiceRenderer）
-├─ ui/                30+ UI 组件
-│  └─ editor/         6 个编辑器子模块
-├─ data/              defaultPreset（10 章主线）+ promptTemplates + cardSchemas
+├─ systems/           15 个游戏系统（含 SceneSystem）+ WorldGenerator（不是 system）
+├─ rendering/         Canvas 层（SceneGraphRenderer / MapRenderer / FloatingTextLayer / DiceRenderer）
+├─ ui/                30+ UI 组件（含 EndgameModal）
+│  └─ editor/         7 个编辑器子模块（含 SceneEditor）
+├─ data/              defaultPreset（12 节点场景图）+ promptTemplates + cardSchemas
 └─ utils/             jsonValidator / tokenEstimator / deepClone / idGenerator
+
+mcp-server/           MCP 服务器（让 Claude 等客户端批量生成剧本）
+├─ preset-server.mjs   主入口（34 工具 + JSON-RPC over stdio）
+├─ preset-server.test.mjs 12 烟雾测试
+└─ README.md          接入 Claude Code 配置 + 工作流示例
 ```
+
+### 场景图（主路径）
+
+```
+preset.scenes[] 是头等数据，preset.map 仅作向后兼容保留
+
+每个 scene:
+  { id, name, type, icon, coords: {x,y},
+    description,                     // AI 抵达时的素材
+    connections: [{ to, label?, cost?, gated? }],  // 出边（单向，写双向就写两条）
+    events: [eventId, ...],           // 抵达时按 priority 选首个未完成的触发
+    vignettes: [...],                 // 重访的本地短描述（无 AI 调用）
+    tags: [...] }
+
+连接的 gated 条件（不暴露给 UI，UI 看到的是诗意文案）:
+  gated: { requireVariables?, requireCompletedEvents?, requireItems?,
+           hint?: '只有听过那位骑士的故事，你们才会知道路径' }
+
+GameState.mapState 新字段:
+  currentSceneId      当前所在节点
+  visitedSceneIds[]   已访问过的节点（决定重访 vignette 是否触发 + 锁定节点是否露名）
+
+触发器多了一个维度:
+  trigger.condition.inScene: ['scene_x', 'scene_y']
+  仅在 SCENE_ENTER 时机评估 — 抵达对应场景才扫
+```
+
+### 渲染器分流
+
+`main.js` 的 canvas render callback 根据 `preset.displayMode` 路由：
+
+```js
+if (preset.displayMode !== 'grid' && sceneSystem.hasScenes()) {
+  sceneRenderer.render(ctx, viewport, gameState, sceneSystem);
+} else if (mapRenderer.mapData) {
+  mapRenderer.render(ctx, viewport, gameState);  // 旧 grid 兼容
+}
+```
+
+`SceneGraphRenderer` 节点五态：
+- `current` 金色发光 + 名 + 图标
+- `reachable` 青色发光 + 名 + 图标
+- `visited` 灰色 + 名 + 图标
+- `locked` 暗灰 + **🔒** + **`???`**（仅当 unvisited 时隐名，去过的话保留）
+- `unknown` 雾化 `?`
 
 ### 关键调用链
 
@@ -190,9 +255,55 @@ AI 容易在 `narrate_combat` 开场（roundResults 为空）时编造"艾拉挥
 
 涉及链式 AI 调用的场景（如战斗结束 → COMBAT_END scan → ch10 触发 → ch10 narrate）必须验证 narrative 真正写入了 narrativeLog。
 
+### 4.7 场景图代替格子地图（Phase 16）
+
+**桌游 GM 不描述"你迈出第 47 步"，而是描述"你们花了大半天抵达林间村落"**。原来的 20×15 = 300 格 grid 里只有 ~6 个有意义的事件触发点，剩下 98% 是空格 —— 玩家每走一格都触发一次 AI 叙事 → AI 重复编"道路腐臭、枯树、乌鸦……"模板填充。
+
+场景图把"地图"升级成"节点 + 边"：
+
+- 每个节点 = 一段戏 = 一次 AI 抵达叙事
+- 默认主线从 300 格压成 12 节点
+- 一局完整通关 AI 调用从 60+ 降到 ~30 次（详见 `scripts/playtest-ai-vs-ai-scene.mjs` 真实数据）
+
+`preset.displayMode === 'scene-graph'` 时主路径走场景图；`'grid'` 时回退旧渲染（向后兼容）。`preset.scenes[].length > 0` 时 `GamePreset` 构造函数会自动把 displayMode 设为 scene-graph。
+
+### 4.8 防剧透 / 防泄露原则（Bug #12-13 教训）
+
+**永远不要把内部 key（变量名 / 事件 ID / 物品 ID）泄露到玩家可见 UI**：
+
+- 锁定的 connection.gated → reason 走通用文案（"你们似乎还差一些线索"）或作者写的 `hint`
+- locked-but-unvisited 的 scene → 名字、图标都隐藏为 `🔒 ???`
+- 已访问过的 scene 即使后来被门控（不太可能但理论上）也保留名字显示
+
+写新 UI 组件涉及到 gameState 时，先问：**这个字符串如果暴露给玩家会不会剧透 / 暴露技术细节？**
+
+### 4.9 AIResponseParser 防御性解析（Bug #15 教训）
+
+AI 偶尔返回的 JSON 在 `narrative` 字段里夹未转义的引号（`"narrative":"... 薇拉说："...""，导致 JSON.parse 失败。三级 fallback：
+
+1. 直接 `JSON.parse`
+2. 提取 markdown code block 包裹的 JSON
+3. 提取首尾 `{...}` 之间的内容
+4. **宽松正则抽取 narrative 字段**（兼容单行 + 多行损坏 JSON）
+5. **fallback 防御性清洗**：剥掉 `{`, `"narrative":"` 前缀，抹掉尾部 `"actions":...` 残骸
+
+所有这些步骤的目标只有一个：**生 JSON 文本永远不应该出现在玩家叙事面板里**。
+
+### 4.10 场景图模式下事件触发链
+
+事件触发不再依赖玩家"踩到 tileType 触发"，而是：
+
+1. **抵达场景**（`_travelToScene`）→ 写玩家行动 + AI 抵达叙事（首访）或 vignette（重访）
+2. **扫描 scene.events 数组**（按 priority 排序，过滤已完成不可重复的）→ 触发第一个匹配的
+3. **如果没有 scene.events 匹配**，回退扫 `SCENE_ENTER` 时机的全局触发器（含 `inScene` 条件）
+
+**重要约束**：战斗中（`activeCombat` 存在）跳过 `EVENT_COMPLETE` 扫描，避免 ch10 这种"完成 ch9 触发"在 ch9 战斗还没真正结束时就把 ending 叙事写出来。等 `COMBAT_END` 时机再补扫。
+
 ---
 
-## 5. 已修复的 9 个 bug（含防回归测试）
+## 5. 已修复的 17 个 bug（含防回归测试）
+
+### Phase 0-14 修的（1-9）
 
 | # | 描述 | 严重度 | 防回归 |
 |---|---|---|---|
@@ -205,6 +316,19 @@ AI 容易在 `narrate_combat` 开场（roundResults 为空）时编造"艾拉挥
 | 7 | boss 击杀没写入记忆 | 中 | endResult.defeatedEnemies 快照 |
 | 8 | **AI 并发冲突丢失叙事** | **严重** | processGameAction 轮询等待 + 玩测 ch10 黎明验证 |
 | 9 | **自动存档刷新后未恢复** | **严重** | _loadInitialData 优先 loadFromSlot('auto') |
+
+### Phase 15-16 修的（10-17）
+
+| # | 描述 | 严重度 | 防回归 |
+|---|---|---|---|
+| 10 | **起始场景 inScene 事件不触发**（开场 ch1 没弹出，必须离开再回来） | **严重** | `loadPreset` 初始 setTimeout 走 scene.events priority 排序 + SCENE_ENTER 兜底 |
+| 11 | 场景图模式下 `ui:openEndgame` 因递归 publish 导致 modal 渲染两次（剧本库被覆盖） | 严重 | 改 mutate evt.data，与 `ui:openEditor` 同一模式 |
+| 12 | 锁定节点 reason 暴露内部变量名（如 `knows_dark_knight = true`） | 中 | `_evaluateGated` 返回脱敏 reason，`SceneSystem.test.js` 加 `not.toContain('quest_received')` 用例 |
+| 13 | locked-but-unvisited 节点显示真实名字 → 剧透下一章 | 中 | SceneGraphRenderer + 终端卡：hideIdentity 时显示 `???` |
+| 14 | 骰子动画结束后 WebGL canvas 残留遮挡视野 | 中 | `_finishAnimation` 实质清场：dispose + clear framebuffer + container.innerHTML = '' |
+| 15 | AI 返回单行损坏 JSON → UI 显示生 JSON 文本 | 中 | `AIResponseParser._tryExtractLenient` 单行 + fallback 防御性清洗 + 3 个回归测试 |
+| 16 | `item_007` 命名错位（叙事说"护身符"，物品名"魔力水晶"） | 中 | 拆 `item_013` 符文护身符 + ch2 改用新 ID + E2E 测试更新 |
+| 17 | `ch10_epilogue` 在 ch9 战斗未结束时就触发，"黎明"叙事和战斗交错 | 中 | `_scanEventTriggers` 在 activeCombat 时跳过 EVENT_COMPLETE 扫描 |
 
 **给接手者**：跑这个项目时如果发现类似行为重新出现，**第一时间查 git blame**，可能是上面这些修复回归了。
 
@@ -226,9 +350,14 @@ AI 容易在 `narrate_combat` 开场（roundResults 为空）时编造"艾拉挥
 ```
 
 **重要**：
-- 模型名大小写敏感（`mimo-v2.5` 不是 `MiMo-V2.5`）
+- 模型名大小写敏感；以接口 `/v1/models` 返回为准（当前 MiMo 接口返回 `mimo-v2.5` / `mimo-v2.5-pro`）
 - 真 AI 调用 1-6s，等待时间要足够
 - token 监控可见，一场 10 章测试 ~30K tokens（成本 ¥0.05-0.2）
+
+**2026-05-21 最新验证**：
+- 小米 MiMo 接口 `/v1/models` 返回的可用模型 ID 是小写：`mimo-v2.5` / `mimo-v2.5-pro`。
+- 使用大写 `MiMo-V2.5` 会返回 400 `Not supported model`；页面会按设计写入系统错误叙事并切换到本地 fallback。
+- 使用 `mimo-v2.5` 通过浏览器真实链路验证：事件选择、自由行动、移动触发事件、Token 面板更新均正常。
 
 ### 6.2 Mock AI 单元测试
 
@@ -255,16 +384,39 @@ const app = window.__trpgApp;  // 全局调试入口
 __tests__/
 ├─ setup.js                       Jest 配置
 ├─ styleMock.js                   CSS import 拦截
+├─ core/
+│  ├─ EventSystem.test.js          发布订阅、取消订阅、错误隔离
+│  ├─ GameEngine.test.js           系统注册、循环、暂停恢复
+│  └─ StateManager.test.js         状态读写、快照、订阅
 ├─ integration/
-│  ├─ _harness.js                 测试夹具（mock AI、构造 game）
-│  └─ mainQuest.test.js           ch1→ch10 完整剧情链 E2E
+│  ├─ _harness.js                 测试夹具（mock AI + travelTo + 战斗自动结算）
+│  └─ mainQuest.test.js           ch1→ch10 完整剧情链 E2E（场景图驱动）
+├─ utils/
+│  └─ utils.test.js                id/deepClone/jsonValidator/tokenEstimator
 └─ systems/
    ├─ DiceSystem.test.js          公式解析、优势/劣势
    ├─ CombatSystem.test.js        攻击、技能、nextTurn 索引 bug 回归
-   ├─ AIResponseParser.test.js    JSON 解析 fallback、action 校验
-   ├─ EventTriggerEngine.test.js  6 维度触发条件
+   ├─ AIResponseParser.test.js    JSON 解析 fallback（4 级）、action 校验
+   ├─ EventTriggerEngine.test.js  7 维度触发条件（含 inScene）
    ├─ ProgressionSystem.test.js   升级公式、装备、商店
-   └─ MemorySystem.test.js        WorldFacts/KeyEvents、容量归档
+   ├─ MemorySystem.test.js        WorldFacts/KeyEvents、容量归档
+   ├─ AllyAIController.test.js    队友启发式/LLM 决策
+   ├─ CardManager.test.js         卡牌 CRUD 与索引
+   ├─ DifficultyTracker.test.js   动态难度统计
+   ├─ TurnManager.test.js         回合状态机
+   ├─ WorldGenerator.test.js      随机 grid + scene graph 生成
+   ├─ SceneSystem.test.js         场景图：加载/邻居/gated/旅行/vignette/脱敏
+   └─ LogSystem.test.js           JSON/Markdown 诊断报告、console 环形缓冲
+```
+
+### 玩测脚本
+
+```
+scripts/
+├─ playtest-v2.mjs               纯后端手动驱动玩测（场景前的版本）
+├─ playtest-ai-vs-ai.mjs         Pro AI 玩测（grid 版，旧）
+└─ playtest-ai-vs-ai-scene.mjs   Pro AI 玩测（场景图版，**当前主要测试**）
+                                 一次完整通关 ~24 次决策 / ~120k tokens
 ```
 
 **给接手者**：新增功能要先想"怎么测"。系统级的测试比 UI 测试容易写（不需要 DOM mock）。
@@ -279,15 +431,17 @@ __tests__/
 |---|---|---|
 | Obs #1 | AI 偶尔生成 outcome.text 不一致的叙事（如选"使用护身符成功"AI 仍写"石像鬼苏醒"） | prompt 加强"严格按 outcomeText 写" |
 | Obs #2 | 对角线方向（"向西北"）解析为方向但 MapSystem.canMoveTo 拒绝（曼哈顿距离 ≠ 1） | 用户选项不暴露对角线移动 |
-| Obs #3 | Three.js 让 dist 体积大（697 KB / 188 KB gzipped）| 可改为 CDN 动态加载 |
+| Obs #3 | Three.js 独立 chunk 仍较大（约 475 KB / 119 KB gzipped）| 当前已分包；后续可考虑按需动态加载 |
 | Obs #4 | 默认 lootTable 设计偏单调（很多 100% 掉率 item_009/008） | 创作者可自定义 |
 
 ### 8.2 候选下一步（按价值排）
 
 | 方向 | 工作量 | 价值 |
 |---|---|---|
-| 移动端响应式 | 中 | 解锁手机/平板用户 |
+| **编辑器加场景图可视化编辑** | 中 | 当前 scenes[] 仅能写 JSON 编辑；拖拽节点 + 连线 GUI 是 Phase 16 的明显缺口 |
 | 推 GitHub + 上线 Pages/Vercel | 小 | 让别人能玩到 |
+| 真实 API 主线场景图回归玩测 | 小 | 浏览器端跑通 12 节点完整流程（headless 已验证） |
+| WorldGenerator.generateScenePreset 扩主题 | 小 | 当前只有 forest/desert/ruins 三个；可加 sci-fi / 武侠 / 蒸汽 等 |
 | 多语言（i18n） | 中 | 面向全球受众 |
 | 社区预设库（URL 分享） | 中 | UGC 生态 |
 | 战斗 UI 视觉打磨（伤害飞数字字体动画/技能特效） | 中 | 体验提升 |
@@ -340,13 +494,14 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 
 ## 10. 给下一位接手者的建议
 
-### 优先理解的 5 个文件
+### 优先理解的 6 个文件
 
-1. **[src/main.js](../src/main.js)** ~2000 行，TRPGApp 主类、所有事件订阅、玩家行动处理。理解了它就理解了整个流程。
-2. **[src/systems/AIGMEngine.js](../src/systems/AIGMEngine.js)** AI 调用核心、token 跟踪、并发处理。
-3. **[src/systems/EventTriggerEngine.js](../src/systems/EventTriggerEngine.js)** 6 维度触发器，剧情逻辑的核心。
-4. **[src/data/defaultPreset.js](../src/data/defaultPreset.js)** 10 章主线参考实现，看它就懂复合触发器怎么用。
-5. **[docs/AI_INTEGRATION.md](AI_INTEGRATION.md)** + **[docs/AUTHORING_GUIDE.md](AUTHORING_GUIDE.md)** 用户视角的两份手册。
+1. **[src/main.js](../src/main.js)** ~2200 行，TRPGApp 主类、所有事件订阅、玩家行动处理。理解了它就理解了整个流程。
+2. **[src/systems/SceneSystem.js](../src/systems/SceneSystem.js)** 场景图核心：节点 / 连接 / 门控 / 旅行 / vignette / 脱敏 reason。
+3. **[src/systems/AIGMEngine.js](../src/systems/AIGMEngine.js)** AI 调用核心、token 跟踪、并发处理。
+4. **[src/systems/EventTriggerEngine.js](../src/systems/EventTriggerEngine.js)** 7 维度触发器（含 inScene），剧情逻辑的核心。
+5. **[src/data/defaultPreset.js](../src/data/defaultPreset.js)** 12 节点主线参考实现，看它就懂场景图怎么写。
+6. **[docs/AI_INTEGRATION.md](AI_INTEGRATION.md)** + **[docs/AUTHORING_GUIDE.md](AUTHORING_GUIDE.md)** 用户视角的两份手册。
 
 ### 高 ROI 行动
 

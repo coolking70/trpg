@@ -132,6 +132,49 @@ export class AIGMEngine extends GameSystem {
   }
 
   /**
+   * Phase 26B — AI Hooks 决策门：根据 preset.aiHooks + gameState.aiTier 决定是否调 AI
+   *
+   * preset.aiHooks[hook] 值：
+   *   - 'always'   → 总是调 AI
+   *   - 'never'    → 永远本地兜底
+   *   - 'optional' → 按 aiTier 决定
+   *
+   * gameState.aiTier 值（默认 'standard'）：
+   *   - 'none'     → 全 fallback（省 token）
+   *   - 'light'    → 仅首次访问 / 重要事件
+   *   - 'standard' → 大部分都调（除了 vignette 重访）
+   *   - 'advanced' → 全开 + 更长 prompt
+   *
+   * @param {string} hookName - 'sceneArrival' | 'eventResolve' | 'npcDialogue' | 'vignette' | 'worldRipple'
+   * @param {object} options - { firstVisit, importance } 等
+   * @returns {boolean}
+   */
+  shouldCallAI(hookName, options = {}) {
+    if (!this.preset) return true;  // 没预设上下文，按调
+    const hookValue = (this.preset.aiHooks || {})[hookName];
+    if (hookValue === 'always') return true;
+    if (hookValue === 'never') return false;
+    // optional → 看 tier
+    const tier = (this.gameEngine?.getGameState?.()?.aiTier) || 'standard';
+    if (tier === 'none') return false;
+    if (tier === 'advanced') return true;
+    // light: 首次重要节点才调
+    if (tier === 'light') {
+      if (hookName === 'sceneArrival') return options.firstVisit === true;
+      if (hookName === 'eventResolve') return options.importance === 'main';
+      if (hookName === 'npcDialogue') return options.firstMeet === true;
+      if (hookName === 'vignette') return false;
+      if (hookName === 'worldRipple') return options.importance === 'main';
+      return false;
+    }
+    // standard: 默认全开但 vignette 重访仅 30% 概率
+    if (hookName === 'vignette' && options.firstVisit === false) {
+      return Math.random() < 0.3;
+    }
+    return true;
+  }
+
+  /**
    * 处理游戏操作（主入口）
    * @param {string} actionType - 操作类型
    * @param {object} actionData - 操作数据
@@ -140,6 +183,13 @@ export class AIGMEngine extends GameSystem {
    */
   async processGameAction(actionType, actionData, gameState) {
     if (!this.isConfigured()) {
+      return this._localFallback(actionType, actionData, gameState);
+    }
+
+    // Phase 26B — AI Hooks 决策门
+    // 把 actionType 映射到 hook 名 + 判断；不满足直接走 fallback
+    const hookForAction = this._hookNameForAction(actionType, actionData, gameState);
+    if (hookForAction && !this.shouldCallAI(hookForAction.name, hookForAction.options)) {
       return this._localFallback(actionType, actionData, gameState);
     }
 
@@ -240,23 +290,25 @@ export class AIGMEngine extends GameSystem {
   }
 
   /**
-   * 调用 AI API（带 30 秒超时 + 网络失败自动重试 1 次）
+   * 调用 AI API（带 30 秒超时 + 网络失败指数退避重试 3 次）
    * @param {Array<{role: string, content: string}>} messages
    * @returns {Promise<string>} AI响应文本
    */
   async callAI(messages) {
-    // 最多重试 1 次（仅网络错误/超时；4xx 不重试因为是请求本身问题）
+    // 最多 3 次重试（网络错误 / 5xx / 429；4xx-非 429 不重试因为是请求本身问题）
+    const MAX_RETRIES = 3;
     let lastErr;
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
         return await this._callAIOnce(messages);
       } catch (e) {
         lastErr = e;
-        // 4xx 错误不重试
-        if (/API请求失败 \(4\d\d\)/.test(e.message)) throw e;
-        if (attempt === 0) {
-          // 等 800ms 后重试
-          await new Promise(r => setTimeout(r, 800));
+        // 4xx 非 429 → 直接抛（请求构造问题，重试无意义）
+        const m = e.message.match(/API请求失败 \((4\d\d)\)/);
+        if (m && m[1] !== '429') throw e;
+        if (attempt < MAX_RETRIES - 1) {
+          const backoffMs = 800 * Math.pow(2, attempt) + Math.floor(Math.random() * 400);
+          await new Promise(r => setTimeout(r, backoffMs));
         }
       }
     }
@@ -472,6 +524,30 @@ export class AIGMEngine extends GameSystem {
   }
 
   /**
+   * Phase 26B — actionType → hook 名映射 + 上下文 options
+   * 返回 null 表示该 actionType 不走 hook gate（如 chat、player_input 等总是调）
+   */
+  _hookNameForAction(actionType, actionData, gameState) {
+    switch (actionType) {
+      case 'narrate_scene_arrival':
+        return { name: 'sceneArrival', options: { firstVisit: actionData.firstVisit !== false } };
+      case 'narrate_event': {
+        const ev = actionData.event;
+        const importance = (ev?.tags || []).includes('main') ? 'main' : 'side';
+        return { name: 'eventResolve', options: { importance } };
+      }
+      case 'narrate_npc_dialogue':
+        return { name: 'npcDialogue', options: { firstMeet: actionData.firstMeet === true } };
+      case 'narrate_vignette':
+        return { name: 'vignette', options: { firstVisit: actionData.firstVisit !== false } };
+      case 'narrate_world_ripple':
+        return { name: 'worldRipple', options: { importance: actionData.importance || 'side' } };
+      // narrate_combat / chat / player_input 等不受 hooks 控制
+      default: return null;
+    }
+  }
+
+  /**
    * 本地回退处理（AI不可用时）
    * @param {string} actionType
    * @param {object} actionData
@@ -541,6 +617,13 @@ export class AIGMEngine extends GameSystem {
       case 'scene_description':
         narrative = '你环顾四周，观察着周围的环境。';
         break;
+
+      case 'narrate_scene_arrival': {
+        const to = actionData.toScene;
+        if (to) narrative = to.description ? `你们抵达了${to.name}。${to.description}` : `你们抵达了${to.name}。`;
+        else narrative = '你们抵达了新的场景。';
+        break;
+      }
 
       default:
         narrative = '...';

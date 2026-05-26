@@ -76,6 +76,25 @@ export class AIPromptBuilder {
     const pos = gameState.mapState.playerPosition;
     parts.push(`[回合${gameState.turnNumber} 阶段:${gameState.currentPhase} 位置:(${pos.x},${pos.y})]`);
 
+    // Phase 22A — 故事时间 + 世界状态注入
+    const st = gameState.storyTime;
+    if (st && st.day !== undefined) {
+      parts.push(`【故事时间】第 ${st.day} 天 ${String(Math.floor(st.hour ?? 0)).padStart(2, '0')}:00`);
+    }
+    const wf = gameState.worldFlags || {};
+    const activeFlags = Object.entries(wf).filter(([, v]) => v).map(([k]) => k);
+    if (activeFlags.length > 0) {
+      parts.push(`【当前世界状态】${activeFlags.join(' · ')}（让叙事氛围与此一致；不要写与这些状态矛盾的内容）`);
+    }
+    // Phase 19A — 玩家身份 tags
+    if ((gameState.playerTags || []).length > 0) {
+      parts.push(`【玩家身份】${gameState.playerTags.join(' · ')}`);
+    }
+    // Phase 20A — 同行伙伴名字（让 AI 知道场上谁在）
+    if ((gameState.companions || []).length > 0) {
+      parts.push(`【同行伙伴】${gameState.companions.join(' · ')}`);
+    }
+
     // 队伍当前HP概要
     const hpSummary = (gameState.activeCharacters || [])
       .map(c => `${c.name}:HP${c.stats.hpCurrent}/${c.stats.hp}`)
@@ -186,6 +205,27 @@ export class AIPromptBuilder {
 
       case 'scene_description': {
         parts.push('请描述当前场景的氛围和环境。');
+        break;
+      }
+
+      case 'narrate_scene_arrival': {
+        // 场景图模式下的"抵达新场景"叙事 — 一次性、有戏、不重复
+        const from = actionData.fromScene;
+        const to = actionData.toScene;
+        if (from) parts.push(`你们从【${from.name}】启程，${actionData.connectionLabel || '一路赶往'}`);
+        if (to) {
+          parts.push(`抵达【${to.name}】。`);
+          if (to.description) parts.push(`场景基础描述: ${to.description}`);
+          if (to.type) parts.push(`场景类型: ${to.type}`);
+          if (to.tags && to.tags.length) parts.push(`标签: ${to.tags.join(' / ')}`);
+        }
+        parts.push(
+          '用 3-5 句叙述：',
+          '1) 简短的旅途过渡（"半日后"/"穿过雾气"之类，不要描写具体步数）',
+          '2) 抵达时的环境与氛围',
+          '3) 队伍成员的一两句反应或交流（要符合各自性格）',
+          '严禁脑补未发生的事件、敌人或 NPC（除非场景描述里就有）。'
+        );
         break;
       }
 

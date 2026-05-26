@@ -27,12 +27,19 @@ import { ProgressionSystem } from './systems/ProgressionSystem.js';
 import { MemorySystem } from './systems/MemorySystem.js';
 import { AllyAIController } from './systems/AllyAIController.js';
 import { DifficultyTracker } from './systems/DifficultyTracker.js';
-import { generateRandomPreset, getThemes } from './systems/WorldGenerator.js';
+import { generateScenePreset } from './systems/WorldGenerator.js';
 import { LogSystem } from './systems/LogSystem.js';
+import { SceneSystem } from './systems/SceneSystem.js';
+import { NPCSystem } from './systems/NPCSystem.js';
+import { DialogueSystem } from './systems/DialogueSystem.js';
+import { ContextRetriever } from './systems/ContextRetriever.js';
+import { presetStorage } from './core/PresetStorage.js';
+import { metaProgression } from './core/MetaProgression.js';
 
 // 渲染
 import { RenderEngine } from './rendering/RenderEngine.js';
 import { MapRenderer } from './rendering/MapRenderer.js';
+import { SceneGraphRenderer } from './rendering/SceneGraphRenderer.js';
 import { FloatingTextLayer } from './rendering/FloatingTextLayer.js';
 
 // UI
@@ -64,6 +71,9 @@ class TRPGApp {
 
     /** @type {MapRenderer} */
     this.mapRenderer = new MapRenderer();
+
+    /** @type {SceneGraphRenderer} */
+    this.sceneRenderer = new SceneGraphRenderer();
 
     /** @type {FloatingTextLayer} */
     this.floatingText = new FloatingTextLayer();
@@ -126,6 +136,10 @@ class TRPGApp {
     this.engine.registerSystem(new AllyAIController(), 22);
     this.engine.registerSystem(new DifficultyTracker(), 21);
     this.engine.registerSystem(new LogSystem(), 5);  // 低优先级即可，被动收集
+    this.engine.registerSystem(new SceneSystem(), 33);  // 场景图（位于 EventTrigger 之上，AIGM 之下）
+    this.engine.registerSystem(new NPCSystem(), 34);   // NPC 持久状态系统
+    this.engine.registerSystem(new DialogueSystem(), 32);  // 对话树解析
+    this.engine.registerSystem(new ContextRetriever(), 31); // AI 上下文检索（按相关性挑场景/NPC）
 
     // 渲染引擎最低优先级（最后更新 = 最后绘制）
     this.engine.registerSystem(new RenderEngine(), 10);
@@ -148,9 +162,15 @@ class TRPGApp {
 
     renderEngine.setupCanvas(canvas);
 
-    // 注册地图渲染回调
+    // 注册地图渲染回调（按 displayMode 决定走哪个 renderer）
     renderEngine.addRenderCallback((ctx, viewport, gameState) => {
-      if (this.mapRenderer.mapData && gameState) {
+      if (!gameState) return;
+      const sceneSystem = this.engine.getSystem('SceneSystem');
+      if (sceneSystem && sceneSystem.hasScenes() && this.preset && this.preset.displayMode !== 'grid') {
+        // 场景图模式
+        this.sceneRenderer.render(ctx, viewport, gameState, sceneSystem);
+      } else if (this.mapRenderer.mapData) {
+        // 格子地图模式（向后兼容）
         this.mapRenderer.render(ctx, viewport, gameState);
       }
     }, 0);
@@ -167,10 +187,33 @@ class TRPGApp {
   _bindEvents() {
     const es = this.eventSystem;
 
-    // ---- 地图点击 → 仅高亮格子可点击，走锁定流程 ----
+    // ---- Canvas 尺寸变化 → 重新居中（解决初始布局延迟导致节点偏离视口的问题）----
+    es.subscribe('render:resize', () => {
+      if (this.gameState) this._centerMapOnPlayer();
+    });
+
+    // ---- 地图点击 → 在场景图模式下点击节点，在格子模式下点击格子 ----
     es.subscribe('render:click', (evt) => {
       if (!this.gameState || this._actionLocked) return;
-      const { worldX, worldY } = evt.data;
+      const { worldX, worldY, screenX, screenY } = evt.data;
+
+      // 场景图模式：点击场景节点
+      const sceneSystem = this.engine.getSystem('SceneSystem');
+      if (sceneSystem && sceneSystem.hasScenes() && this.preset && this.preset.displayMode !== 'grid') {
+        const sceneId = this.sceneRenderer.hitTest(screenX, screenY);
+        if (!sceneId) return;
+        // 只允许跳到可达邻居（performTravel 会再校验一次）
+        const check = sceneSystem.canTravelTo(this.gameState, sceneId);
+        if (!check.ok) {
+          this.gameState.addNarrative('system', `（${check.reason}）`);
+          this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+          return;
+        }
+        es.publish('scene:travel', { sceneId });
+        return;
+      }
+
+      // ====== 旧的格子模式 ======
       const gridPos = this.mapRenderer.worldToGrid(worldX, worldY);
       if (!gridPos) return;
 
@@ -351,31 +394,9 @@ class TRPGApp {
       this._handleExportLog();
     });
 
-    // ---- 一键生成随机世界 ----
+    // ---- 旧的"随机世界"已并入新游戏 modal，工具栏不再常驻按钮，留兜底订阅以防外部仍触发 ----
     es.subscribe('toolbar:randomWorld', () => {
-      const themes = getThemes();
-      const themeNames = themes.map((t, i) => `${i + 1}. ${t.name}`).join('\n');
-      const choice = prompt(`选择主题（输入数字 1-${themes.length}）：\n${themeNames}`, '1');
-      if (!choice) return;
-      const idx = parseInt(choice) - 1;
-      if (isNaN(idx) || idx < 0 || idx >= themes.length) return;
-
-      const themeKey = themes[idx].key;
-      const baseLibrary = this.preset ? {
-        characters: JSON.parse(JSON.stringify(this.preset.characters || [])),
-        enemies: JSON.parse(JSON.stringify(this.preset.enemies || [])),
-        items: JSON.parse(JSON.stringify(this.preset.items || [])),
-      } : {};
-
-      const newPreset = generateRandomPreset({
-        width: 20, height: 15, theme: themeKey, villages: 2,
-        baseLibrary,
-      });
-
-      if (!confirm(`将生成新的 ${themes[idx].name} 主题世界。当前进度会丢失，是否继续？`)) return;
-      this.loadPreset(newPreset);
-      this.gameState.addNarrative('system', `🎲 已生成新的 ${themes[idx].name} 主题世界！`);
-      es.publish('game:stateChanged', { gameState: this.gameState });
+      es.publish('ui:openEndgame');
     });
 
     // ---- 编辑器：把当前 preset 传给编辑器作为初始值 ----
@@ -399,6 +420,73 @@ class TRPGApp {
       es.publish('game:stateChanged', { gameState: this.gameState });
     });
 
+    // ---- 工具栏"新游戏"按钮：拿当前局信息打开结算 modal ----
+    // 通过 mutate evt.data 注入（高优先级在前），不要 re-publish 否则会引发循环 dispatch
+    es.subscribe('ui:openEndgame', (evt) => {
+      // 流程内调用已携带数据 → 跳过
+      if (evt.data && (evt.data.manual || evt.data.completedMainQuest)) return;
+      const stats = this._collectEndgameStats();
+      const presetChoices = this._buildPresetChoices();
+      evt.data = { manual: true, stats, presetChoices };
+    }, 200);  // 高优先级，在 EndgameModal 之前先注入数据
+
+    // ---- 新游戏：清空 gameState、可选清空存档、重载预设 ----
+    es.subscribe('game:newGame', (evt) => {
+      this._handleNewGame(evt.data || {});
+    });
+
+    // ---- 角色创建完成 → 真正执行 loadPreset（带玩家选择） ----
+    es.subscribe('character:complete', (evt) => {
+      const { presetData, choices } = evt.data || {};
+      if (!presetData) return;
+      this._finalizeNewGame(presetData, choices, evt.data?.opts || {});
+    });
+
+    // ---- Phase 20B — 营地交互 ----
+    es.subscribe('dialogue:choose', (evt) => {
+      const dlg = this.engine.getSystem('DialogueSystem');
+      if (!dlg || !this.gameState) return;
+      const result = dlg.choose(this.gameState, evt.data.branchIndex);
+      this.eventSystem.publish('dialogue:viewChanged', { result });
+      if (result === 'exit') this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+    });
+
+    es.subscribe('dialogue:exit', () => {
+      const dlg = this.engine.getSystem('DialogueSystem');
+      if (dlg && this.gameState) dlg.exit(this.gameState);
+      this.eventSystem.publish('dialogue:viewChanged', {});
+    });
+
+    // 对话分支里写的 effects 由系统统一应用
+    es.subscribe('dialogue:effects', (evt) => {
+      for (const eff of (evt.data?.effects || [])) {
+        this._applyEventEffect(eff);
+      }
+      this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+    });
+
+    es.subscribe('camp:gift', (evt) => this._handleCampGift(evt.data));
+    es.subscribe('camp:request', (evt) => this._handleCampRequest(evt.data));
+    es.subscribe('camp:rest', (evt) => this._handleCampRest(evt.data));
+
+    es.subscribe('camp:close', () => {
+      // 关闭对话状态
+      const dlg = this.engine.getSystem('DialogueSystem');
+      if (dlg && this.gameState) dlg.exit(this.gameState);
+      this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+    });
+
+    // ---- 角色创建取消 → 重新打开新游戏对话框 ----
+    es.subscribe('character:cancel', () => {
+      this.eventSystem.publish('ui:openEndgame');
+    });
+
+    // ---- 场景图：玩家点击邻居节点请求前往 ----
+    es.subscribe('scene:travel', (evt) => {
+      if (this._actionLocked) return;
+      this._travelToScene(evt.data.sceneId);
+    });
+
     // ---- 设置变更（接收难度 + 自动存档 + 动态难度开关）----
     es.subscribe('settings:changed', (evt) => {
       const cfg = evt.data || {};
@@ -414,6 +502,11 @@ class TRPGApp {
       const aiEngine = this.engine.getSystem('AIGMEngine');
       if (aiEngine && cfg.budgetWarningTokens !== undefined) {
         aiEngine.setBudgetWarning(cfg.budgetWarningTokens);
+      }
+      // Phase 26B — AI 叙事丰度 tier 同步到 gameState
+      if (cfg.aiTier && this.gameState) {
+        this.gameState.aiTier = cfg.aiTier;
+        es.publish('game:stateChanged', { gameState: this.gameState });
       }
     });
 
@@ -604,6 +697,15 @@ class TRPGApp {
       }
     }
 
+    // Phase 26C — escape_combat 道具的额外副作用：真的结束战斗
+    if (eff.requiresCombatEnd === 'flee' && this.gameState.activeCombat) {
+      const combatSystem = this.engine.getSystem('CombatSystem');
+      if (combatSystem) {
+        this.gameState.addNarrative('system', `${eff.itemName} 化作浓雾，你们趁机脱离战场。`);
+        combatSystem.endCombat(this.gameState, 'flee');
+      }
+    }
+
     this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
   }
 
@@ -634,19 +736,19 @@ class TRPGApp {
       const savedState = this.stateManager.loadFromLocal('trpg_save');
       if (savedState) {
         this.gameState = GameState.fromJSON(savedState);
-        const savedPresetRaw = localStorage.getItem('trpg_current_preset');
-        if (savedPresetRaw) {
-          try {
-            const presetData = JSON.parse(savedPresetRaw);
+        // Phase 23A — 通过 PresetStorage（IndexedDB-first）异步取回预设
+        presetStorage.loadCurrent().then(presetData => {
+          if (presetData) {
             this._applyPreset(presetData);
             this.gameState.addNarrative('system', '已从存档恢复游戏。');
-          } catch (e) {
-            console.warn('无法恢复预设，使用默认预设:', e);
+            this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+          } else {
             this.loadPreset(DEFAULT_PRESET);
           }
-        } else {
+        }).catch(e => {
+          console.warn('PresetStorage 加载失败，回退默认预设:', e);
           this.loadPreset(DEFAULT_PRESET);
-        }
+        });
       } else {
         // 没有任何存档，加载默认预设
         this.loadPreset(DEFAULT_PRESET);
@@ -675,6 +777,10 @@ class TRPGApp {
           const aiEngine = this.engine.getSystem('AIGMEngine');
           if (aiEngine) aiEngine.setBudgetWarning(config.budgetWarningTokens);
         }
+        // Phase 26B — AI tier
+        if (config.aiTier && this.gameState) {
+          this.gameState.aiTier = config.aiTier;
+        }
       } catch (e) {
         // 忽略
       }
@@ -692,11 +798,26 @@ class TRPGApp {
    * 加载预设
    * @param {object} presetData - 原始预设数据
    */
-  loadPreset(presetData) {
+  loadPreset(presetData, playerChoices = null) {
     this._applyPreset(presetData);
+
+    // 重置主线完成标记，让新一局可以再次弹结算
+    this._mainQuestCompleteFired = false;
 
     // 从预设创建新的游戏状态
     this.gameState = GameState.fromPreset(this.preset);
+
+    // Phase 19A — 应用玩家角色创建选择（如果有）
+    if (playerChoices) {
+      this._applyPlayerCharacterChoices(playerChoices);
+    }
+
+    // Phase 19B — 初始化 NPC 运行时状态
+    const npcSystem = this.engine.getSystem('NPCSystem');
+    if (npcSystem) {
+      npcSystem.initializeNPCState(this.gameState);
+      npcSystem.refreshNPCLocations(this.gameState);
+    }
 
     // 初始化 AI 长期记忆（从预设 lore 导入 World Facts）
     const memorySystem = this.engine.getSystem('MemorySystem');
@@ -722,6 +843,19 @@ class TRPGApp {
     // 加载完成后扫描一次（让开场事件 / 起点 POI 事件能触发）
     setTimeout(() => {
       if (!this.gameState) return;
+
+      // 场景图模式：扫 SCENE_ENTER，让起始场景挂载的事件触发（如 ch1_start）
+      const sceneSystem = this.engine.getSystem('SceneSystem');
+      if (sceneSystem && sceneSystem.hasScenes() && this.preset && this.preset.displayMode !== 'grid') {
+        const startScene = sceneSystem.getCurrentScene(this.gameState);
+        if (startScene) {
+          // 复用 _afterSceneEnter 同一套逻辑（含 trigger 条件过滤，保证多结局分支正确）
+          this._afterSceneEnter(startScene);
+        }
+        return;
+      }
+
+      // 旧格子模式
       const pos = this.gameState.mapState.playerPosition;
       this._scanEventTriggers(TRIGGER_MOMENTS.MOVE, { tileX: pos.x, tileY: pos.y });
     }, 300);
@@ -733,12 +867,11 @@ class TRPGApp {
   _applyPreset(presetData) {
     this.preset = new GamePreset(presetData);
 
-    // 保存当前预设到localStorage以便存档恢复
-    try {
-      localStorage.setItem('trpg_current_preset', JSON.stringify(presetData));
-    } catch (e) {
-      console.warn('预设数据过大，无法保存到localStorage');
-    }
+    // Phase 23A — 优先用 PresetStorage（IndexedDB），LS 兜底
+    // 大于 1MB 的预设无法塞进 localStorage，必须走 IDB
+    presetStorage.saveCurrent(presetData).catch(e => {
+      console.warn('PresetStorage.saveCurrent 失败：', e.message);
+    });
 
     // 卡牌管理器加载
     const cardManager = this.engine.getSystem('CardManager');
@@ -754,20 +887,47 @@ class TRPGApp {
     // AI GM引擎加载
     const aiEngine = this.engine.getSystem('AIGMEngine');
     aiEngine.setPreset(this.preset);
+
+    // 场景图加载（如果预设包含 scenes[]）
+    const sceneSystem = this.engine.getSystem('SceneSystem');
+    if (sceneSystem) {
+      sceneSystem.loadFromPreset(this.preset);
+      this.sceneRenderer.setScenes(sceneSystem.getAllScenes());
+    }
+
+    // Phase 19B — NPC 系统加载
+    const npcSystem = this.engine.getSystem('NPCSystem');
+    if (npcSystem) {
+      npcSystem.loadFromPreset(this.preset);
+    }
   }
 
   /**
    * 将地图视口居中到玩家位置
    */
   _centerMapOnPlayer() {
-    if (!this.gameState || !this.mapRenderer.mapData) return;
+    if (!this.gameState) return;
+    const renderEngine = this.engine.getSystem('RenderEngine');
 
+    // 场景图模式：把视口居中到整个图的几何中心，并自动 zoom 到全图可见
+    const sceneSystem = this.engine.getSystem('SceneSystem');
+    if (sceneSystem && sceneSystem.hasScenes() && this.preset && this.preset.displayMode !== 'grid') {
+      // 先按当前 viewport 算出能装下全部节点的 zoom
+      const fitZoom = this.sceneRenderer.getFitZoom(
+        renderEngine.viewport.width,
+        renderEngine.viewport.height
+      );
+      renderEngine.viewport.zoom = fitZoom;
+      const c = this.sceneRenderer.getBoundsCenter();
+      renderEngine.centerOn(c.x, c.y);
+      return;
+    }
+
+    if (!this.mapRenderer.mapData) return;
     const pos = this.gameState.mapState.playerPosition;
     const tileSize = this.mapRenderer.mapData.tileSize;
     const worldX = pos.x * tileSize + tileSize / 2;
     const worldY = pos.y * tileSize + tileSize / 2;
-
-    const renderEngine = this.engine.getSystem('RenderEngine');
     renderEngine.centerOn(worldX, worldY);
   }
 
@@ -814,6 +974,8 @@ class TRPGApp {
         if (!eventCard.repeatable && !this.gameState.completedEventIds.includes(eventCard.id)) {
           this.gameState.completedEventIds.push(eventCard.id);
         }
+        // 主线完成检测（默认 ch10_epilogue 走这条路径，因为它无 choices）
+        this._checkMainQuestComplete(eventCard.id);
         // 完成后扫描可能的链式触发
         this._scanEventTriggers(TRIGGER_MOMENTS.EVENT_COMPLETE);
         this._unlockActions();
@@ -844,6 +1006,9 @@ class TRPGApp {
     // 查找选择项
     const choice = (eventCard.choices || []).find(c => c.id === choiceId);
     if (!choice) return;
+
+    // 玩家选择留痕（UI 上点击 / 测试调用都会经过这里）
+    this.gameState.addNarrative('player', `选择：${choice.text}`);
 
     // 按概率解算结果
     let outcome = null;
@@ -897,6 +1062,8 @@ class TRPGApp {
           if (dr && dr.total !== undefined) this.eventSystem.publish('dice:show', dr);
         }
       }
+      // 主线完成检测（带 choices 的事件也可能是 epilogue）
+      this._checkMainQuestComplete(eventId);
       // 事件完成后扫描可能的链式触发（变量已被 set_variable 改写过）
       this._scanEventTriggers(TRIGGER_MOMENTS.EVENT_COMPLETE);
       this._advanceTurnCounter();
@@ -984,9 +1151,150 @@ class TRPGApp {
         }
         break;
       }
+      // Phase 19C — 推进故事时间
+      case 'advance_time': {
+        this._advanceStoryTime(effect.hours || 1);
+        break;
+      }
+      // Phase 19B — NPC 互动效果
+      case 'change_affection': {
+        const npcSystem = this.engine.getSystem('NPCSystem');
+        if (npcSystem && effect.npcId) npcSystem.changeAffection(this.gameState, effect.npcId, effect.delta || 0);
+        break;
+      }
+      // Phase 22B — NPC 死亡 + 关系传播
+      case 'kill_npc': {
+        const npcSystem = this.engine.getSystem('NPCSystem');
+        if (npcSystem && effect.npcId) {
+          const npc = npcSystem.getNPC(effect.npcId);
+          const effects = npcSystem.applyNPCDeath(this.gameState, effect.npcId);
+          if (npc) this.gameState.addNarrative('system', `💀 ${npc.name} 已陨落。`);
+          // 给关联 NPC 的反应留痕（让玩家感到"世界在反应"）
+          for (const ef of effects) {
+            const tgt = npcSystem.getNPC(ef.to);
+            if (!tgt) continue;
+            const verb = ef.delta < 0 ? '愤怒' : '欣慰';
+            this.gameState.addNarrative('system',
+              `${tgt.icon || '🧑'} ${tgt.name} 因此 ${verb}（好感 ${ef.delta >= 0 ? '+' : ''}${ef.delta}）`);
+          }
+          // 从同行队伍移除
+          if (npc) {
+            npcSystem.dismissCompanion(this.gameState, effect.npcId);
+            const idx = this.gameState.activeCharacters.findIndex(c => c.id === effect.npcId && c._isCompanion);
+            if (idx >= 0) this.gameState.activeCharacters.splice(idx, 1);
+          }
+        }
+        break;
+      }
+      case 'recruit_companion': {
+        const npcSystem = this.engine.getSystem('NPCSystem');
+        if (npcSystem && effect.npcId) {
+          const ok = npcSystem.recruitCompanion(this.gameState, effect.npcId);
+          const npc = npcSystem.getNPC(effect.npcId);
+          if (ok && npc) {
+            // 把 NPC 当伙伴加入 activeCharacters（带 _isCompanion 标记，UI 据此隐藏装备编辑）
+            // 仅当尚未在 activeCharacters 中时加入
+            const exists = this.gameState.activeCharacters.some(c => c.id === effect.npcId);
+            if (!exists) {
+              const slot = JSON.parse(JSON.stringify(npc));
+              slot._isCompanion = true;
+              slot.type = 'character';  // 让战斗系统正确识别
+              // 补齐 hpCurrent/mpCurrent
+              if (slot.stats) {
+                slot.stats.hpCurrent = slot.stats.hp;
+                slot.stats.mpCurrent = slot.stats.mp;
+              }
+              this.gameState.activeCharacters.push(slot);
+            }
+            this.gameState.addNarrative('system', `🤝 ${npc.name} 加入了你的队伍。`);
+          }
+        }
+        break;
+      }
+      case 'dismiss_companion': {
+        const npcSystem = this.engine.getSystem('NPCSystem');
+        if (npcSystem && effect.npcId) {
+          npcSystem.dismissCompanion(this.gameState, effect.npcId);
+          // 同时从 activeCharacters 移除
+          const idx = this.gameState.activeCharacters.findIndex(c => c.id === effect.npcId && c._isCompanion);
+          if (idx >= 0) this.gameState.activeCharacters.splice(idx, 1);
+          const npc = npcSystem.getNPC(effect.npcId);
+          if (npc) this.gameState.addNarrative('system', `👋 ${npc.name} 离开了你的队伍。`);
+        }
+        break;
+      }
+      // Phase 22A — worldFlag（带玩家反馈）
+      case 'set_worldFlag': {
+        if (effect.name) {
+          this.gameState.worldFlags = this.gameState.worldFlags || {};
+          const oldVal = this.gameState.worldFlags[effect.name];
+          this.gameState.worldFlags[effect.name] = effect.value;
+          // 状态真的变化时给系统反馈（hint 可选 — 作者写就用，否则通用文案）
+          if (oldVal !== effect.value) {
+            const hint = effect.hint || `🌍 世界状态变化：${effect.name} = ${effect.value}`;
+            this.gameState.addNarrative('system', hint);
+          }
+        }
+        break;
+      }
+      // Phase 21B — 解锁隐藏连接
+      case 'reveal_connection': {
+        const ss = this.engine.getSystem('SceneSystem');
+        if (ss && effect.from && effect.to) {
+          const ok = ss.revealConnection(this.gameState, effect.from, effect.to);
+          if (ok) {
+            const toScene = ss.getScene(effect.to);
+            this.gameState.addNarrative('system',
+              `🗺 你发现了一条新路径${toScene ? `（通向 ${toScene.name}）` : ''}。`);
+          }
+        }
+        break;
+      }
+      // Phase 26 — 快速旅行（仅允许传送到已访问过的安全场景，防止剧情跳关）
+      case 'teleport_to_scene': {
+        const ss = this.engine.getSystem('SceneSystem');
+        const sceneId = effect.sceneId;
+        if (!ss || !sceneId) break;
+        const target = ss.getScene(sceneId);
+        if (!target) break;
+        const visited = this.gameState.mapState?.visitedSceneIds || [];
+        const allowUnvisited = effect.allowUnvisited === true;
+        if (!allowUnvisited && !visited.includes(sceneId)) {
+          this.gameState.addNarrative('system', `（${target.name} 还未去过，不能直接传送）`);
+          break;
+        }
+        this.gameState.mapState = this.gameState.mapState || {};
+        this.gameState.mapState.currentSceneId = sceneId;
+        if (target.coords) {
+          this.gameState.mapState.playerPosition = { x: target.coords.x, y: target.coords.y };
+        }
+        const npcSystem = this.engine.getSystem('NPCSystem');
+        if (npcSystem) npcSystem.refreshNPCLocations(this.gameState);
+        this.gameState.addNarrative('system', `🛤 你来到了 ${target.name}。`);
+        this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+        break;
+      }
       default:
         break;
     }
+  }
+
+  /**
+   * Phase 19C — 推进故事时间，并自动同步 NPC schedule
+   * @param {number} hours
+   */
+  _advanceStoryTime(hours) {
+    if (!this.gameState) return;
+    const st = this.gameState.storyTime || (this.gameState.storyTime = { day: 1, hour: 8 });
+    st.hour = (st.hour || 0) + (hours || 0);
+    while (st.hour >= 24) { st.hour -= 24; st.day = (st.day || 1) + 1; }
+    while (st.hour < 0)   { st.hour += 24; st.day = Math.max(1, (st.day || 1) - 1); }
+
+    // 同步 NPC 位置
+    const npcSystem = this.engine.getSystem('NPCSystem');
+    if (npcSystem) npcSystem.refreshNPCLocations(this.gameState);
+
+    this.eventSystem.publish('game:storyTimeChanged', { storyTime: st });
   }
 
   /**
@@ -1114,7 +1422,29 @@ class TRPGApp {
     if (this._actionLocked) return;
 
     const combatSystem = this.engine.getSystem('CombatSystem');
-    const { actionType, actorId, targetId, abilityId } = payload;
+    const { actionType, actorId, targetId, abilityId, itemId, ownerCharId, targetCharId } = payload;
+
+    // 玩家意图留痕：UI 点击或测试调用都会经过这里
+    const actorPre = combatSystem.findCombatant(this.gameState, actorId);
+    const targetPre = combatSystem.findCombatant(this.gameState, targetId);
+    if (actorPre) {
+      let intent;
+      if (actionType === 'attack') {
+        intent = `指挥 ${actorPre.name} 普攻 ${targetPre?.name || '目标'}`;
+      } else if (actionType === 'ability') {
+        const ab = (actorPre.abilities || []).find(a => a.id === abilityId);
+        intent = `指挥 ${actorPre.name} 释放「${ab?.name || abilityId}」对 ${targetPre?.name || '目标'}`;
+      } else if (actionType === 'flee') {
+        intent = `下令撤退`;
+      } else if (actionType === 'use_item') {
+        const cm = this.engine.getSystem('CardManager');
+        const item = cm?.getCard(itemId);
+        intent = `${actorPre.name} 使用 ${item?.name || itemId}`;
+      } else {
+        intent = `执行 ${actionType}`;
+      }
+      this.gameState.addNarrative('player', intent);
+    }
 
     this._lockActions();
 
@@ -1128,6 +1458,10 @@ class TRPGApp {
     } else if (actionType === 'flee') {
       this._attemptFlee(actorId);
       return;
+    } else if (actionType === 'use_item') {
+      // 战斗中使用消耗品 — 算消耗本回合
+      this._useItem(itemId, ownerCharId || actorId, targetCharId || actorId);
+      result = { success: true };
     }
 
     // 修复 Bug #3：玩家自己的战斗动作也写叙事
@@ -1675,8 +2009,73 @@ class TRPGApp {
    * @returns {object|null} 合成事件卡结构
    */
   _generateTerrainCard() {
-    if (!this.gameState || !this.mapRenderer.mapData) return null;
+    if (!this.gameState) return null;
 
+    // 场景图模式：构建"当前场景 + 邻居作为选项"的卡片
+    const sceneSystem = this.engine.getSystem('SceneSystem');
+    if (sceneSystem && sceneSystem.hasScenes() && this.preset && this.preset.displayMode !== 'grid') {
+      const currentBase = sceneSystem.getCurrentScene(this.gameState);
+      if (!currentBase) return null;
+      // Phase 21A — 用活跃变体的视图（不动 connections — 那由 getAdjacent 内部处理）
+      const current = sceneSystem.getActiveSceneView(currentBase, this.gameState) || currentBase;
+      const visited = new Set(this.gameState.mapState.visitedSceneIds || []);
+      const adjacent = sceneSystem.getAdjacent(this.gameState);
+      const choices = adjacent.map(a => {
+        // 锁定 + 没去过 → 不剧透名字
+        const hideIdentity = !a.reachable && !visited.has(a.scene.id);
+        const sceneLabel = hideIdentity ? '???' : a.scene.name;
+        let text;
+        if (a.reachable) {
+          text = `${a.connection.label || '前往'} → ${sceneLabel}`;
+        } else {
+          text = `🔒 ${sceneLabel} — ${a.lockedReason}`;
+        }
+        return {
+          id: `travel_${a.scene.id}`,
+          text,
+          _sceneId: a.scene.id,
+          _reachable: a.reachable,
+        };
+      });
+      // Phase 19B — 在场 NPC 列表（在场景描述下方显示）
+      const npcSystem = this.engine.getSystem('NPCSystem');
+      let npcsHere = [];
+      if (npcSystem) {
+        // 还会显示首次相遇的 NPC（includeUnknown=true 把未见过的也亮出来）
+        const inScene = npcSystem.getNPCsInScene(this.gameState, current.id, true);
+        npcsHere = inScene.map(({ npc, state }) => ({
+          id: npc.id, name: npc.name, icon: npc.icon || '🧑',
+          knownTo: state.knownTo, affection: state.affection,
+          isCompanion: npcSystem.isCompanion(this.gameState, npc.id),
+        }));
+        // 进入场景时把未见过的标记为已见
+        for (const { npc } of inScene) npcSystem.meetNPC(this.gameState, npc.id);
+      }
+
+      // 把 NPC 拼到 description 末尾（编辑器 UI 暂不改，先用最小可见呈现）
+      let desc = current.description || '';
+      if (npcsHere.length > 0) {
+        const list = npcsHere.map(n => {
+          const tag = n.isCompanion ? ' (同行)' : (n.knownTo ? ` ❤${n.affection}` : '');
+          return `${n.icon} ${n.name}${tag}`;
+        }).join('，');
+        desc += `\n\n👥 在场：${list}`;
+      }
+
+      return {
+        id: 'scene_current',
+        type: 'event',
+        eventType: 'scene',
+        name: `${current.icon || '📍'} ${current.name}`,
+        description: desc,
+        image: '',
+        choices,
+        _isSceneCard: true,
+        _npcsHere: npcsHere,
+      };
+    }
+
+    if (!this.mapRenderer.mapData) return null;
     const mapData = this.engine.getSystem('MapSystem').getMapData();
     if (!mapData) return null;
 
@@ -1753,10 +2152,21 @@ class TRPGApp {
 
     this.ui.rightPanel.setTerrainEvent(terrainCard, (choiceId) => {
       if (this._actionLocked) return;
-      // 获取方向信息
       const choice = terrainCard.choices.find(c => c.id === choiceId);
       if (!choice) return;
-      // 走统一操作流程
+
+      // 场景图模式：派发 scene:travel
+      if (terrainCard._isSceneCard) {
+        if (!choice._reachable) {
+          this.gameState.addNarrative('system', `（${choice.text}）`);
+          this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+          return;
+        }
+        this.eventSystem.publish('scene:travel', { sceneId: choice._sceneId });
+        return;
+      }
+
+      // 旧格子模式
       this._executeMovementAction(choice.text);
     });
   }
@@ -1964,6 +2374,12 @@ class TRPGApp {
     const triggerEngine = this.engine.getSystem('EventTriggerEngine');
     if (!triggerEngine) return;
 
+    // 战斗进行中不扫故事/相遇事件 — 避免 ch10 类"完成 boss 战的下一章"
+    // 在战斗还没真正打完时就把 ending 写出来。COMBAT_END 时机会在战斗收尾后补扫。
+    if (this.gameState.activeCombat && moment !== TRIGGER_MOMENTS.COMBAT_END) {
+      return;
+    }
+
     let context = { moment, ...extraContext };
 
     // 若是移动时机但没传 tileKey，从地图自动补
@@ -1996,6 +2412,583 @@ class TRPGApp {
       this.gameState.addNarrative('system', `📋 日志已导出为 ${format.toUpperCase()}`);
       this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
     }
+  }
+
+  // ==================== 场景图移动 ====================
+
+  /**
+   * 前往目标场景节点
+   * 一次完整流程：校验 → 锁定 → 写"启程"叙事 → performTravel → 抵达 AI 叙事 → 扫描场景挂载事件
+   * @param {string} sceneId
+   */
+  _travelToScene(sceneId) {
+    if (!this.gameState) return;
+    const sceneSystem = this.engine.getSystem('SceneSystem');
+    if (!sceneSystem) return;
+
+    const check = sceneSystem.canTravelTo(this.gameState, sceneId);
+    if (!check.ok) {
+      this.gameState.addNarrative('system', `（无法前往：${check.reason}）`);
+      this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+      return;
+    }
+
+    this._lockActions();
+
+    const fromScene = sceneSystem.getCurrentScene(this.gameState);
+    const result = sceneSystem.performTravel(this.gameState, sceneId);
+    if (!result) {
+      this._unlockActions();
+      return;
+    }
+    const { scene, isFirstVisit, connection } = result;
+
+    // Phase 19C — 旅行推进故事时间
+    // 优先 connection.cost（小时），其次 scene.travelHours，否则 1 小时
+    const hours = (connection?.cost) || scene.travelHours || 1;
+    this._advanceStoryTime(hours);
+
+    // 写玩家行动 + 简短启程叙事
+    const label = (connection && connection.label) ? connection.label : `前往 ${scene.name}`;
+    this.gameState.addNarrative('player', label);
+    this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+
+    // 重访 + 已有 vignette：用本地模板，不调 AI
+    if (!isFirstVisit) {
+      // Phase 21A — vignette 也从 variant 取（variant.vignettes 优先）
+      const sceneViewForVignette = sceneSystem.getActiveSceneView(scene, this.gameState) || scene;
+      const v = sceneSystem.pickVignette(sceneViewForVignette);
+      if (v) {
+        this.gameState.addNarrative('gm', v);
+        this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+      }
+      this._afterSceneEnter(sceneViewForVignette);
+      return;
+    }
+
+    // Phase 21A — 用 active variant 的 description（如果有命中的变体）
+    const sceneView = sceneSystem.getActiveSceneView(scene, this.gameState) || scene;
+
+    // 首访：AI 叙事 + 场景事件扫描
+    const aiEngine = this.engine.getSystem('AIGMEngine');
+    aiEngine.processGameAction('narrate_scene_arrival', {
+      fromScene: fromScene ? { id: fromScene.id, name: fromScene.name } : null,
+      toScene: { id: scene.id, name: scene.name, description: sceneView.description, type: scene.type, tags: scene.tags || [] },
+      connectionLabel: connection?.label || '',
+    }, this.gameState).then((aiResult) => {
+      this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+      if (aiResult.diceResults && aiResult.diceResults.length > 0) {
+        for (const dr of aiResult.diceResults) {
+          if (dr && dr.total !== undefined) this.eventSystem.publish('dice:show', dr);
+        }
+      }
+      this._afterSceneEnter(sceneView);
+    }).catch(() => {
+      // AI 失败兜底：直接用变体 description 作为叙事
+      if (sceneView.description) this.gameState.addNarrative('gm', sceneView.description);
+      this._afterSceneEnter(sceneView);
+    });
+  }
+
+  /**
+   * 抵达场景后：扫描挂载事件、自动存档、推进回合、解锁
+   */
+  _afterSceneEnter(scene) {
+    // 0) Phase 19B — 入场景就自动 meetNPC（让图鉴 + 关系图能记录所有遇到过的 NPC）
+    const npcSystem = this.engine.getSystem('NPCSystem');
+    if (npcSystem && scene && scene.id) {
+      // 用 includeUnknown=true 拿到所有活着的 NPC（不分已遇 / 未遇），然后只对未遇的喊一次 meet
+      const inScene = npcSystem.getNPCsInScene(this.gameState, scene.id, true);
+      for (const { npc } of inScene) {
+        npcSystem.meetNPC(this.gameState, npc.id);
+      }
+      // 同行伙伴也算"遇见过"
+      for (const cid of (this.gameState.companions || [])) {
+        npcSystem.meetNPC(this.gameState, cid);
+      }
+    }
+
+    // 1) 先尝试 SCENE_ENTER 时机的触发器（events 字段 + inScene 条件）
+    if (scene.events && scene.events.length > 0) {
+      const cardManager = this.engine.getSystem('CardManager');
+      const triggerEngine = this.engine.getSystem('EventTriggerEngine');
+      const pos = this.gameState.mapState.playerPosition;
+      const ctx = { moment: TRIGGER_MOMENTS.SCENE_ENTER, tileX: pos?.x, tileY: pos?.y };
+
+      // 过滤：未完成 + 触发条件满足（支持 requireVariables 等做多分支结局）
+      const candidates = scene.events
+        .map(id => cardManager.getCard(id))
+        .filter(e => {
+          if (!e) return false;
+          if (!e.repeatable && this.gameState.completedEventIds.includes(e.id)) return false;
+          // 尊重事件自身的 trigger 条件 — 让 ch10_redeemed/ch10_epilogue 这类
+          // 同一场景多分支结局能正确按变量分流
+          if (e.trigger && typeof triggerEngine?.evaluateTrigger === 'function') {
+            return triggerEngine.evaluateTrigger(e, this.gameState, ctx);
+          }
+          return true;
+        });
+      candidates.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+      const ev = candidates[0];
+      if (ev) {
+        this._triggerEvent(ev.id);
+        return;
+      }
+    }
+
+    // 2) 让 SCENE_ENTER 时机的触发器引擎跑一次（也能匹配 inScene 条件的事件）
+    this._scanEventTriggers(TRIGGER_MOMENTS.SCENE_ENTER);
+
+    // 3) Phase 20B — 如果是 camp/inn 场景，自动弹营地 modal
+    if (scene && (scene.type === 'camp' || scene.type === 'inn')) {
+      this._openCampForScene(scene);
+    }
+
+    // 4) 推进回合 + 自动存档 + 解锁 + 刷新场景卡
+    this._advanceTurnCounter();
+    this._autoSave();
+    this._updateTerrainCard();
+    this._unlockActions();
+    this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+  }
+
+  /**
+   * 抵达营地/旅馆时打开 CampModal
+   */
+  _openCampForScene(scene) {
+    const npcSystem = this.engine.getSystem('NPCSystem');
+    if (!npcSystem) return;
+    // 在场 NPC = 当前场景内 + 同行伙伴（伙伴永远跟随玩家）
+    const inScene = npcSystem.getNPCsInScene(this.gameState, scene.id, true);
+    for (const { npc } of inScene) npcSystem.meetNPC(this.gameState, npc.id);
+    const npcIds = inScene.map(o => o.npc.id);
+    // 同行伙伴也加入对话列表（即使他们的 currentScene 不一定在这）
+    for (const cid of (this.gameState.companions || [])) {
+      if (!npcIds.includes(cid)) npcIds.push(cid);
+    }
+    this.eventSystem.publish('camp:open', {
+      sceneId: scene.id,
+      sceneName: scene.name,
+      sceneIcon: scene.icon || '🏕',
+      npcIds,
+    });
+  }
+
+  /**
+   * Phase 20B — 赠礼处理
+   */
+  _handleCampGift({ npcId, itemId }) {
+    if (!this.gameState) return;
+    const npcSystem = this.engine.getSystem('NPCSystem');
+    const cm = this.engine.getSystem('CardManager');
+    const item = cm.getCard(itemId);
+    const npc = npcSystem.getNPC(npcId);
+    if (!item || !npc) return;
+
+    // 从主角 inventory 取出
+    const pc = this.gameState.activeCharacters?.[0];
+    if (!pc?.inventory) return;
+    const idx = pc.inventory.indexOf(itemId);
+    if (idx < 0) return;
+    pc.inventory.splice(idx, 1);
+
+    // 判反应 + 改 affection + 加入 NPC inventory
+    const reaction = npcSystem.evaluateGiftReaction(npcId, item);
+    const delta = npcSystem.giftReactionDelta(reaction);
+    npcSystem.changeAffection(this.gameState, npcId, delta);
+    const st = npcSystem.getNPCState(this.gameState, npcId);
+    if (st) (st.inventory ||= []).push(itemId);
+
+    // 写叙事
+    const reactionLabels = {
+      love: '深深地喜爱', like: '很开心', neutral: '勉强接受', dislike: '不太喜欢', hate: '厌恶',
+    };
+    this.gameState.addNarrative('player', `把【${item.name}】送给了 ${npc.name}`);
+    this.gameState.addNarrative('system',
+      `${npc.icon || '🧑'} ${npc.name} ${reactionLabels[reaction]}（好感 ${delta >= 0 ? '+' : ''}${delta}，当前 ${st?.affection || 0}/100）`);
+    this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+  }
+
+  /**
+   * Phase 20B — 索物处理
+   */
+  _handleCampRequest({ npcId, itemId }) {
+    if (!this.gameState) return;
+    const npcSystem = this.engine.getSystem('NPCSystem');
+    const cm = this.engine.getSystem('CardManager');
+    const item = cm.getCard(itemId);
+    const npc = npcSystem.getNPC(npcId);
+    if (!item || !npc) return;
+
+    const st = npcSystem.getNPCState(this.gameState, npcId);
+    if (!st || (st.affection || 0) < 50) return;
+
+    // 从 NPC inventory 转移到玩家
+    const idx = (st.inventory || []).indexOf(itemId);
+    if (idx < 0) return;
+    st.inventory.splice(idx, 1);
+    const pc = this.gameState.activeCharacters?.[0];
+    if (pc) (pc.inventory ||= []).push(itemId);
+
+    npcSystem.changeAffection(this.gameState, npcId, -5);
+
+    this.gameState.addNarrative('player', `向 ${npc.name} 索要了【${item.name}】`);
+    this.gameState.addNarrative('system',
+      `${npc.icon || '🧑'} ${npc.name} 把物品给了你，但有些不悦（好感 -5，当前 ${st.affection}/100）`);
+    this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+  }
+
+  /**
+   * Phase 20B — 营地休息（推进时间 + 全恢复）
+   */
+  _handleCampRest({ hours }) {
+    if (!this.gameState) return;
+    const h = hours || 8;
+
+    // 全队恢复
+    for (const c of (this.gameState.activeCharacters || [])) {
+      if (c.stats) {
+        c.stats.hpCurrent = c.stats.hp;
+        c.stats.mpCurrent = c.stats.mp;
+      }
+    }
+    // 同行伙伴也回满
+    const npcSystem = this.engine.getSystem('NPCSystem');
+    for (const cid of (this.gameState.companions || [])) {
+      const npc = npcSystem?.getNPC(cid);
+      if (npc?.stats) {
+        // NPC 的"当前 HP"借用 npcState.custom._companionStats，避免污染卡定义
+        const st = npcSystem.getNPCState(this.gameState, cid);
+        if (st) {
+          st.custom = { ...(st.custom || {}), hpCurrent: npc.stats.hp, mpCurrent: npc.stats.mp };
+        }
+      }
+    }
+
+    this._advanceStoryTime(h);
+    this.gameState.addNarrative('system', `😴 你们休息了 ${h} 小时，恢复了全部体力。`);
+    this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+  }
+
+  // ==================== Phase 19A — 角色创建 ====================
+
+  /**
+   * 应用玩家角色创建选项
+   * @param {object} choices - { race, origin, background, faith }（每项是 id 字符串）
+   */
+  _applyPlayerCharacterChoices(choices) {
+    if (!this.preset.startingOptions) return;
+    const opts = this.preset.startingOptions;
+    const tags = [];
+    const statBonus = {};
+
+    const apply = (kind, id) => {
+      const list = opts[kind] || [];
+      const found = list.find(o => o.id === id);
+      if (!found) return;
+      if (found.tags) tags.push(...found.tags);
+      if (found.statBonus) {
+        for (const [k, v] of Object.entries(found.statBonus)) {
+          statBonus[k] = (statBonus[k] || 0) + v;
+        }
+      }
+    };
+    apply('races',       choices.race);
+    apply('origins',     choices.origin);
+    apply('backgrounds', choices.background);
+    apply('faiths',      choices.faith);
+
+    this.gameState.playerTags = [...new Set(tags)];
+
+    // 应用属性加成到主角（activeCharacters[0]）
+    const pc = this.gameState.activeCharacters?.[0];
+    if (pc && pc.stats) {
+      for (const [k, v] of Object.entries(statBonus)) {
+        if (typeof pc.stats[k] === 'number') {
+          pc.stats[k] += v;
+          if (k === 'hp') pc.stats.hpCurrent = pc.stats.hp;
+          if (k === 'mp') pc.stats.mpCurrent = pc.stats.mp;
+        }
+      }
+    }
+
+    // 按 startingSceneRules 路由起始场景
+    const sceneSystem = this.engine.getSystem('SceneSystem');
+    if (sceneSystem?.hasScenes() && this.preset.startingSceneRules?.length > 0) {
+      const matched = this._resolveStartingScene();
+      if (matched) {
+        this.gameState.mapState.currentSceneId = matched;
+        this.gameState.mapState.visitedSceneIds = [matched];
+        const scene = sceneSystem.getScene(matched);
+        if (scene?.coords) {
+          this.gameState.mapState.playerPosition = { x: scene.coords.x, y: scene.coords.y };
+        }
+      }
+    }
+  }
+
+  /**
+   * 按 startingSceneRules 匹配玩家标签，决定起始场景 ID
+   */
+  _resolveStartingScene() {
+    const tags = new Set(this.gameState.playerTags || []);
+    for (const rule of this.preset.startingSceneRules || []) {
+      if (rule.default && Object.keys(rule).length === 1) continue;  // 跳过 default 进入第二轮
+      const whenTags = rule.when?.tags || [];
+      const whenAnyTags = rule.when?.anyTags || [];
+      const okAll = whenTags.every(t => tags.has(t));
+      const okAny = whenAnyTags.length === 0 || whenAnyTags.some(t => tags.has(t));
+      if (okAll && okAny && rule.sceneId) return rule.sceneId;
+    }
+    // 默认规则
+    const def = (this.preset.startingSceneRules || []).find(r => r.default);
+    return def?.default || null;
+  }
+
+  // ==================== 新游戏 / 结算 ====================
+
+  /**
+   * 收集结算/新游戏弹窗用的统计数据
+   * @returns {object} stats — chapters/level/turn/gold/totalTokens/victories
+   */
+  _collectEndgameStats() {
+    const gs = this.gameState;
+    if (!gs) return {};
+    const cm = this.engine.getSystem('CardManager');
+    const aiEngine = this.engine.getSystem('AIGMEngine');
+
+    const mainEvents = cm ? cm.getCardsByType('event').filter(e => (e.tags || []).includes('main')) : [];
+    const completedSet = new Set(gs.completedEventIds || []);
+
+    // 按 chapterN tag 去重（避免同一章的多结局变体导致 maxChapters 虚高）
+    const chapterKey = (e) => {
+      const tag = (e.tags || []).find(t => /^chapter\d+$/.test(t));
+      return tag || e.id;
+    };
+    const allChapters = new Set(mainEvents.map(chapterKey));
+    const completedChapters = new Set(
+      mainEvents.filter(e => completedSet.has(e.id)).map(chapterKey)
+    );
+    const chapters = completedChapters.size;
+
+    // 队伍平均等级（取整）
+    const chars = gs.activeCharacters || [];
+    const avgLevel = chars.length
+      ? Math.round(chars.reduce((s, c) => s + (c.level || 1), 0) / chars.length)
+      : 0;
+
+    // 战斗胜场：从长期记忆里数 victory tag
+    const memorySystem = this.engine.getSystem('MemorySystem');
+    let victories = 0;
+    if (memorySystem && gs.aiContext && gs.aiContext.keyEvents) {
+      victories = gs.aiContext.keyEvents.filter(e => (e.tags || []).includes('victory')).length;
+    }
+
+    const tokenStats = aiEngine ? aiEngine.getTokenStats() : { totalTokens: 0, totalCalls: 0 };
+
+    // 主线路径标识（用于结算 modal 告诉玩家走了哪条结局）
+    let endingPath = null;
+    if (completedSet.has('ch10_redeemed')) endingPath = 'redeemed';
+    else if (completedSet.has('ch10_epilogue')) endingPath = 'default';
+
+    return {
+      chapters,
+      maxChapters: allChapters.size || 10,
+      level: avgLevel,
+      turnNumber: gs.turnNumber || 0,
+      gold: gs.gold || 0,
+      victories,
+      totalTokens: tokenStats.totalTokens || 0,
+      aiCalls: tokenStats.totalCalls || 0,
+      endingPath,
+    };
+  }
+
+  /**
+   * 处理新游戏请求
+   * @param {{clearAutoSave?: boolean, clearAllSlots?: boolean}} opts
+   */
+  _handleNewGame(opts = {}) {
+    // 清理存档
+    if (opts.clearAutoSave || opts.clearAllSlots) {
+      try {
+        if (this.stateManager.deleteSlot) this.stateManager.deleteSlot('auto');
+        localStorage.removeItem('trpg_game_state');  // 旧版兼容
+      } catch (e) { /* */ }
+    }
+    if (opts.clearAllSlots) {
+      try {
+        if (this.stateManager.listSlots) {
+          for (const slot of this.stateManager.listSlots()) {
+            if (slot.id && slot.id !== 'auto') {
+              this.stateManager.deleteSlot(slot.id);
+            }
+          }
+        }
+      } catch (e) { /* */ }
+      try { localStorage.removeItem('trpg_current_preset'); } catch (e) { /* */ }
+    }
+
+    // 重置 AI 引擎的对话上下文与 token 统计（新一局新账本）
+    const aiEngine = this.engine.getSystem('AIGMEngine');
+    if (aiEngine) {
+      aiEngine.contextWindow = [];
+      aiEngine.summarizedHistory = '';
+      aiEngine.tokenStats = {
+        totalPromptTokens: 0, totalCompletionTokens: 0, totalTokens: 0,
+        totalCalls: 0, lastCall: null, budgetWarningTokens: aiEngine.tokenStats?.budgetWarningTokens || null,
+        _warned: false,
+      };
+      this.eventSystem.publish('ai:tokenUpdate', { stats: aiEngine.tokenStats });
+    }
+
+    // 解锁、关闭活跃事件 / 战斗
+    this._actionLocked = false;
+
+    // 选择预设来源：
+    //   1) opts.presetData 直接传入
+    //   2) opts.presetKey 通过 _resolvePresetByKey 生成
+    //   3) 否则用当前 preset
+    //   4) 最后回退默认预设
+    let presetData;
+    if (opts.presetData) {
+      presetData = opts.presetData;
+    } else if (opts.presetKey) {
+      presetData = this._resolvePresetByKey(opts.presetKey);
+      if (!presetData) {
+        console.warn('未知的 presetKey:', opts.presetKey);
+        presetData = this.preset ? this.preset.toJSON() : DEFAULT_PRESET;
+      }
+    } else {
+      presetData = this.preset ? this.preset.toJSON() : DEFAULT_PRESET;
+    }
+
+    // Phase 19A — 如果预设有 startingOptions，先弹角色创建 modal
+    // 否则直接 loadPreset（已有的流程）
+    if (presetData.startingOptions && Object.values(presetData.startingOptions).some(arr => Array.isArray(arr) && arr.length > 0)) {
+      // 把 opts 透传给 character:complete 处理器
+      this.eventSystem.publish('character:open', { presetData, opts });
+      return;
+    }
+
+    this._finalizeNewGame(presetData, null, opts);
+  }
+
+  /**
+   * 真正执行 loadPreset（从角色创建 modal 回来 / 或无创建直接进）
+   */
+  _finalizeNewGame(presetData, choices, opts = {}) {
+    this.loadPreset(presetData, choices);
+    this._sessionStartTime = Date.now();   // Phase 23A — 用于元进度统计 playTime
+    const who = choices ? this._describeCharacter(choices) : '';
+    this.gameState.addNarrative('system', `🔄 新的一局开始了：${this.preset.name}${who ? ' · ' + who : ''}`);
+    this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+  }
+
+  /** 把玩家选择转成一句简短描述（用于叙事开场） */
+  _describeCharacter(choices) {
+    if (!this.preset?.startingOptions) return '';
+    const parts = [];
+    for (const [axisKey, choiceId] of [
+      ['races', choices.race], ['origins', choices.origin],
+      ['backgrounds', choices.background], ['faiths', choices.faith],
+    ]) {
+      const list = this.preset.startingOptions[axisKey] || [];
+      const sel = list.find(o => o.id === choiceId);
+      if (sel) parts.push(sel.name);
+    }
+    return parts.join(' · ');
+  }
+
+  /**
+   * 检查是否完成主线（默认预设是 ch10_epilogue，但也兼容带 epilogue tag 的事件）
+   * 在完成事件后调用，匹配则发布 game:mainQuestComplete 触发结算弹窗
+   */
+  _checkMainQuestComplete(justCompletedEventId) {
+    if (!this.gameState || !justCompletedEventId) return;
+    const cm = this.engine.getSystem('CardManager');
+    const card = cm ? cm.getCard(justCompletedEventId) : null;
+    if (!card) return;
+    const tags = card.tags || [];
+    const isEpilogue = tags.includes('epilogue') || tags.includes('ending') || card.id === 'ch10_epilogue';
+    if (!isEpilogue) return;
+    // 已经发过就不重发（防止反复触发）
+    if (this._mainQuestCompleteFired) return;
+    this._mainQuestCompleteFired = true;
+
+    // Phase 23A — 元进度收尾：把这局发现的场景/事件/NPC/结局合并到全局元进度
+    this._commitRunToMetaProgression(card.id).catch(e => console.warn('meta commit 失败:', e.message));
+
+    // 1.2s 延迟，让 GM 的 ending 叙事先在面板里展示出来再弹结算
+    setTimeout(() => {
+      const stats = this._collectEndgameStats();
+      const presetChoices = this._buildPresetChoices();
+      this.eventSystem.publish('game:mainQuestComplete', {
+        completedMainQuest: true,
+        stats,
+        presetChoices,
+      });
+    }, 1200);
+  }
+
+  /**
+   * Phase 23A — 把本局成果合并到元进度（跨周目持久数据）
+   */
+  async _commitRunToMetaProgression(endingId) {
+    if (!this.preset || !this.gameState) return;
+    const presetId = this.preset.presetId;
+    if (!presetId) return;
+
+    // 收集发现的 NPC
+    const knownNpcs = Object.entries(this.gameState.npcState || {})
+      .filter(([, st]) => st && st.knownTo)
+      .map(([id]) => id);
+
+    await metaProgression.commitRun(presetId, {
+      scenes: this.gameState.mapState?.visitedSceneIds || [],
+      events: this.gameState.completedEventIds || [],
+      npcs: knownNpcs,
+      ending: endingId,
+      completed: true,
+      playTimeSeconds: this._sessionStartTime
+        ? Math.round((Date.now() - this._sessionStartTime) / 1000)
+        : 0,
+    });
+  }
+
+  /**
+   * 构建剧本库选项 — 默认主线 + 三个主题的随机场景图剧本
+   * @returns {Array<{key, label, icon, description}>}
+   */
+  _buildPresetChoices() {
+    return [
+      { key: 'dark_forest',  icon: '📖', label: '暗黑森林冒险',
+        description: '默认主线剧本：10 章 + 12 场景节点，揭开暗黑森林的诅咒之谜。' },
+      { key: 'random_forest', icon: '🌲', label: '随机：森林主题',
+        description: '7 节点场景图小冒险，森林氛围，每次生成一段独特故事。' },
+      { key: 'random_desert', icon: '🏜', label: '随机：荒漠主题',
+        description: '7 节点场景图小冒险，黄沙商队 + 法老陵墓。' },
+      { key: 'random_ruins',  icon: '🏚', label: '随机：废墟主题',
+        description: '7 节点场景图小冒险，飞船坠落于异星废墟。' },
+    ];
+  }
+
+  /**
+   * 根据剧本 key 解析出实际预设数据
+   * @param {string} presetKey
+   * @returns {object|null}
+   */
+  _resolvePresetByKey(presetKey) {
+    if (presetKey === 'dark_forest') return DEFAULT_PRESET;
+    const baseLibrary = this.preset ? {
+      characters: JSON.parse(JSON.stringify(this.preset.characters || [])),
+      enemies: JSON.parse(JSON.stringify(this.preset.enemies || [])),
+      items: JSON.parse(JSON.stringify(this.preset.items || [])),
+    } : {};
+    if (presetKey === 'random_forest')  return generateScenePreset({ theme: 'forest', baseLibrary });
+    if (presetKey === 'random_desert')  return generateScenePreset({ theme: 'desert', baseLibrary });
+    if (presetKey === 'random_ruins')   return generateScenePreset({ theme: 'ruins',  baseLibrary });
+    return null;
   }
 }
 

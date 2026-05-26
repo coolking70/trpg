@@ -13,6 +13,7 @@ export const TRIGGER_MOMENTS = {
   COMBAT_END: 'combat_end',
   EVENT_COMPLETE: 'event_complete',
   VARIABLE_CHANGE: 'variable_change',
+  SCENE_ENTER: 'scene_enter',  // 新增：抵达场景时扫描
 };
 
 export class EventTriggerEngine extends GameSystem {
@@ -112,6 +113,13 @@ export class EventTriggerEngine extends GameSystem {
    * 评估复合触发器（所有给定条件必须满足）
    */
   _evaluateComposite(condition, gameState, context) {
+    // 场景条件（新版）— 必须当前在指定的场景之一
+    if (condition.inScene && condition.inScene.length > 0) {
+      if (context.moment !== TRIGGER_MOMENTS.SCENE_ENTER) return false;
+      const currentSceneId = gameState?.mapState?.currentSceneId;
+      if (!currentSceneId || !condition.inScene.includes(currentSceneId)) return false;
+    }
+
     // 空间条件（OR 关系：tileTypes / pointsOfInterest 满足任一）
     const hasSpatialCondition = (condition.tileTypes && condition.tileTypes.length > 0) ||
                                 (condition.pointsOfInterest && condition.pointsOfInterest.length > 0);
@@ -177,6 +185,43 @@ export class EventTriggerEngine extends GameSystem {
       const allInventories = (gameState.activeCharacters || []).flatMap(c => c.inventory || []);
       for (const itemId of condition.requireItems) {
         if (!allInventories.includes(itemId)) return false;
+      }
+    }
+
+    // Phase 19A — 玩家标签（race/origin/background/faith 等）
+    const tags = new Set(gameState.playerTags || []);
+    if (condition.requireTags && condition.requireTags.length > 0) {
+      for (const t of condition.requireTags) if (!tags.has(t)) return false;
+    }
+    if (condition.requireAnyTags && condition.requireAnyTags.length > 0) {
+      if (!condition.requireAnyTags.some(t => tags.has(t))) return false;
+    }
+    if (condition.requireNoTags && condition.requireNoTags.length > 0) {
+      for (const t of condition.requireNoTags) if (tags.has(t)) return false;
+    }
+
+    // Phase 19C — 故事时间窗口
+    if (condition.requireStoryTime) {
+      const st = gameState.storyTime || { day: 1, hour: 0 };
+      const rt = condition.requireStoryTime;
+      if (rt.minDay !== undefined && st.day < rt.minDay) return false;
+      if (rt.maxDay !== undefined && st.day > rt.maxDay) return false;
+      if (rt.hourRange) {
+        const [lo, hi] = rt.hourRange;
+        if (lo <= hi) {
+          if (st.hour < lo || st.hour > hi) return false;
+        } else {
+          // 跨午夜的窗口，如 [22, 6] = 晚 22 点到次日 6 点
+          if (st.hour < lo && st.hour > hi) return false;
+        }
+      }
+    }
+
+    // Phase 22 预留 — worldFlags 维度
+    if (condition.requireWorldFlags) {
+      const wf = gameState.worldFlags || {};
+      for (const [k, v] of Object.entries(condition.requireWorldFlags)) {
+        if (wf[k] !== v) return false;
       }
     }
 

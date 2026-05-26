@@ -4,13 +4,328 @@
 
 ## [Unreleased]
 
-### Changed
+### Phase 22 — 世界因果与 NPC 关系图 🕸（收尾）
+
+把 Phase 19 准备好的 `worldFlags` 数据层真正接入 AI 叙事，加上 NPC 关系图让 NPC 互相影响。
+
+**Added — 22A worldFlags AI 注入 + 反馈**
+- `AIPromptBuilder.buildActionMessage` 自动在 system message 头部注入：
+  - 【故事时间】第 N 天 HH:00
+  - 【当前世界状态】活跃的 worldFlags（让 AI 叙事与之一致）
+  - 【玩家身份】playerTags
+  - 【同行伙伴】companions 列表
+- `set_worldFlag` effect 状态真的变化时给玩家系统反馈（作者写 `effect.hint` 优先，否则通用 "🌍 世界状态变化: name=value"）
+
+**Added — 22B NPC 关系图**
+- `GamePreset.npcRelations[]`：`{ from, to, strength, note }`，strength 范围 -1.0 ~ 1.0
+- `NPCSystem.loadFromPreset` 把关系按 from 索引存入 `relationsByFrom`
+- `NPCSystem.changeAffection` 一级传播 — 改 A 的 affection，B 自动按 `strength` 同向或反向变化（_depth 控制避免环回）
+- `NPCSystem.applyNPCDeath` — A 死亡时关联 NPC 按 `strength × 25` 受冲击；|strength| ≥ 0.7 还会改 mood 为 grieving / pleased
+- 新 effect `kill_npc` — 触发死亡 + 关系传播 + 系统叙事反馈（"💀 X 已陨落 → Y 因此愤怒/欣慰"）
+
+**Added — MCP 新工具（1 个）**
+- `npc_relation_add` — 写入 NPC 关系（单向），引用不存在的 NPC 会报错
+
+**Tests**
+- `__tests__/systems/NPCSystem.test.js` — 6 个新用例（同向/反向传播 / 不连锁 / 死亡冲击 / mood 强情感）
+- `mcp-server/preset-server.test.mjs` — 2 个新用例（写入关系 / 不存在错误兜底）
+- 全套：Jest **370 / 370** ✅（+6）+ MCP **32 / 32** ✅（+2）
+
+### Phase 25 — MCP 大型剧本生成模板 🏗
+
+让 AI 一键塞入"标准 CRPG 框架"或"生存"或"侦探推理"骨架，省去从 0 起步的反复工具调用。配合 `preset_scale_check` 给大型剧本做规模健康度评估。
+
+**Added — MCP 新工具（3 个）**
+- `preset_apply_template` — 一键塞标准骨架，3 个模板：
+  - `crpg_standard` — 4 轴角色创建（人类/精灵/矮人 × 贵族/孤儿/农夫 × 士兵/学者/盗贼 × 太阳神/月神/无信仰）+ 5 个起始场景（含路由）+ 3 个开场事件 + solo combatMode
+  - `survival_solo` — 极简后启示录骨架，1 个种族 + 3 个职业 + 避难所/废墟两节点
+  - `mystery_visual_novel` — 单主角侦探，事务所/案发现场两节点 + 委托信事件
+- `scene_chain_create` — 一次创建 N 个场景 + 自动双向连接，每条还可标 `oneWay: true`；省去 batch_apply 的多次 add_connection
+- `preset_scale_check` — 报告规模适配性：场景数 / 事件密度 / 平均连接度 / 主线占比 / NPC 数 / NPC schedule 覆盖 / 结局数 / 角色创建启用；按"短篇 / 中型 / 大型 / 超大型"分级给建议
+
+**Tests**
+- MCP **30 / 30** ✅（+4：模板应用 / 非空拒绝 / 链式创建 / 规模检查）
+
+### Phase 24 — 元进度图鉴 📖
+
+把 Phase 23A 准备好的 metaProgression 数据呈现为可视化 modal。
+
+**Added**
+- `src/ui/CodexModal.js` + CSS — 4 标签页（🗺 场景 / 📜 事件 / 🧑 NPC / 🌅 结局）
+- 每个标签显示进度条 + 卡片网格；未发现的条目显示 `???` + 灰化（不剧透）
+- 顶部显示"通关 X/Y · 累计游玩 X 小时 Y 分"
+- 底部红色"🗑 清空本预设图鉴进度"按钮（带二次确认）
+- 工具栏新增 📖 图鉴按钮（在 📋 导出日志之前）
+
+**Tests**
+- 已有 Jest 364 / 364 ✅（UI 没单独 unit test，靠手动验证）
+
+### Phase 23 — 规模化基础设施（300+ 节点跑得动）📈
+
+为支撑超大型剧本（300 节点 / 2-5MB 预设 / 多周目元进度），把"存储 / 编辑器 / 渲染 / AI 上下文"四个性能瓶颈一次性解决。
+
+**Added — 23A IndexedDB 存储**
+- `src/core/IndexedDBStore.js` — 通用 KV 封装：get/put/delete/keys/entries/clear/estimateSize；浏览器无 IDB 时静默回退
+- `src/core/PresetStorage.js` — 预设专用层：大预设（>1MB）自动走 IDB，索引镜像在 localStorage 保证同步 `listSync`；提供 `saveCurrent/loadCurrent`
+- `src/core/MetaProgression.js` — 跨周目元进度（**独立于单局存档**）：runCount / discoveredScenes / discoveredEvents / discoveredEndings / unlockedRaces 等；按 presetId 分键，每个剧本独立累积
+- main.js `_applyPreset` 改用 `presetStorage.saveCurrent`；主线完成时 `_commitRunToMetaProgression` 自动合并发现的场景/事件/NPC/ending 到全局元进度
+- `_finalizeNewGame` 记录 `_sessionStartTime` 用于元进度 totalPlayTimeSeconds 统计
+- 新增 fake-indexeddb devDependency；`__tests__/setup.js` polyfill structuredClone（fake-indexeddb 依赖）
+- `__tests__/core/IndexedDBStore.test.js` — 18 个用例覆盖 IDB / PresetStorage / MetaProgression
+
+**Added — 23B 编辑器分页 + 搜索**
+- `listFormLayout` 重写：
+  - items > 10 → 自动加搜索框（按 label / id / tags 模糊匹配）
+  - items > 50 → 自动分页（← 第 X/Y 页 →）+ 选中项所在页自动跳转
+  - 头部显示 `名称 (总数)` — 一眼看到规模
+- 与现有所有 editor tab（场景/事件/NPC/物品/角色/敌人）100% 向后兼容（小列表不显示这些 UI）
+
+**Added — 23C 场景图渲染裁剪**
+- `SceneGraphRenderer` 加 `_visibleSet` — 计算每个节点屏幕坐标后，标记 onScreen + margin 内的
+- 节点绘制：完全屏外的跳过（current/reachable 状态例外，保留方向指示）
+- 边绘制：两端都屏外的边跳过
+- 300+ 节点项目预期能省 60-90% 的 canvas 绘制工作
+
+**Added — 23D AI 上下文检索**
+- `src/systems/ContextRetriever.js` — 按相关性挑相关场景/NPC 注入 AI prompt：
+  - 场景评分：图距离 BFS + 共享 tag + 最近访问 + 当前场景永远 +100
+  - NPC 评分：同行 +100 / 当前场景 +50 / 已识 +10 / 好感 ÷5
+  - `buildContextDigest(gameState, opts)` — 生成紧凑的"当前场景 + 时间 + worldFlags + tags + 同行 + 相关场景 + 相关 NPC"段，直接塞 AIGM system prompt
+- 300+ 场景项目从"全注入 description 爆 token"变成"挑 6 相关场景 + 5 相关 NPC"
+- `__tests__/systems/ContextRetriever.test.js` — 9 个用例覆盖距离/tag/孤岛/同行/好感/digest
+
+**Tests**
+- Jest **364 / 364** ✅（+27：IndexedDB 18 + ContextRetriever 9）
+- MCP **26 / 26** ✅（无变化，Phase 23 不增加 MCP 工具）
+
+**Dependencies**
+- 新增 `fake-indexeddb@^6.2.5`（devDependency，仅用于测试）
+
+### Phase 21 — 网状叙事（场景变体 + 隐藏路径）🕸
+
+让一个场景在不同的世界状态 / 时间 / 玩家身份下"长得不一样"，并支持"剧情推进后才解锁的暗道"。这是 300+ 节点剧本里"同一地点不同章节呈现"的核心机制。
+
+**Added — 21A 场景变体**
+- `Scene.variants[]` 字段 — 一个场景可以有多个变体，每个有自己的 `when` 条件 + 覆盖 `description / events / connections / vignettes`
+- 条件维度：`requireVariables / requireWorldFlags / requireCompletedEvents / requireTags / requireStoryTime`
+- `SceneSystem.getActiveVariant(scene, gameState)` — 按 variants 数组顺序取第一个满足的
+- `SceneSystem.getActiveSceneView(scene, gameState)` — 合并 base + variant，UI 用这个视图
+- main.js 抵达叙事 / 重访 vignette / 终端卡的 description 都走 variant 视图
+
+**Added — 21B 隐藏连接**
+- `connection.discovered: false` 默认；玩家发现后通过 effect `reveal_connection: { from, to }` 永久解锁
+- `GameState.discoveredConnections: string[]` — 持久存储已发现路径（"from→to" 格式）
+- `SceneSystem.revealConnection / _isConnectionVisible` — 渲染层和 getAdjacent 都过滤未发现的边
+- 场景图渲染器 _renderEdges 也直接跳过未发现的连接
+- 解锁时自动写系统叙事："🗺 你发现了一条新路径（通向 XXX）"
+
+**Note — 21C/D 已隐式完成**
+- 多入口（startingSceneRules）已在 Phase 19A 实现
+- 多结局矩阵已在 Phase 16/19 通过"同场景多事件按 trigger 条件分流"实现（ch10_redeemed 是范例）
+
+**Added — MCP 新工具（2 个）**
+- `scene_variant_add` — 给场景加一个变体（含 when 条件 + 覆盖字段）
+- `connection_set_hidden` — 把/取消把 connection 标为隐藏
+
+**Tests**
+- `__tests__/systems/SceneSystem.test.js` — 7 个新用例（variant 无匹配 / worldFlag / storyTime / 优先级 + hidden 不可见 / reveal 一次性 / 持久化）
+- `mcp-server/preset-server.test.mjs` — 1 个综合用例覆盖 variant + hidden 双工具
+- 全套：Jest **337 / 337** ✅（+7）+ MCP **26 / 26** ✅（+1）
+
+### Phase 20 — 单人模式 + 营地对话交互 🏕
+
+把 Phase 19 的 NPC / 故事时间数据骨架变成可玩内容：单人主角带 AI 伙伴探索，在营地/旅馆通过对话/赠礼/索物/休息四种方式深度互动。
+
+**Added — 20A 单人模式与伙伴战斗**
+- `recruit_companion / dismiss_companion` 现在会同步更新 `activeCharacters[]` — 招募的 NPC 以 `_isCompanion: true` 标记入队
+- `CombatPanel` 已有的"only `activeCharacters[0]` 是玩家主角"逻辑天然适配 solo 模式，伙伴行动走 AllyAIController
+- `LeftPanel` 角色卡上 `_isCompanion=true` 的会显示 "🤝 同行（AI 控制）" 粉色徽章，CSS 加边框区分
+- 伙伴 inventory/equipment 在 UI 上不再可编辑（玩家无法直接给伙伴装备）
+
+**Added — 20B 营地 / 旅馆 modal**
+- `src/systems/DialogueSystem.js` — 对话树解析器：start/getCurrentView/choose/exit；支持 requireTags/requireAffection/requireVariables/requireWorldFlags 多维度门控
+- `src/ui/CampModal.js` + CSS — 4 标签页设计：💬 对话 / 🎁 赠礼 / 🙏 索物 / 😴 休息
+- 抵达 `type: 'camp'` 或 `type: 'inn'` 的场景自动开 modal
+- 多 NPC 时顶部有切换条；好感数值实时显示在 NPC 徽章上
+- **赠礼**：列出主角 inventory → 按 NPC `giftPreferences` 给反应（love +15 / like +5 / neutral +1 / dislike -3 / hate -10）；NPC affection < 30 时玩家看不到预期反应，超过 30 才能预览
+- **索物**：affection ≥ 50 解锁；每次索物 -5 affection；只能要 NPC 已有的物品
+- **休息**：8 小时（自定义），全队 HP/MP 恢复，故事时间推进 + NPC 按 schedule 自动换位
+
+**Added — 对话效果**
+- `dialogue:effects` 事件：分支可挂任意 effect（set_variable / add_item / change_affection / set_worldFlag ...），main.js 统一应用
+- `gameState.activeDialogue: { npcId, currentNode }` — 对话状态持久化，存档/读档可继续
+
+**Added — MCP 新工具（3 个）**
+- `dialogue_node_set` — 创建或更新对话节点（speaker / text）
+- `dialogue_branch_add` — 给节点加分支（含 next/exit/affectionDelta/require*/effects 全字段支持）
+- `dialogue_get` — 查看 NPC 完整 dialogueTree
+
+**Tests**
+- `__tests__/systems/DialogueSystem.test.js` — 10 个用例（start/branches 过滤/choose 跳转/exit/error 兜底/effects 发布）
+- `mcp-server/preset-server.test.mjs` — 3 个新用例（对话树构建 + 节点不存在错误兜底）
+- 全套：Jest **330 / 330** ✅（+10）+ MCP **25 / 25** ✅（+3）
+
+### Phase 19 — 超大型剧本基础设施（角色 + NPC + 时间）🌟
+
+为了支撑「300+ 节点、单人主角 + 动态伙伴、网状叙事、多周目收集」的愿景，把数据骨架和系统底座搭起来。Phase 20-25 都建立在这一层之上。
+
+**Added — 19A 角色创建 + Tag 系统**
+- `GamePreset.startingOptions: { races, origins, backgrounds, faiths }` — 4 个轴定义角色创建选项
+- `GamePreset.startingSceneRules[]` — 按选定 tags 路由起始场景
+- `GameState.playerTags[]` — 玩家创建时锁定的标签
+- `src/ui/CharacterCreationModal.js` + CSS — 新游戏前的角色创建 UI（4 卡片网格 + 标签摘要）
+- 新触发条件维度：`requireTags` / `requireAnyTags` / `requireNoTags` — 事件/场景连接可按 tag 门控
+- `_handleNewGame` 检测到 `startingOptions` 时自动弹角色创建 modal
+- `_applyPlayerCharacterChoices` — 应用 statBonus 到主角 + 按规则选择起始场景
+
+**Added — 19B NPC 系统（与 enemies 解耦）**
+- `GamePreset.npcs[]` — NPC 卡牌（含 personality / giftPreferences / schedule / dialogueTree）
+- `GameState.npcState{}` + `companions[]` — 持久 affection / location / inventory / alive / mood
+- `src/systems/NPCSystem.js` — `loadFromPreset` / `getScheduledScene` / `refreshNPCLocations` / `meetNPC` / `changeAffection` / `evaluateGiftReaction` / `recruitCompanion` / `dismissCompanion`
+- 场景卡显示在场的 NPC（图标 + 名字 + 好感数值 / 同行标记）
+- 新 effects: `change_affection`, `recruit_companion`, `dismiss_companion`
+
+**Added — 19C 故事时间**
+- `GameState.storyTime: { day, hour }` — 与游戏回合 turnNumber 解耦
+- 场景旅行自动推进时间（`connection.cost` 小时 / `scene.travelHours` / 默认 1 小时）
+- 新触发条件：`requireStoryTime: { minDay, maxDay, hourRange: [lo, hi] }`，hourRange 支持跨午夜
+- NPC schedule 解析：按 (day, hour) 自动决定 NPC 当前所在场景
+- 新 effect: `advance_time: { hours }`
+- 工具栏状态栏显示 `🕐 D1 08:00`
+
+**Added — Phase 22 预留 worldFlags**
+- `GameState.worldFlags{}` — discrete narrative flags（与 variables 语义层级不同）
+- 新触发条件：`requireWorldFlags`
+- 新 effect: `set_worldFlag`
+
+**Added — MCP 新工具（6 个 + 2 个 starting options）**
+- `npc_list / npc_get / npc_create / npc_update / npc_schedule_add / npc_delete`
+- `startingoption_set` — 设定 race/origin/background/faith 任一轴的全部选项
+- `startingscenerule_add` — 新增起始场景路由规则
+
+**Changed**
+- `GamePreset.combatMode: 'party' | 'solo'`（默认 'party' 保留向后兼容；'solo' 模式 Phase 20A 接入）
+- `GamePreset.aiHooks` — 5 个 hook 的开关（sceneArrival/eventResolve/npcDialogue/vignette/worldRipple）
+- `SceneSystem._evaluateGated` 加 tag / storyTime 维度，门控失败时返回脱敏 reason
+- `loadPreset(presetData, playerChoices)` — 新签名支持角色创建选择
+
+**Tests**
+- `__tests__/systems/NPCSystem.test.js` — 13 个用例（加载/调度/跨午夜/affection/赠礼反应/招募/伙伴）
+- `__tests__/systems/EventTriggerEngine.test.js` — 9 个新用例（tags 3 维 / storyTime 3 维 / worldFlags / 跨午夜）
+- `mcp-server/preset-server.test.mjs` — 5 个新用例（npc CRUD / startingOptions / startingSceneRules）
+- 全套：Jest **320 / 320** ✅ + MCP **23 / 23** ✅
+
+### Phase 18 — MCP 防御性升级（剧本审计驱动）
+
+基于审计「霓虹叛潮」MCP 生成剧本时发现的实际问题，给 MCP server 加了一批"AI 错不了"的防护栏：
+
+**Added**
+- **`preset_analyze`** — 一键全面体检（8 个维度）：引用完整性 / 坐标冲突 / 节点可达性 / 单向连接 / 变量定义引用对照 / 主线推进模拟（贪心循环）/ 角色装备完整性 / gated.hint 安全
+- **`scene_relayout`** — 检测坐标冲突自动重排（保留第一个，挪后续到附近空位）
+- `mcp-server/preset-server.test.mjs` 新增 5 个用例覆盖新行为（自动避让 / 双向边 / oneWay / preset_analyze / scene_relayout）
+
+**Changed**
+- **`scene_create`**：传 `coords` 时如冲突会**自动挪到空位**（螺旋搜索），并在返回消息明示"原坐标被占用"
+- **`scene_add_connection`** 默认 **bidirectional**：同时创建返程边（带"原路返回 → X"label）；可显式传 `oneWay: true` 表示有意单向（剧情逼仄推进）
+- tool descriptions 加了"强烈建议让工具自动选坐标 / 生成完整剧本后调用 preset_analyze"的引导
+- `preset_validate` 描述明确说明它只查引用，建议用 `preset_analyze` 做全面体检
+
+**修复的真实预设 bug（首次审计验证）**
+- 「霓虹叛潮」预设的 2 处坐标冲突（scene_soul_vault / scene_rooftop）已直接修正
+- 灵媒（char_003）补配了新武器 item_018 神经聚焦器
+
+### Phase 17 — 场景编辑器 + MCP 服务器 + 多结局 + 存档元数据 🤖
+
+**Added**
+- `src/ui/editor/SceneEditor.js` + CSS — **可视化场景图编辑**：节点列表 / 出边表单（含 gated 配置）/ vignettes / 事件挂载下拉，ID 改名自动同步所有引用
+- `PresetEditorModal` 新增 🗺 场景图 标签页（旧的格子地图标签改名为 ⬛ 格子地图）
+- **`mcp-server/preset-server.mjs`** — MCP server，暴露 **34 个工具**让 Claude 等客户端批量、精细化生成 TRPG 剧本：
+  - `preset_*`（7）：load / save / info / set_meta / validate / export / reset
+  - `scene_*`（9）：CRUD + add/remove_connection + attach/detach_event
+  - `event_*`（5）：CRUD（event_create 一次性吃 choices/outcomes/effects）
+  - `character/enemy/item_*`（各 4）：list / get / create / delete
+  - `preset_batch_apply`：**原子批量执行 + 失败自动回滚**，AI 写整套剧本的首选入口
+- `mcp-server/preset-server.test.mjs` — 12 个端到端烟雾测试覆盖场景 CRUD / 连接 / 门控 / 事件挂载 / 校验断引用 / 批量回滚
+- `mcp-server/README.md` — 接入 Claude Code / 工作流示例 / gated.hint 设计原则
+- `npm run mcp` / `npm run test:mcp` 脚本
+- **多结局支持**：默认主线新增 `ch10_redeemed`（救赎之黎明）事件 — 唤醒堕落骑士成功后走的另一种结局。两个 ch10 事件挂同一场景，按 priority + requireVariables 自动分流
+- `EndgameModal` 根据 `stats.endingPath` 显示不同的结算标题（"主线完成" vs "救赎之黎明"）
+- 新增集成测试 `多结局：救赎之黎明` 验证 redeemed_knight=true 路径
+
+**Changed**
+- `_afterSceneEnter` 现在**尊重事件 trigger 条件**（让同一场景多事件能按变量分流）
+- `loadPreset` 初始扫描复用 `_afterSceneEnter`，统一逻辑
+- **修复初始视口居中 + 自动适配 zoom**：
+  - `RenderEngine` 新增 ResizeObserver 监听父容器尺寸变化 + 发布 `render:resize` 事件
+  - main.js 订阅 `render:resize` 自动重新居中（解决首次 loadPreset 时 canvas 尚未拿到最终宽高的偏移问题）
+  - `SceneGraphRenderer.getFitZoom(w, h)` 算出"装下所有节点"的 zoom，`_centerMapOnPlayer` 应用之 — 任何屏幕尺寸下所有 12 节点都进视野
+- **存档槽位元数据**升级为场景图友好显示：
+  - 显示 `📍 林间村落 (3/12)` 而非 `(7, 1)` 坐标
+  - 章节 ID 自动转成中文事件名（`ch3_village` → `第三章 林间村落`）
+  - 新增字段：`currentSceneId / currentSceneName / visitedSceneCount / totalSceneCount / lastChapterLabel`
+- 项目根 README 新增"可视化场景编辑器" + "MCP 服务器"特性亮点
+
+**Dependencies**
+- 新增 `@modelcontextprotocol/sdk@^1.29.0`（devDependency）
+
+### Phase 16 — 场景图（Scene Graph）全量重构 🎯
+
+游戏的核心地图模型从"20×15 格子地图"切换到"节点 + 连接"的场景图，每次移动 = 一段戏，不再有"走 50 格才碰一个剧情"的稀释问题。
+
+**Added**
+- `src/systems/SceneSystem.js` — 场景图核心：节点 / 连接 / 门控（`gated`）/ 旅行 / vignette
+- `src/rendering/SceneGraphRenderer.js` — 节点 + 边的图状渲染（current / reachable / visited / locked / unknown 五态）
+- `EventTriggerEngine` 新增 `SCENE_ENTER` 触发时机 + `inScene` 复合条件
+- `AIPromptBuilder` 新增 `narrate_scene_arrival` action（启程 → 抵达的一次性叙事）
+- 默认预设"暗黑森林冒险"完全重写为 **12 节点场景图**（涵盖 ch1-ch10 全主线 + 商店 + 救援支线）
+- `WorldGenerator.generateScenePreset(opts)` — 输出 8 节点小冒险（forest / desert / ruins 三主题）
+- `EndgameModal` 接入剧本库选择器 — 主线完成 / 工具栏新游戏都能选 4 个预制剧本
+- 玩测脚本 `scripts/playtest-ai-vs-ai-scene.mjs` — Pro 模型在场景图模式下完整通关 9/10 章
+- 新增测试：`SceneSystem.test.js` (11 用例) + `WorldGenerator` 场景图分支 (4 用例) + `AIResponseParser` 健壮性 (3 用例)
+- 主线完成 modal（`EndgameModal`）+ 工具栏常驻 🔄 新游戏按钮 + 清空全部存档
+- `gated.hint` 字段：作者可写诗意提示，覆盖默认通用文案
+
+**Changed**
+- `GamePreset` 新增 `scenes[] / startingSceneId / displayMode`（'grid' | 'scene-graph' | 'hybrid'）
+- `GameState.mapState` 新增 `currentSceneId / visitedSceneIds[]`
+- `loadPreset` 初始扫描：场景图模式下走 SCENE_ENTER + scene.events priority 排序，解决了开局 ch1 不触发的 bug
+- 工具栏移除常驻"🎲 随机世界"按钮 — 改为新游戏对话框里选剧本
+- `ch10_epilogue` 时序：`_scanEventTriggers` 在战斗进行中跳过，避免提前剧透"黎明"叙事
+- `AIResponseParser` Level 4 宽松抽取支持单行 JSON + fallback 防御性清洗，杜绝裸 JSON 泄露到 UI
+- 锁定节点显示脱敏：locked-but-unvisited → 节点显示 🔒 + 名字隐藏为 `???`，连接 reason 不暴露任何内部变量 / 事件 ID / 物品 ID
+- `DiceRenderer` 渲染重做：结果数字加大 96px 居中、骰子动画后渐隐、`_finishAnimation` 实质清场（移除 canvas / 清 WebGL framebuffer），不再残留遮挡视野
+- `item_007` 命名错位修复：拆分为 `item_013` 符文护身符（ch2 旅人剧情物品）和原 item_007 魔力水晶（薇拉初始装备）
+- ToolbarPanel 第一个按钮变为 🔄 新游戏
+
+### Phase 15 — UX / 玩测 / 日志收尾
+
+**Added**
+- `LogSystem` 诊断日志：JSON / Markdown 双格式 + console 环形缓冲（100 条）
+- 工具栏 📋 导出日志按钮
+- `scripts/playtest-v2.mjs` 纯后端玩测脚本，支持手动驱动 + 完整记录
+
+**Changed**
+- `_resolveEventChoice` / `_handleCombatPlayerAction` 都写入玩家叙事，确保 `[你]` 留痕覆盖全流程
 - AI outcome.text 一致性 prompt 加强（防止 AI 编造与结果矛盾的情节）
 - Three.js 拆分为独立 chunk，主包从 697 KB 降到 236 KB（gzip 72 KB）
-- Jest 加入 `npm run test:coverage` 覆盖率报告
+- Jest 加入 `npm run test:coverage` 覆盖率报告（37.74% → 64.77%）
 
-### Added
+**Added (docs)**
 - CHANGELOG.md（本文件）
+- `docs/DEVELOPMENT_STATUS.md` — 接手指南（给下一位 AI / 开发者）
+
+### 已修复的关键 bug（Phase 15-16）
+
+| # | 描述 | 严重度 |
+|---|---|---|
+| 10 | 起始场景的 `inScene` 事件不触发（必须离开再回来才扫到 ch1） | **严重** |
+| 11 | 场景图模式下 `ui:openEndgame` 因递归 publish 导致 modal 渲染两次（剧本库被空数据覆盖） | 严重 |
+| 12 | 锁定节点 reason 暴露内部变量名 / 事件 ID（如 `knows_dark_knight = true`） | 中 |
+| 13 | locked-but-unvisited 节点显示真实名字，剧透下一章 | 中 |
+| 14 | 骰子动画结束后 WebGL canvas 残留，遮挡视野，结果数字不直观 | 中 |
+| 15 | AI 返回单行损坏 JSON（narrative 内含未转义引号）→ UI 显示生 JSON | 中 |
+| 16 | `item_007` 命名错位（叙事说"护身符"，物品是"魔力水晶"） | 中 |
+| 17 | `ch10_epilogue` 在 ch9 战斗未结束时就触发，导致"黎明"叙事和战斗交错 | 中 |
 
 ---
 

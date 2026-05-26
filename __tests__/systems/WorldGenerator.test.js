@@ -2,7 +2,8 @@
  * WorldGenerator 测试：随机地图生成 + 连通性 + 主题
  */
 
-import { generateMap, generateRandomPreset, getThemes } from '../../src/systems/WorldGenerator.js';
+import { generateMap, generateRandomPreset, generateScenePreset, getThemes } from '../../src/systems/WorldGenerator.js';
+import { GamePreset } from '../../src/models/GamePreset.js';
 
 describe('WorldGenerator - 主题', () => {
   test('getThemes 返回 3 个主题', () => {
@@ -166,5 +167,52 @@ describe('WorldGenerator - generateRandomPreset', () => {
     const p = generateRandomPreset({ baseLibrary });
     expect(p.rules.diceType).toBe('d20');
     expect(p.rules.startingGold).toBeGreaterThan(0);
+  });
+});
+
+describe('WorldGenerator - generateScenePreset', () => {
+  const baseLibrary = {
+    characters: [{ id: 'c1', type: 'character', name: '艾拉', stats: { hp: 100 } }],
+    enemies: [
+      { id: 'e1', type: 'enemy', name: '狼', difficulty: 'easy', stats: { hp: 30 } },
+      { id: 'eboss', type: 'enemy', name: '巫妖', difficulty: 'boss', stats: { hp: 150 } },
+    ],
+    items: [
+      { id: 'i1', type: 'item', name: '药水', itemType: 'consumable', buyPrice: 25 },
+      { id: 'i2', type: 'item', name: '护身符', itemType: 'accessory' },
+    ],
+  };
+
+  test('生成森林主题场景图预设', () => {
+    const p = generateScenePreset({ theme: 'forest', baseLibrary });
+    expect(p.displayMode).toBe('scene-graph');
+    expect(p.scenes.length).toBeGreaterThanOrEqual(6);
+    expect(p.startingSceneId).toBe('scene_spawn');
+    expect(p.scenes[0].id).toBe('scene_spawn');
+  });
+
+  test('生成的场景图能通过 GamePreset.validate', () => {
+    const data = generateScenePreset({ theme: 'desert', baseLibrary });
+    const preset = new GamePreset(data);
+    const result = preset.validate();
+    expect(result.valid).toBe(true);
+    if (!result.valid) console.log(result.errors);
+  });
+
+  test('所有场景连接的目标节点都存在', () => {
+    const p = generateScenePreset({ theme: 'ruins', baseLibrary });
+    const ids = new Set(p.scenes.map(s => s.id));
+    for (const s of p.scenes) {
+      for (const c of s.connections) expect(ids.has(c.to)).toBe(true);
+    }
+  });
+
+  test('每个事件的 inScene 引用的场景都存在', () => {
+    const p = generateScenePreset({ theme: 'forest', baseLibrary });
+    const sceneIds = new Set(p.scenes.map(s => s.id));
+    for (const ev of p.events) {
+      const inScene = ev.trigger?.condition?.inScene || [];
+      for (const sid of inScene) expect(sceneIds.has(sid)).toBe(true);
+    }
   });
 });

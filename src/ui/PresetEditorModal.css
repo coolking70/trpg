@@ -423,3 +423,121 @@ textarea.editor-field__input {
   flex: 1;
   font-size: 12px;
 }
+
+/* ============ 场景图编辑器 ============ */
+
+.scene-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+}
+
+.scene-editor__top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 12px;
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.scene-editor__top .editor-field {
+  flex: 0 0 auto;
+  min-width: 180px;
+}
+
+.scene-editor__stats {
+  margin-left: auto;
+  font-size: 13px;
+  color: #a0a0c0;
+}
+
+.scene-editor__stats b {
+  color: #fff;
+}
+
+.scene-editor__conn {
+  padding: 12px;
+  margin: 8px 0;
+  background: rgba(0, 0, 0, 0.2);
+  border-left: 3px solid rgba(103, 232, 249, 0.5);
+  border-radius: 6px;
+}
+
+.scene-editor__gated {
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(168, 85, 247, 0.06);
+  border-radius: 4px;
+}
+
+.scene-editor__gated-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.scene-editor__event-list,
+.scene-editor__vignette-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.scene-editor__event-row,
+.scene-editor__vignette-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scene-editor__event-row > span {
+  flex: 1;
+  font-size: 13px;
+  color: #cbd5e1;
+}
+
+.scene-editor__vignette-row textarea {
+  flex: 1;
+}
+
+.btn--small {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+/* Phase 23B — 搜索 + 分页 */
+.editor-list-form__search {
+  width: 100%;
+  margin: 8px 0;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.editor-list-form__pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 4px;
+  border-top: 1px solid rgba(168, 85, 247, 0.15);
+  margin-top: 4px;
+}
+.editor-list-form__pager-label {
+  font-size: 11px;
+  color: #94a3b8;
+  flex: 1;
+  text-align: center;
+}
+.editor-list-form__no-match {
+  padding: 24px 12px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+}

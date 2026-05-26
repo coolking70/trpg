@@ -23,6 +23,7 @@ export class SettingsModal {
       dynamicDifficulty: true,   // 动态难度（基于战斗表现）
       allyAIMode: 'heuristic',   // 'heuristic' | 'llm' - AI 队友决策模式
       budgetWarningTokens: 0,    // Token 预算告警阈值（0 = 关闭）
+      aiTier: 'standard',        // Phase 26B - AI 叙事丰度 (none/light/standard/advanced)
     };
 
     this._loadConfig();
@@ -126,6 +127,17 @@ export class SettingsModal {
             <option value="llm" ${this.config.allyAIMode === 'llm' ? 'selected' : ''}>LLM 智能（慢，每回合调一次 API）</option>
           </select>
           <span class="settings__hint">LLM 模式让 AI 队友的战术更灵活，但每个队友回合会调用一次 API（增加 token 消耗）</span>
+        </div>
+
+        <div class="settings__field">
+          <label class="settings__label">🤖 AI 叙事丰度</label>
+          <select class="input settings__input" id="setting-ai-tier">
+            <option value="none"     ${this.config.aiTier === 'none'     ? 'selected' : ''}>关闭 — 全部走预设兜底（0 token）</option>
+            <option value="light"    ${this.config.aiTier === 'light'    ? 'selected' : ''}>轻量 — 仅首访场景/主线事件/首遇 NPC</option>
+            <option value="standard" ${this.config.aiTier === 'standard' ? 'selected' : ''}>标准 — 绝大多数节点都调（推荐）</option>
+            <option value="advanced" ${this.config.aiTier === 'advanced' ? 'selected' : ''}>丰富 — 全开，含 vignette 重访叙事</option>
+          </select>
+          <span class="settings__hint">控制 AI 在何时介入叙事。预设作者可通过 preset.aiHooks 强制 always/never 某个 hook。</span>
         </div>
       </div>
 
@@ -249,6 +261,8 @@ export class SettingsModal {
     this.config.dynamicDifficulty = body.querySelector('#setting-dynamic-difficulty').checked;
     this.config.allyAIMode = body.querySelector('#setting-ally-mode').value;
     this.config.budgetWarningTokens = parseInt(body.querySelector('#setting-budget').value) || 0;
+    const tierEl = body.querySelector('#setting-ai-tier');
+    if (tierEl) this.config.aiTier = tierEl.value;
 
     this._saveConfig();
     this.eventSystem.publish('settings:changed', this.config);

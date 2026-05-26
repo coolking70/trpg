@@ -57,3 +57,18 @@
   color: var(--text-muted);
   text-align: right;
 }
+
+/* Phase 20A — 伙伴 NPC 标记 */
+.card.is-companion {
+  border-left: 3px solid #ec4899;
+  background: linear-gradient(90deg, rgba(236, 72, 153, 0.08) 0%, transparent 50%);
+}
+.card__companion-badge {
+  font-size: 10px;
+  color: #ec4899;
+  padding: 2px 6px;
+  margin-top: 4px;
+  background: rgba(236, 72, 153, 0.1);
+  border-radius: 8px;
+  display: inline-block;
+}

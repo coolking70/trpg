@@ -42,9 +42,58 @@ export class AIResponseParser {
         }
       }
 
-      // 最终回退：将整个文本作为叙事内容
+      // 最终回退：尝试用宽松正则从损坏的 JSON 中抽出 narrative 字段
+      // （AI 偶尔会在叙事中夹未转义的双引号导致 JSON.parse 失败）
+      const lenient = this._tryExtractLenient(responseText);
+      if (lenient) return lenient;
+
+      // 还是不行就把整个文本作为叙事
       return this._fallback(responseText);
     }
+  }
+
+  /**
+   * 宽松提取：从形如 `{ "narrative": "...", "actions": [...] }` 的损坏 JSON 中
+   * 抽出 narrative 字段。容忍 narrative 内部未转义的引号。
+   */
+  _tryExtractLenient(text) {
+    // 必须长得像 JSON 才尝试
+    if (!/[{[]/.test(text)) return null;
+    if (!/"narrative"\s*:/.test(text)) return null;
+
+    // 从 "narrative": 后开始找内容，截至下一个未转义的 ", 后跟逗号/换行/} 的位置
+    // 简化策略：找 `"narrative": "` 后到 `",\n` 或 `"\n  "actions"` 之前
+    const startMatch = text.match(/"narrative"\s*:\s*"/);
+    if (!startMatch) return null;
+    const startIdx = startMatch.index + startMatch[0].length;
+
+    // 找终止：尝试匹配 `",<空白>"<下一个标准字段>"`（兼容单行 / 多行 JSON）
+    // 或文末的 `"}` 收尾
+    const tail = text.slice(startIdx);
+    let endRel = -1;
+    for (const re of [
+      /",\s*"actions"\s*:/,
+      /",\s*"diceRequests"\s*:/,
+      /",\s*"stateUpdate"\s*:/,
+      /",\s*"creativeOutcome"\s*:/,
+      /"\s*}\s*$/,
+    ]) {
+      const m = tail.match(re);
+      if (m && (endRel === -1 || m.index < endRel)) endRel = m.index;
+    }
+    if (endRel === -1) return null;
+
+    const narrative = tail.slice(0, endRel)
+      .replace(/\\n/g, '\n')
+      .replace(/\\"/g, '"');
+
+    return {
+      narrative,
+      actions: [],
+      diceRequests: [],
+      stateUpdate: null,
+      creativeOutcome: null,
+    };
   }
 
   /**
@@ -83,10 +132,28 @@ export class AIResponseParser {
 
   /**
    * 回退响应
+   * 防御性清洗：如果文本一看就像 JSON 残片（含 "narrative":），最少把这层壳剥掉，
+   * 避免在游戏 UI 里直接秀出 `{"narrative":"..."` 这种露馅文本
    */
   _fallback(text) {
+    let narrative = text;
+    if (typeof narrative === 'string') {
+      // 去掉首尾大括号
+      narrative = narrative.trim().replace(/^\{+\s*/, '').replace(/\s*\}+$/, '');
+      // 如果还能看出 "narrative":"..." 残片，剥掉前缀
+      const head = narrative.match(/^\s*"narrative"\s*:\s*"/);
+      if (head) narrative = narrative.slice(head[0].length);
+      // 抹掉尾部常见 JSON 字段残骸
+      narrative = narrative
+        .replace(/",?\s*"actions"\s*:[\s\S]*$/, '')
+        .replace(/",?\s*"diceRequests"\s*:[\s\S]*$/, '')
+        .replace(/",?\s*"stateUpdate"\s*:[\s\S]*$/, '')
+        .replace(/",?\s*"creativeOutcome"\s*:[\s\S]*$/, '');
+      // 反转义
+      narrative = narrative.replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+    }
     return {
-      narrative: text,
+      narrative,
       actions: [],
       diceRequests: [],
       stateUpdate: null,

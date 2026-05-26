@@ -14,12 +14,13 @@ export class ToolbarPanel {
 
     /** 工具栏按钮定义 */
     this.buttons = [
+      { id: 'newgame',  label: '新游戏', icon: '🔄', event: 'ui:openEndgame' },
       { id: 'import',   label: '导入', icon: '📥', event: 'toolbar:import' },
       { id: 'export',   label: '导出', icon: '📤', event: 'toolbar:export' },
       { id: 'save',     label: '保存', icon: '💾', event: 'toolbar:save' },
       { id: 'load',     label: '读档', icon: '📂', event: 'toolbar:load' },
       { id: 'editor',   label: '编辑器', icon: '📝', event: 'ui:openEditor' },
-      { id: 'random',   label: '随机世界', icon: '🎲', event: 'toolbar:randomWorld' },
+      { id: 'codex',    label: '图鉴',   icon: '📖', event: 'ui:openCodex' },
       { id: 'log',      label: '导出日志', icon: '📋', event: 'toolbar:exportLog' },
       { id: 'settings', label: '设置', icon: '⚙',  event: 'ui:openSettings' },
       { id: 'dice',     label: '掷骰', icon: '🎲', event: 'toolbar:rollDice' },
@@ -96,7 +97,7 @@ export class ToolbarPanel {
     statusBar.className = 'toolbar__status';
     statusBar.innerHTML = `
       <span class="toolbar__status-item" data-key="gold" title="金币">💰 <span class="toolbar__status-value">0</span></span>
-      <span class="toolbar__status-item" data-key="turn" title="回合">🔄 <span class="toolbar__status-value">1</span></span>
+      <span class="toolbar__status-item" data-key="storyTime" title="故事时间（日 / 时）">🕐 <span class="toolbar__status-value">D1 08:00</span></span>
       <span class="toolbar__status-item" data-key="chapter" title="当前章节">📖 <span class="toolbar__status-value">序章</span></span>
       <span class="toolbar__status-item" data-key="difficulty" title="难度">⚔ <span class="toolbar__status-value">普通</span></span>
       <span class="toolbar__status-item" data-key="tokens" title="AI Token 累计消耗">🪙 <span class="toolbar__status-value">0</span></span>
@@ -149,7 +150,11 @@ export class ToolbarPanel {
     };
 
     setVal('gold', gameState.gold ?? 0);
-    setVal('turn', gameState.turnNumber || 1);
+
+    // Phase 19C — 故事时间 D{day} HH:MM
+    const st = gameState.storyTime || { day: 1, hour: 8 };
+    const hh = String(Math.floor(st.hour || 0)).padStart(2, '0');
+    setVal('storyTime', `D${st.day || 1} ${hh}:00`);
 
     // 当前章节：最近完成的 ch* 事件
     const chapters = (gameState.completedEventIds || []).filter(id => /^ch\d+_/.test(id));

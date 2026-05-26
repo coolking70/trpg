@@ -1,0 +1,2739 @@
+{
+  "version": "1.0.0",
+  "presetId": "preset_neon_rebellion",
+  "name": "霓虹叛潮",
+  "author": "AI 剧本生成",
+  "createdAt": "2026-05-25T00:00:00Z",
+  "description": "新上海 2087 — 一座被巨型企业'天穹集团'统治的赛博朋克都市。玩家扮演地下抵抗组织'霓虹叛潮'的成员，目标是揭露天穹集团的阴谋，摧毁'灵柩'主控系统。",
+  "lore": {
+    "worldName": "新上海 · 2087",
+    "era": "企业纪元第 34 年",
+    "background": "天穹集团（SkyDome Corp）以'智慧城市'之名统治新上海，表面霓虹璀璨，底层却充满压迫。集团开发的'灵柩'（Soul Vault）神经接口系统号称能提升市民生活质量，实则暗中控制思想。地下抵抗组织'霓虹叛潮'由前企业工程师、黑客、退役军人组成，决定在集团即将全面部署灵柩系统前揭露真相。",
+    "rules": "采用D20骰子系统，战斗为回合制，攻击判定为(攻击力+D20)-防御力=伤害。义体强化提供额外属性加成。黑客技能可入侵敌方机械单位。",
+    "gmStyle": "叙述风格：暗黑赛博朋克，霓虹美学，略带黑色电影感。强调氛围描写、道德困境和角色羁绊。适当穿插街头俚语和科技黑话。"
+  },
+  "characters": [
+    {
+      "id": "char_001",
+      "type": "character",
+      "name": "影鸦",
+      "title": "幽灵黑客",
+      "description": "天穹集团前网络安全工程师，因发现灵柩系统的真相而被追杀。她盗取了核心源码逃入地下，如今是抵抗组织最锋利的数字利刃。义眼在暗处泛着幽蓝的光。",
+      "image": "",
+      "stats": {
+        "hp": 75,
+        "hpCurrent": 75,
+        "mp": 60,
+        "mpCurrent": 60,
+        "attack": 10,
+        "defense": 6,
+        "magicAttack": 18,
+        "magicDefense": 12,
+        "speed": 15,
+        "luck": 10
+      },
+      "abilities": [
+        {
+          "id": "ability_001",
+          "name": "神经入侵",
+          "description": "入侵敌方机械单位，造成电子脑过载伤害",
+          "type": "active",
+          "cost": {
+            "mp": 15
+          },
+          "effect": {
+            "target": "single_enemy",
+            "damage": {
+              "formula": "magicAttack * 2",
+              "type": "magic"
+            }
+          },
+          "cooldown": 0
+        },
+        {
+          "id": "ability_002",
+          "name": "全息幻影",
+          "description": "制造全息分身迷惑敌人，提升闪避",
+          "type": "active",
+          "cost": {
+            "mp": 12
+          },
+          "effect": {
+            "target": "self",
+            "damage": {
+              "formula": "0",
+              "type": "physical"
+            }
+          },
+          "cooldown": 2
+        }
+      ],
+      "equipment": {
+        "weapon": "item_001",
+        "armor": null,
+        "accessory": "item_008"
+      },
+      "inventory": [
+        "item_012"
+      ],
+      "position": {
+        "x": 3,
+        "y": 7
+      },
+      "level": 3,
+      "experience": 120,
+      "statusEffects": [],
+      "tags": [
+        "hacker",
+        "cyborg",
+        "leader"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "char_002",
+      "type": "character",
+      "name": "铁拳",
+      "title": "重装斗士",
+      "description": "前企业精锐保安部队长，因拒绝执行对平民的镇压令而被开除。他的双臂和脊柱经过军用级义体改造，能徒手砸穿钢板。沉默寡言，但拳头会说话。",
+      "image": "",
+      "stats": {
+        "hp": 140,
+        "hpCurrent": 140,
+        "mp": 20,
+        "mpCurrent": 20,
+        "attack": 18,
+        "defense": 16,
+        "magicAttack": 3,
+        "magicDefense": 8,
+        "speed": 8,
+        "luck": 5
+      },
+      "abilities": [
+        {
+          "id": "ability_003",
+          "name": "重拳冲击",
+          "description": "以强化义肢全力一击",
+          "type": "active",
+          "cost": {
+            "mp": 8
+          },
+          "effect": {
+            "target": "single_enemy",
+            "damage": {
+              "formula": "attack * 2.2",
+              "type": "physical"
+            }
+          },
+          "cooldown": 0
+        },
+        {
+          "id": "ability_004",
+          "name": "钢铁壁垒",
+          "description": "启动皮下装甲，大幅提升防御",
+          "type": "active",
+          "cost": {
+            "mp": 10
+          },
+          "effect": {
+            "target": "self",
+            "damage": {
+              "formula": "0",
+              "type": "physical"
+            }
+          },
+          "cooldown": 3
+        }
+      ],
+      "equipment": {
+        "weapon": "item_002",
+        "armor": "item_006",
+        "accessory": null
+      },
+      "inventory": [
+        "item_011"
+      ],
+      "position": {
+        "x": 3,
+        "y": 7
+      },
+      "level": 3,
+      "experience": 110,
+      "statusEffects": [],
+      "tags": [
+        "tank",
+        "cyborg",
+        "ex-corporate"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "char_003",
+      "type": "character",
+      "name": "灵媒",
+      "title": "精神感应者",
+      "description": "在灵柩系统早期实验中诞生的变种人，拥有了神经感应能力。她能感知他人的情绪和思想碎片，但也因此承受着永不停歇的心灵噪音。她是组织最危险也最脆弱的武器。",
+      "image": "",
+      "stats": {
+        "hp": 65,
+        "hpCurrent": 65,
+        "mp": 90,
+        "mpCurrent": 90,
+        "attack": 5,
+        "defense": 5,
+        "magicAttack": 22,
+        "magicDefense": 18,
+        "speed": 12,
+        "luck": 8
+      },
+      "abilities": [
+        {
+          "id": "ability_005",
+          "name": "心灵震爆",
+          "description": "释放精神冲击波，伤害所有敌人",
+          "type": "active",
+          "cost": {
+            "mp": 20
+          },
+          "effect": {
+            "target": "all_enemies",
+            "damage": {
+              "formula": "magicAttack * 1.6",
+              "type": "magic"
+            }
+          },
+          "cooldown": 1
+        },
+        {
+          "id": "ability_006",
+          "name": "意识寄生",
+          "description": "短暂控制一个敌人的心智",
+          "type": "active",
+          "cost": {
+            "mp": 25
+          },
+          "effect": {
+            "target": "single_enemy",
+            "damage": {
+              "formula": "magicAttack * 2.5",
+              "type": "magic"
+            }
+          },
+          "cooldown": 3
+        }
+      ],
+      "equipment": {
+        "weapon": "item_018",
+        "armor": null,
+        "accessory": "item_009"
+      },
+      "inventory": [
+        "item_013"
+      ],
+      "position": {
+        "x": 3,
+        "y": 7
+      },
+      "level": 3,
+      "experience": 115,
+      "statusEffects": [],
+      "tags": [
+        "psychic",
+        "experiment"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "char_004",
+      "type": "character",
+      "name": "鬼医",
+      "title": "地下医者",
+      "description": "曾是天穹集团顶级生物工程师，亲眼目睹灵柩系统的人体实验后良心发现。如今他在黑市开设地下诊所，为抵抗组织提供医疗和生化改造支援。他的手术刀既能救命也能杀人。",
+      "image": "",
+      "stats": {
+        "hp": 85,
+        "hpCurrent": 85,
+        "mp": 50,
+        "mpCurrent": 50,
+        "attack": 8,
+        "defense": 8,
+        "magicAttack": 12,
+        "magicDefense": 14,
+        "speed": 10,
+        "luck": 12
+      },
+      "abilities": [
+        {
+          "id": "ability_007",
+          "name": "纳米修复",
+          "description": "用纳米机器人治疗单个队友",
+          "type": "active",
+          "cost": {
+            "mp": 15
+          },
+          "effect": {
+            "target": "single_ally",
+            "heal": {
+              "formula": "magicAttack * 2.5 + 15",
+              "type": "magic"
+            }
+          },
+          "cooldown": 0
+        },
+        {
+          "id": "ability_008",
+          "name": "生化注射",
+          "description": "注射兴奋剂，提升全队攻击力",
+          "type": "active",
+          "cost": {
+            "mp": 18
+          },
+          "effect": {
+            "target": "self",
+            "damage": {
+              "formula": "0",
+              "type": "physical"
+            }
+          },
+          "cooldown": 2
+        }
+      ],
+      "equipment": {
+        "weapon": "item_003",
+        "armor": null,
+        "accessory": null
+      },
+      "inventory": [
+        "item_011",
+        "item_012"
+      ],
+      "position": {
+        "x": 3,
+        "y": 7
+      },
+      "level": 3,
+      "experience": 100,
+      "statusEffects": [],
+      "tags": [
+        "medic",
+        "scientist"
+      ],
+      "notes": ""
+    }
+  ],
+  "enemies": [
+    {
+      "id": "enemy_001",
+      "type": "enemy",
+      "name": "企业保安",
+      "description": "天穹集团雇佣的武装保安，装备基础防暴装备和电击棍",
+      "image": "",
+      "stats": {
+        "hp": 45,
+        "hpCurrent": 45,
+        "mp": 0,
+        "mpCurrent": 0,
+        "attack": 10,
+        "defense": 8,
+        "magicAttack": 0,
+        "magicDefense": 4,
+        "speed": 8,
+        "luck": 2
+      },
+      "abilities": [],
+      "lootTable": [
+        {
+          "itemId": "item_014",
+          "dropRate": 0.5
+        },
+        {
+          "itemId": "item_017",
+          "dropRate": 0.3
+        }
+      ],
+      "behaviorHint": "aggressive",
+      "experienceReward": 15,
+      "difficulty": "easy",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [
+        "human",
+        "corporate"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "enemy_002",
+      "type": "enemy",
+      "name": "精英特工",
+      "description": "天穹集团特勤部队，经过义体强化和战术训练的精锐",
+      "image": "",
+      "stats": {
+        "hp": 70,
+        "hpCurrent": 70,
+        "mp": 20,
+        "mpCurrent": 20,
+        "attack": 15,
+        "defense": 12,
+        "magicAttack": 6,
+        "magicDefense": 10,
+        "speed": 14,
+        "luck": 5
+      },
+      "abilities": [
+        {
+          "id": "eability_001",
+          "name": "战术突袭",
+          "description": "快速射击，造成额外伤害",
+          "type": "active",
+          "cost": {
+            "mp": 8
+          },
+          "effect": {
+            "target": "single_enemy",
+            "damage": {
+              "formula": "attack * 1.8",
+              "type": "physical"
+            }
+          },
+          "cooldown": 0
+        }
+      ],
+      "lootTable": [
+        {
+          "itemId": "item_014",
+          "dropRate": 0.8
+        },
+        {
+          "itemId": "item_004",
+          "dropRate": 0.2
+        }
+      ],
+      "behaviorHint": "cunning",
+      "experienceReward": 30,
+      "difficulty": "normal",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [
+        "human",
+        "cyborg",
+        "elite"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "enemy_003",
+      "type": "enemy",
+      "name": "哨兵机器人",
+      "description": "天穹集团部署的自主巡逻机器人，装备热能扫描和速射炮",
+      "image": "",
+      "stats": {
+        "hp": 55,
+        "hpCurrent": 55,
+        "mp": 0,
+        "mpCurrent": 0,
+        "attack": 13,
+        "defense": 14,
+        "magicAttack": 0,
+        "magicDefense": 6,
+        "speed": 10,
+        "luck": 1
+      },
+      "abilities": [],
+      "lootTable": [
+        {
+          "itemId": "item_014",
+          "dropRate": 1
+        },
+        {
+          "itemId": "item_007",
+          "dropRate": 0.3
+        }
+      ],
+      "behaviorHint": "defensive",
+      "experienceReward": 25,
+      "difficulty": "normal",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [
+        "robot",
+        "mechanical"
+      ],
+      "notes": "弱点：EMP攻击额外造成50%伤害"
+    },
+    {
+      "id": "enemy_004",
+      "type": "enemy",
+      "name": "天穹CEO·亚当",
+      "description": "天穹集团CEO亚当·格雷，经过全面军用级义体改造的半机械人。他的神经直接链接灵柩主控系统。",
+      "image": "",
+      "stats": {
+        "hp": 180,
+        "hpCurrent": 180,
+        "mp": 60,
+        "mpCurrent": 60,
+        "attack": 20,
+        "defense": 18,
+        "magicAttack": 14,
+        "magicDefense": 16,
+        "speed": 14,
+        "luck": 8
+      },
+      "abilities": [
+        {
+          "id": "eability_002",
+          "name": "企业制裁",
+          "description": "启动义体武装进行全力打击",
+          "type": "active",
+          "cost": {
+            "mp": 15
+          },
+          "effect": {
+            "target": "single_enemy",
+            "damage": {
+              "formula": "attack * 2.2",
+              "type": "physical"
+            }
+          },
+          "cooldown": 1
+        },
+        {
+          "id": "eability_003",
+          "name": "召唤哨兵",
+          "description": "呼叫安保机器人支援",
+          "type": "active",
+          "cost": {
+            "mp": 20
+          },
+          "effect": {
+            "target": "self",
+            "damage": {
+              "formula": "0",
+              "type": "magic"
+            }
+          },
+          "cooldown": 3
+        }
+      ],
+      "lootTable": [
+        {
+          "itemId": "item_005",
+          "dropRate": 1
+        },
+        {
+          "itemId": "item_009",
+          "dropRate": 1
+        }
+      ],
+      "behaviorHint": "aggressive",
+      "experienceReward": 100,
+      "difficulty": "hard",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [
+        "human",
+        "boss",
+        "cyborg"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "enemy_005",
+      "type": "enemy",
+      "name": "灵柩AI守护者",
+      "description": "灵柩系统核心的AI守护程序，能操纵数据中心的所有电子设备。它没有实体——只能通过摧毁核心服务器来击败它。",
+      "image": "",
+      "stats": {
+        "hp": 200,
+        "hpCurrent": 200,
+        "mp": 100,
+        "mpCurrent": 100,
+        "attack": 15,
+        "defense": 10,
+        "magicAttack": 25,
+        "magicDefense": 20,
+        "speed": 18,
+        "luck": 10
+      },
+      "abilities": [
+        {
+          "id": "eability_004",
+          "name": "数据风暴",
+          "description": "释放电磁脉冲攻击所有敌人",
+          "type": "active",
+          "cost": {
+            "mp": 25
+          },
+          "effect": {
+            "target": "all_enemies",
+            "damage": {
+              "formula": "magicAttack * 1.8",
+              "type": "magic"
+            }
+          },
+          "cooldown": 2
+        },
+        {
+          "id": "eability_005",
+          "name": "系统重启",
+          "description": "恢复自身生命值",
+          "type": "active",
+          "cost": {
+            "mp": 30
+          },
+          "effect": {
+            "target": "self",
+            "damage": {
+              "formula": "0",
+              "type": "magic"
+            }
+          },
+          "cooldown": 4
+        }
+      ],
+      "lootTable": [],
+      "behaviorHint": "cunning",
+      "experienceReward": 150,
+      "difficulty": "boss",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "statusEffects": [],
+      "tags": [
+        "ai",
+        "boss",
+        "mechanical"
+      ],
+      "notes": "弱点：物理防御较低，需要黑客技能破解"
+    }
+  ],
+  "items": [
+    {
+      "id": "item_001",
+      "type": "item",
+      "name": "黑冰终端",
+      "description": "搭载破解软件的军用级黑客终端，可以入侵绝大多数电子系统",
+      "image": "",
+      "itemType": "weapon",
+      "statModifiers": {
+        "magicAttack": 10,
+        "speed": 2
+      },
+      "consumeEffect": null,
+      "equipSlot": "weapon",
+      "buyPrice": 250,
+      "sellPrice": 125,
+      "stackable": false,
+      "maxStack": 1,
+      "tags": [
+        "weapon",
+        "hacker"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "item_002",
+      "type": "item",
+      "name": "液压义肢",
+      "description": "军用级液压强化义肢，能轻易击穿混凝土",
+      "image": "",
+      "itemType": "weapon",
+      "statModifiers": {
+        "attack": 12,
+        "defense": 3
+      },
+      "consumeEffect": null,
+      "equipSlot": "weapon",
+      "buyPrice": 300,
+      "sellPrice": 150,
+      "stackable": false,
+      "maxStack": 1,
+      "tags": [
+        "weapon",
+        "cyberware"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "item_003",
+      "type": "item",
+      "name": "手术刀组",
+      "description": "一套精密的手术刀具，在鬼医手中是武器也是工具",
+      "image": "",
+      "itemType": "weapon",
+      "statModifiers": {
+        "attack": 6,
+        "magicAttack": 5
+      },
+      "consumeEffect": null,
+      "equipSlot": "weapon",
+      "buyPrice": 150,
+      "sellPrice": 75,
+      "stackable": false,
+      "maxStack": 1,
+      "tags": [
+        "weapon",
+        "medical"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "item_004",
+      "type": "item",
+      "name": "电磁手枪",
+      "description": "发射电磁脉冲的非致命武器，对机械单位效果拔群",
+      "image": "",
+      "itemType": "weapon",
+      "statModifiers": {
+        "attack": 8,
+        "magicAttack": 4
+      },
+      "consumeEffect": null,
+      "equipSlot": "weapon",
+      "buyPrice": 200,
+      "sellPrice": 100,
+      "stackable": false,
+      "maxStack": 1,
+      "tags": [
+        "weapon",
+        "emp"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "item_005",
+      "type": "item",
+      "name": "企业密钥芯片",
+      "description": "天穹CEO的专属密钥芯片，可以访问集团所有系统",
+      "image": "",
+      "itemType": "quest",
+      "statModifiers": {},
+      "consumeEffect": null,
+      "equipSlot": null,
+      "buyPrice": 0,
+      "sellPrice": 200,
+      "stackable": false,
+      "maxStack": 1,
+      "tags": [
+        "quest",
+        "key"
+      ],
+      "notes": "剧情物品 — 打败CEO后获得"
+    },
+    {
+      "id": "item_006",
+      "type": "item",
+      "name": "防弹外骨骼",
+      "description": "覆盖躯干和四肢的轻型防弹外骨骼",
+      "image": "",
+      "itemType": "armor",
+      "statModifiers": {
+        "defense": 10,
+        "hp": 20
+      },
+      "consumeEffect": null,
+      "equipSlot": "armor",
+      "buyPrice": 280,
+      "sellPrice": 140,
+      "stackable": false,
+      "maxStack": 1,
+      "tags": [
+        "armor",
+        "heavy"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "item_007",
+      "type": "item",
+      "name": "光学隐形模块",
+      "description": "植入皮下的光学折射模块，短时间内进入隐形状态",
+      "image": "",
+      "itemType": "accessory",
+      "statModifiers": {
+        "speed": 4,
+        "luck": 3
+      },
+      "consumeEffect": null,
+      "equipSlot": "accessory",
+      "buyPrice": 350,
+      "sellPrice": 175,
+      "stackable": false,
+      "maxStack": 1,
+      "tags": [
+        "accessory",
+        "cyberware"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "item_008",
+      "type": "item",
+      "name": "神经加速芯片",
+      "description": "提升神经反射速度的植入芯片",
+      "image": "",
+      "itemType": "accessory",
+      "statModifiers": {
+        "speed": 5,
+        "magicAttack": 3
+      },
+      "consumeEffect": null,
+      "equipSlot": "accessory",
+      "buyPrice": 320,
+      "sellPrice": 160,
+      "stackable": false,
+      "maxStack": 1,
+      "tags": [
+        "accessory",
+        "cyberware"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "item_009",
+      "type": "item",
+      "name": "心灵屏障",
+      "description": "保护佩戴者免受精神攻击的特制护符",
+      "image": "",
+      "itemType": "accessory",
+      "statModifiers": {
+        "magicDefense": 8,
+        "mp": 20
+      },
+      "consumeEffect": null,
+      "equipSlot": "accessory",
+      "buyPrice": 400,
+      "sellPrice": 200,
+      "stackable": false,
+      "maxStack": 1,
+      "tags": [
+        "accessory",
+        "psychic"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "item_010",
+      "type": "item",
+      "name": "纳米修复剂",
+      "description": "注射后快速修复组织损伤，恢复50点生命值",
+      "image": "",
+      "itemType": "consumable",
+      "statModifiers": {},
+      "consumeEffect": {
+        "type": "heal",
+        "stat": "hp",
+        "value": 50
+      },
+      "equipSlot": null,
+      "buyPrice": 40,
+      "sellPrice": 20,
+      "stackable": true,
+      "maxStack": 10,
+      "tags": [
+        "consumable",
+        "medical"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "item_011",
+      "type": "item",
+      "name": "兴奋剂",
+      "description": "临时提升战斗能力，增加5点攻击持续3回合",
+      "image": "",
+      "itemType": "consumable",
+      "statModifiers": {},
+      "consumeEffect": {
+        "type": "buff",
+        "stat": "attack",
+        "value": 5,
+        "duration": 3
+      },
+      "equipSlot": null,
+      "buyPrice": 35,
+      "sellPrice": 17,
+      "stackable": true,
+      "maxStack": 5,
+      "tags": [
+        "consumable",
+        "drug"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "item_012",
+      "type": "item",
+      "name": "急救喷雾",
+      "description": "快速止血喷雾，恢复25点生命值",
+      "image": "",
+      "itemType": "consumable",
+      "statModifiers": {},
+      "consumeEffect": {
+        "type": "heal",
+        "stat": "hp",
+        "value": 25
+      },
+      "equipSlot": null,
+      "buyPrice": 20,
+      "sellPrice": 10,
+      "stackable": true,
+      "maxStack": 10,
+      "tags": [
+        "consumable",
+        "medical"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "item_013",
+      "type": "item",
+      "name": "精神稳定剂",
+      "description": "缓解心灵噪音的药物，灵媒的必备品",
+      "image": "",
+      "itemType": "consumable",
+      "statModifiers": {},
+      "consumeEffect": {
+        "type": "heal",
+        "stat": "mp",
+        "value": 30
+      },
+      "equipSlot": null,
+      "buyPrice": 30,
+      "sellPrice": 15,
+      "stackable": true,
+      "maxStack": 10,
+      "tags": [
+        "consumable",
+        "psychic"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "item_014",
+      "type": "item",
+      "name": "信用点",
+      "description": "新上海通用电子货币",
+      "image": "",
+      "itemType": "material",
+      "statModifiers": {},
+      "consumeEffect": null,
+      "equipSlot": null,
+      "buyPrice": 0,
+      "sellPrice": 5,
+      "stackable": true,
+      "maxStack": 999,
+      "tags": [
+        "currency"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "item_015",
+      "type": "item",
+      "name": "加密数据芯片",
+      "description": "从数据中心盗取的天穹集团加密文件",
+      "image": "",
+      "itemType": "quest",
+      "statModifiers": {},
+      "consumeEffect": null,
+      "equipSlot": null,
+      "buyPrice": 0,
+      "sellPrice": 0,
+      "stackable": false,
+      "maxStack": 1,
+      "tags": [
+        "quest",
+        "data"
+      ],
+      "notes": "剧情物品 — 数据中心偷取"
+    },
+    {
+      "id": "item_016",
+      "type": "item",
+      "name": "门禁卡·紫级",
+      "description": "天穹集团紫色权限门禁卡，可进入数据中心安保层",
+      "image": "",
+      "itemType": "quest",
+      "statModifiers": {},
+      "consumeEffect": null,
+      "equipSlot": null,
+      "buyPrice": 0,
+      "sellPrice": 0,
+      "stackable": false,
+      "maxStack": 1,
+      "tags": [
+        "quest",
+        "key"
+      ],
+      "notes": "剧情物品"
+    },
+    {
+      "id": "item_017",
+      "type": "item",
+      "name": "电击棍",
+      "description": "基础防暴装备，近战电击武器",
+      "image": "",
+      "itemType": "weapon",
+      "statModifiers": {
+        "attack": 4
+      },
+      "consumeEffect": null,
+      "equipSlot": "weapon",
+      "buyPrice": 50,
+      "sellPrice": 25,
+      "stackable": false,
+      "maxStack": 1,
+      "tags": [
+        "weapon",
+        "melee"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "item_018",
+      "type": "item",
+      "name": "神经聚焦器",
+      "description": "可挂在脑机接口上的精神能量放大器，灵媒级别专用",
+      "image": "",
+      "itemType": "weapon",
+      "statModifiers": {
+        "magicAttack": 12,
+        "mp": 10
+      },
+      "consumeEffect": null,
+      "equipSlot": "weapon",
+      "buyPrice": 280,
+      "sellPrice": 140,
+      "stackable": false,
+      "maxStack": 1,
+      "tags": [
+        "weapon",
+        "psyker",
+        "cyberware"
+      ],
+      "notes": ""
+    }
+  ],
+  "events": [
+    {
+      "id": "ch1_awakening",
+      "type": "event",
+      "name": "第一章 霓虹之下",
+      "description": "新上海的雨夜，霓虹灯光在湿漉漉的街道上碎裂成千万种颜色。你们聚集在地下酒吧'霓虹深渊'——抵抗组织的秘密据点。墙上投影着天穹集团的最新通告：'灵柩系统将于下月全面部署，新上海将迎来真正的和谐社会。'影鸦的手指在终端上飞速敲击，屏幕上的数据流映在她义眼中。'他们管这叫和谐，'她低声说，'我管这叫奴役。'",
+      "image": "",
+      "eventType": "story",
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_neon_bar"
+          ],
+          "excludeCompletedEvents": [
+            "ch1_awakening"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "choices": [
+        {
+          "id": "accept_mission",
+          "text": "接下任务：潜入天穹数据中心获取证据",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "影鸦将一个数据芯片插入终端：'这是数据中心的架构图。拿到证据，我们就能让全世界知道灵柩的真相。'",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "mission_accepted",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "开篇氛围肃穆而充满张力，强调赛博朋克世界的压迫感和反抗的使命感",
+      "tags": [
+        "main",
+        "chapter1"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ch2_blackmarket",
+      "type": "event",
+      "name": "第二章 黑市交易",
+      "description": "黑市街区充斥着全息广告的叫卖声和街头改造人的喧嚣。一个穿着破旧雨衣的人影在巷口朝你们招手——这是你们约好的情报贩子'乌鸦'。但你们注意到，周围的几个摊位老板正用不自然的眼神扫描着你们。",
+      "image": "",
+      "eventType": "encounter",
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_black_market"
+          ],
+          "requireVariables": {
+            "mission_accepted": true
+          },
+          "excludeCompletedEvents": [
+            "ch2_blackmarket"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 90,
+      "choices": [
+        {
+          "id": "approach_dealer",
+          "text": "直接走向乌鸦交易",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 0.6,
+              "text": "乌鸦快速将一个芯片塞到你们手中：'数据中心的门禁卡复制品。快走，这里不安全了。'",
+              "effects": [
+                {
+                  "type": "add_item",
+                  "itemId": "item_016"
+                },
+                {
+                  "type": "set_variable",
+                  "name": "got_keycard",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "probability": 0.4,
+              "text": "你们刚走近，企业特工从暗处冲出！'暴露了！'乌鸦喊道。混战中，他把门禁卡复制品抛向影鸦，自己消失在雨幕里。",
+              "effects": [
+                {
+                  "type": "add_item",
+                  "itemId": "item_016"
+                },
+                {
+                  "type": "set_variable",
+                  "name": "got_keycard",
+                  "value": true
+                },
+                {
+                  "type": "set_variable",
+                  "name": "blackmarket_exposed",
+                  "value": true
+                },
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_001",
+                    "enemy_001",
+                    "enemy_002"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "suspect_trap",
+          "text": "识破埋伏，先发制人",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 0.7,
+              "text": "铁拳一个箭步冲向伪装成商贩的特工，一拳将其击晕。乌鸦竖起拇指：'好眼力！'",
+              "effects": [
+                {
+                  "type": "add_item",
+                  "itemId": "item_016"
+                },
+                {
+                  "type": "set_variable",
+                  "name": "got_keycard",
+                  "value": true
+                },
+                {
+                  "type": "set_variable",
+                  "name": "avoided_ambush",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "probability": 0.3,
+              "text": "你们判断失误！四周的特工全部亮出武器。乌鸦被迫提前撤离，只来得及把门禁卡复制品塞进旁边的垃圾投递口，留下一句：'活下来再去拿！'",
+              "effects": [
+                {
+                  "type": "add_item",
+                  "itemId": "item_016"
+                },
+                {
+                  "type": "set_variable",
+                  "name": "got_keycard",
+                  "value": true
+                },
+                {
+                  "type": "set_variable",
+                  "name": "blackmarket_exposed",
+                  "value": true
+                },
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_001",
+                    "enemy_001",
+                    "enemy_002"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "紧张的地下交易氛围，处处暗藏杀机",
+      "tags": [
+        "main",
+        "chapter2"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ch3_datacenter",
+      "type": "event",
+      "name": "第三章 数据堡垒",
+      "description": "天穹数据中心如同一座银色的钢铁巨兽蛰伏在夜色中。外墙上的全息广告循环播放着天穹集团的宣传片。影鸦将黑客终端接入外墙的数据端口，屏幕上开始滚动密密麻麻的代码。'安保层有热成像扫描和自动炮塔，'她低声道，'两条路：潜入或者强攻。'",
+      "image": "",
+      "eventType": "encounter",
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_data_perimeter"
+          ],
+          "requireVariables": {
+            "got_keycard": true
+          },
+          "excludeCompletedEvents": [
+            "ch3_datacenter"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 85,
+      "choices": [
+        {
+          "id": "stealth_infiltrate",
+          "text": "影鸦破解安保系统，潜入数据中心",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 0.7,
+              "text": "影鸦的指尖在终端上翻飞，安保系统逐一瘫痪。你们无声无息地潜入了数据中心核心。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "infiltrated",
+                  "value": true
+                },
+                {
+                  "type": "add_memory",
+                  "value": "影鸦用精湛的黑客技术破解了数据中心安保系统"
+                },
+                {
+                  "type": "heal",
+                  "target": "single",
+                  "value": 0
+                }
+              ]
+            },
+            {
+              "probability": 0.3,
+              "text": "警报响起！'触发了静默警报！'备用安保机器人从墙壁暗格中弹出。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_003",
+                    "enemy_003"
+                  ]
+                },
+                {
+                  "type": "set_variable",
+                  "name": "infiltrated",
+                  "value": true
+                },
+                {
+                  "type": "set_variable",
+                  "name": "alarm_triggered",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "direct_assault",
+          "text": "铁拳开路，正面突破",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 0.5,
+              "text": "铁拳一拳砸碎了玻璃门！你们冲入数据中心，但警报已经响彻夜空。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_001",
+                    "enemy_001",
+                    "enemy_003"
+                  ]
+                },
+                {
+                  "type": "set_variable",
+                  "name": "infiltrated",
+                  "value": true
+                },
+                {
+                  "type": "set_variable",
+                  "name": "alarm_triggered",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "probability": 0.5,
+              "text": "猛烈突破成功！安保措手不及，你们迅速压制了防守力量。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_001",
+                    "enemy_003"
+                  ]
+                },
+                {
+                  "type": "set_variable",
+                  "name": "infiltrated",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "高科技渗透行动，强调赛博朋克的科技感和紧张氛围",
+      "tags": [
+        "main",
+        "chapter3"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ch4_server_room",
+      "type": "event",
+      "name": "第四章 核心机密",
+      "description": "服务器核心大厅中，巨大的数据塔林立如钢铁森林。淡蓝色的冷却雾气在地面流淌。影鸦找到一个数据接口，将芯片插入。全息投影突然亮起——一段被加密的视频文件开始播放。画面中是灵柩系统的早期人体实验：被植入者痛苦地抽搐，而后眼神变得空洞，完全服从于指令。'天啊...'灵媒捂住嘴，'他们在把人变成傀儡。'",
+      "image": "",
+      "eventType": "story",
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_server_core"
+          ],
+          "requireVariables": {
+            "infiltrated": true
+          },
+          "excludeCompletedEvents": [
+            "ch4_server_room"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 90,
+      "choices": [
+        {
+          "id": "download_evidence",
+          "text": "下载全部证据文件",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 0.8,
+              "text": "数据开始传输。但系统检测到了数据泄露——精英特工正在赶来！",
+              "effects": [
+                {
+                  "type": "add_item",
+                  "itemId": "item_015"
+                },
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_002",
+                    "enemy_002"
+                  ]
+                },
+                {
+                  "type": "set_variable",
+                  "name": "got_evidence",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "probability": 0.2,
+              "text": "下载完成！但撤离路线被封锁——你们必须杀出一条血路！",
+              "effects": [
+                {
+                  "type": "add_item",
+                  "itemId": "item_015"
+                },
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_002",
+                    "enemy_002",
+                    "enemy_003"
+                  ]
+                },
+                {
+                  "type": "set_variable",
+                  "name": "got_evidence",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "upload_virus",
+          "text": "上传病毒暂时瘫痪系统，为撤退争取时间",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 0.6,
+              "text": "病毒植入成功！系统过载导致全楼电力中断。在黑暗中你们带着数据成功撤离。",
+              "effects": [
+                {
+                  "type": "add_item",
+                  "itemId": "item_015"
+                },
+                {
+                  "type": "set_variable",
+                  "name": "got_evidence",
+                  "value": true
+                },
+                {
+                  "type": "set_variable",
+                  "name": "planted_virus",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "probability": 0.4,
+              "text": "病毒上传被防火墙拦截！特工已经封锁了出口。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_002",
+                    "enemy_002",
+                    "enemy_003"
+                  ]
+                },
+                {
+                  "type": "set_variable",
+                  "name": "got_evidence",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "揭露阴谋的关键时刻，氛围沉重而紧迫",
+      "tags": [
+        "main",
+        "chapter4"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ch5_tunnel_escape",
+      "type": "event",
+      "name": "第五章 地铁追逃",
+      "description": "你们带着证据冲出数据中心，企业突击队紧追不舍。地铁隧道的通风管道中回荡着脚步声和枪声。灵媒突然停下脚步，按住太阳穴：'我...感觉到了什么...前方有埋伏！'",
+      "image": "",
+      "eventType": "encounter",
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_tunnel"
+          ],
+          "requireVariables": {
+            "got_evidence": true
+          },
+          "excludeCompletedEvents": [
+            "ch5_tunnel_escape"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 85,
+      "choices": [
+        {
+          "id": "trust_psyker",
+          "text": "相信灵媒的预感，绕路撤退",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 0.6,
+              "text": "你们在岔路转向，成功避开了企业伏击。灵媒松了一口气：'我的头痛减轻了...我们安全了。'",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "escaped_clean",
+                  "value": true
+                },
+                {
+                  "type": "add_memory",
+                  "value": "灵媒的感应能力帮助团队避开了一次致命伏击"
+                }
+              ]
+            },
+            {
+              "probability": 0.4,
+              "text": "但岔路通向一个死胡同！特工从后方包抄。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_002",
+                    "enemy_002",
+                    "enemy_001"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fight_through",
+          "text": "正面突围，杀出一条血路",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 0.6,
+              "text": "经过激烈交火，你们突破了封锁线！但铁拳为掩护队友中了一枪。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_001",
+                    "enemy_002",
+                    "enemy_002"
+                  ]
+                },
+                {
+                  "type": "set_variable",
+                  "name": "fought_through",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "probability": 0.4,
+              "text": "你们被火力压制！必须有人断后。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_002",
+                    "enemy_002",
+                    "enemy_002",
+                    "enemy_003"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "紧张刺激的逃亡战，强调团队协作",
+      "tags": [
+        "main",
+        "chapter5"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ch6_hideout",
+      "type": "event",
+      "name": "第六章 暗流涌动",
+      "description": "回到抵抗组织藏身处，你们修复设备、治疗伤口。但鬼医调查后带来了令人不安的消息：'我们在组织内部发现了信号追踪器。有人在向天穹告密。'所有人的目光交汇——内鬼就在你们中间。",
+      "image": "",
+      "eventType": "story",
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_hideout"
+          ],
+          "requireVariables": {
+            "got_evidence": true
+          },
+          "excludeCompletedEvents": [
+            "ch6_hideout"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 80,
+      "choices": [
+        {
+          "id": "investigate_quietly",
+          "text": "暗中调查内鬼身份",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 0.7,
+              "text": "经过一夜排查，鬼医找到了信号源——一个新加入的组织成员。你们控制了他，从他的神经接口中提取出天穹的监控程序。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "found_mole",
+                  "value": true
+                },
+                {
+                  "type": "add_memory",
+                  "value": "在组织内部发现了一名被天穹控制的内鬼"
+                }
+              ]
+            },
+            {
+              "probability": 0.3,
+              "text": "你们的调查惊动了内鬼，他试图逃跑并触发了警报。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_001",
+                    "enemy_002"
+                  ]
+                },
+                {
+                  "type": "set_variable",
+                  "name": "found_mole",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "call_out",
+          "text": "公开质问所有人",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 0.4,
+              "text": "在紧张的僵持中，一个年轻的技术员颤抖着站了出来：'对不起...他们用我家人威胁我...'",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "found_mole",
+                  "value": true
+                },
+                {
+                  "type": "set_variable",
+                  "name": "mole_repentant",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "probability": 0.6,
+              "text": "没有人承认。气氛变得更加紧张——内鬼还在暗处。就在信任开始瓦解时，鬼医截获到一段正在回传的天穹监控信号，至少证明了内鬼确实藏在组织里。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "found_mole",
+                  "value": true
+                },
+                {
+                  "type": "set_variable",
+                  "name": "trust_cracked",
+                  "value": true
+                },
+                {
+                  "type": "add_memory",
+                  "value": "公开质问没能逼出内鬼，但截获的天穹监控信号确认了内鬼存在，组织内部信任出现裂痕"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "悬疑氛围，道德选择的困境",
+      "tags": [
+        "main",
+        "chapter6"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ch7_headquarters",
+      "type": "event",
+      "name": "第七章 决战苍穹",
+      "description": "天穹集团总部大楼如同一柄刺入夜空的银色利刃。顶层CEO办公室的灯光彻夜不灭。鬼医调试好装备，影鸦检查着黑客程序，铁拳默默擦拳，灵媒闭目凝神。最后一战就在眼前。",
+      "image": "",
+      "eventType": "boss",
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_skyheadquarters"
+          ],
+          "requireVariables": {
+            "found_mole": true
+          },
+          "excludeCompletedEvents": [
+            "ch7_headquarters"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 95,
+      "choices": [
+        {
+          "id": "storm_the_building",
+          "text": "正面进攻，直取CEO",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 0.7,
+              "text": "你们突破保安防线，强行闯入总部大楼。铁拳一拳砸开了防爆电梯门。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_001",
+                    "enemy_001",
+                    "enemy_003"
+                  ]
+                },
+                {
+                  "type": "set_variable",
+                  "name": "stormed_hq",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "probability": 0.3,
+              "text": "大楼安保远超预期！你们被压制在大厅。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_001",
+                    "enemy_001",
+                    "enemy_001",
+                    "enemy_003"
+                  ]
+                },
+                {
+                  "type": "set_variable",
+                  "name": "stormed_hq",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "hack_override",
+          "text": "影鸦尝试用病毒芯片入侵大楼系统",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 0.6,
+              "text": "影鸦的手指在键盘上飞舞：'电梯系统已控制...安保地图已下载...我们有一条直达顶层的线路。'",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "stormed_hq",
+                  "value": true
+                },
+                {
+                  "type": "add_memory",
+                  "value": "影鸦黑入了天穹总部大楼系统，找到了安全路线"
+                }
+              ]
+            },
+            {
+              "probability": 0.4,
+              "text": "防火墙触发了反制程序！天穹AI发现入侵，整栋楼进入封锁状态。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_002",
+                    "enemy_003",
+                    "enemy_003"
+                  ]
+                },
+                {
+                  "type": "set_variable",
+                  "name": "stormed_hq",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "最终决战前的紧张筹备，史诗感",
+      "tags": [
+        "main",
+        "chapter7"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ch8_ceo_boss",
+      "type": "event",
+      "name": "第八章 企业之殇",
+      "description": "CEO办公室的全景落地窗前，亚当·格雷背对着你们。窗外的新上海灯火辉煌。他没有转身，声音平静得不带一丝波澜：'你们以为自己在拯救世界？灵柩系统是这个物种进化的下一步。等它全面部署，战争、贫困、犯罪都将成为历史。而你们——一群活在旧时代的理想主义者——正在挡在历史的车轮前。'他转过身，机械义肢发出低沉嗡鸣。",
+      "image": "",
+      "eventType": "boss",
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_ceo_office"
+          ],
+          "requireVariables": {
+            "stormed_hq": true
+          },
+          "excludeCompletedEvents": [
+            "ch8_ceo_boss"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "choices": [
+        {
+          "id": "fight_ceo",
+          "text": "拒绝妥协，战斗到底",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 0.9,
+              "text": "'那就让历史来审判吧。'亚当的义肢展开成战斗形态，办公室内暗藏的武器系统全部启动。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_004",
+                    "enemy_003"
+                  ]
+                }
+              ]
+            },
+            {
+              "probability": 0.1,
+              "text": "亚当的动作远超人类极限——这一战将异常艰难。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_004",
+                    "enemy_003",
+                    "enemy_003"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "negotiate",
+          "text": "尝试用证据说服他",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 0.3,
+              "text": "当影鸦播放人体实验的视频时，亚当的眼中第一次出现了动摇。他关闭了武器系统：'...他们告诉我那是虚拟仿真数据。'他跌坐在椅子上，仿佛瞬间苍老了十岁。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "name": "ceo_defeated",
+                  "value": true
+                },
+                {
+                  "type": "set_variable",
+                  "name": "ceo_convinced",
+                  "value": true
+                },
+                {
+                  "type": "add_memory",
+                  "value": "亚当·格雷在证据面前醒悟，提供了灵柩系统的后门密钥"
+                },
+                {
+                  "type": "add_item",
+                  "itemId": "item_005"
+                }
+              ]
+            },
+            {
+              "probability": 0.7,
+              "text": "亚当冷笑：'你以为这些录像能证明什么？为了更大的善，一些牺牲是必要的。'他发动了攻击。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_004",
+                    "enemy_003"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "道德困境的巅峰，不仅是战斗更是理念的碰撞",
+      "tags": [
+        "main",
+        "chapter8"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ch9_ai_guardian",
+      "type": "event",
+      "name": "第九章 灵魂灵柩",
+      "description": "穿过CEO办公室的暗门，你们进入了一个巨大的地下空间——灵柩主控室。无数服务器塔延伸到黑暗中，中央悬浮着一颗脉动的蓝色数据球。影鸦的终端自动亮起：'这是灵柩AI的核心...它比我想象的更庞大。'空间中的全息投影亮起，一个无面人的形象浮现：'我是灵柩。我是新上海的大脑。我是秩序。'声音冰冷而理性。",
+      "image": "",
+      "eventType": "boss",
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_soul_vault"
+          ],
+          "requireCompletedEvents": [
+            "ch8_ceo_boss"
+          ],
+          "excludeCompletedEvents": [
+            "ch9_ai_guardian"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "choices": [
+        {
+          "id": "destroy_ai",
+          "text": "启动摧毁程序，终结灵柩系统",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 0.7,
+              "text": "影鸦将病毒芯片插入核心接口。AI的防御系统全面激活——数据风暴席卷而来！",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_005"
+                  ]
+                }
+              ]
+            },
+            {
+              "probability": 0.3,
+              "text": "AI的防御超出预期。它入侵了整栋大楼的武器系统。危险等级上升到最高！",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_005",
+                    "enemy_003"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "merge_psyker",
+          "text": "灵媒尝试用自己的意识覆盖AI",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 0.4,
+              "text": "灵媒的双眼泛起白光，她的意识与AI交缠在一起。巨大的精神冲击让她跪倒在地，但AI的防护层出现了裂痕。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_005"
+                  ]
+                },
+                {
+                  "type": "set_variable",
+                  "name": "psyker_interfaced",
+                  "value": true
+                },
+                {
+                  "type": "add_memory",
+                  "value": "灵媒以自身意识为代价冲击了灵柩AI的核心"
+                }
+              ]
+            },
+            {
+              "probability": 0.6,
+              "text": "AI迅速反制了灵媒的精神入侵！灵媒痛苦地抱住头。",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_005",
+                    "enemy_003"
+                  ]
+                },
+                {
+                  "type": "set_variable",
+                  "name": "psyker_harmed",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "最终Boss战，史诗感的终极对决",
+      "tags": [
+        "main",
+        "chapter9"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ch10_epilogue_liberation",
+      "type": "event",
+      "name": "终章 破晓之城",
+      "description": "随着灵柩系统的崩溃，新上海天穹总部的电力全部中断。巨大的全息广告一个接一个熄灭，如同多米诺骨牌倾倒。你们站在楼顶，看着这座城市逐渐从数字的牢笼中苏醒。远处的居民楼亮起零星的灯光——那是真实的、不受控制的灯光。",
+      "image": "",
+      "eventType": "story",
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_rooftop"
+          ],
+          "requireCompletedEvents": [
+            "ch9_ai_guardian"
+          ],
+          "excludeCompletedEvents": [
+            "ch10_epilogue_liberation",
+            "ch10_epilogue_sacrifice"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "choices": [
+        {
+          "id": "look_to_future",
+          "text": "展望未来",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "影鸦关闭了终端，抬头望向远方：'这只是开始。新上海需要真正的自由，而我们要确保它不会再落入另一个天穹手中。'铁拳拍了拍她的肩：'那就一起干吧。'空气中弥漫着雨后的清新气息。新的一天即将到来。",
+              "effects": [
+                {
+                  "type": "add_memory",
+                  "value": "我们成功摧毁了灵柩系统，新上海迎来了真正的黎明"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "希望与反思并存的结局",
+      "tags": [
+        "epilogue",
+        "main",
+        "chapter10"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "ch10_epilogue_sacrifice",
+      "type": "event",
+      "name": "终章 代价之晨",
+      "description": "灵柩系统被摧毁了。但灵媒倒在数据核心的残骸中，嘴角挂着淡淡的微笑——她最后的意识碎片融入了AI的毁灭中，用自己的心灵给了AI最后一击。鬼医弯下身，检查她的脉搏，然后摇了摇头。窗外，新上海的第一缕真正的晨曦照进了这个曾经囚禁灵魂的房间。自由有了代价。",
+      "image": "",
+      "eventType": "story",
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_rooftop"
+          ],
+          "requireCompletedEvents": [
+            "ch9_ai_guardian"
+          ],
+          "requireVariables": {
+            "psyker_interfaced": true
+          },
+          "excludeCompletedEvents": [
+            "ch10_epilogue_liberation",
+            "ch10_epilogue_sacrifice"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 110,
+      "choices": [
+        {
+          "id": "honor_her",
+          "text": "铭记她的牺牲",
+          "requirements": null,
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "铁拳默默将灵媒的护身符收入怀中。影鸦擦去眼泪，重新打开终端：'她的名字会留在我们传递的每一份数据中。自由不死。'",
+              "effects": [
+                {
+                  "type": "add_memory",
+                  "value": "灵媒牺牲了自己摧毁了灵柩AI，我们永远铭记她"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "repeatable": false,
+      "maxOccurrences": 1,
+      "aiPromptHint": "悲壮而充满希望的结局，强调牺牲的意义",
+      "tags": [
+        "epilogue",
+        "main",
+        "chapter10",
+        "bittersweet"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "side_black_market_shop",
+      "type": "event",
+      "name": "黑市商人",
+      "description": "一个隐藏在雨棚下的全息招牌闪烁着：'老周's 好货 — 不问来源，只问价格。'柜台后一个戴着防毒面具的商人朝你们招招手。",
+      "image": "",
+      "eventType": "shop",
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_black_market"
+          ],
+          "requireCompletedEvents": [
+            "ch2_blackmarket"
+          ],
+          "probability": 0.8
+        }
+      },
+      "priority": 60,
+      "shop": {
+        "inventory": [
+          {
+            "itemId": "item_010",
+            "price": 40,
+            "stock": 5
+          },
+          {
+            "itemId": "item_011",
+            "price": 35,
+            "stock": 3
+          },
+          {
+            "itemId": "item_012",
+            "price": 20,
+            "stock": 5
+          },
+          {
+            "itemId": "item_013",
+            "price": 30,
+            "stock": 3
+          },
+          {
+            "itemId": "item_007",
+            "price": 350,
+            "stock": 1
+          }
+        ],
+        "sellMultiplier": 0.5
+      },
+      "choices": [],
+      "repeatable": true,
+      "maxOccurrences": 99,
+      "aiPromptHint": "赛博朋克黑市氛围，商人神秘而精明",
+      "tags": [
+        "shop",
+        "merchant"
+      ],
+      "notes": ""
+    }
+  ],
+  "startingSceneId": "scene_neon_bar",
+  "displayMode": "scene-graph",
+  "scenes": [
+    {
+      "id": "scene_neon_bar",
+      "name": "霓虹深渊酒吧",
+      "type": "spawn",
+      "icon": "🍸",
+      "description": "地下酒吧的霓虹灯在烟雾中氤氲成一片光海。角落里，抵抗组织的成员们在低声交谈。墙上的全息时钟显示：新上海时间 23:47。",
+      "coords": {
+        "x": 3,
+        "y": 7
+      },
+      "connections": [
+        {
+          "to": "scene_black_market",
+          "label": "穿过雨夜的后巷前往黑市"
+        }
+      ],
+      "events": [
+        "ch1_awakening"
+      ],
+      "vignettes": [
+        "酒吧里播放着忧郁的合成波音乐。酒保擦拭着玻璃杯，目光在每一个入口停留。",
+        "全息新闻在墙上滚动：'天穹集团股价再创新高，灵柩系统预注册人数突破千万。'"
+      ],
+      "tags": [
+        "safe",
+        "main"
+      ]
+    },
+    {
+      "id": "scene_black_market",
+      "name": "黑市街区",
+      "type": "settlement",
+      "icon": "🏪",
+      "description": "霓虹招牌在雨中闪烁，空气中混合着机油、烤肉和电焊的气味。改造人们在街头交易着从武器到违禁芯片的一切。",
+      "coords": {
+        "x": 5,
+        "y": 7
+      },
+      "connections": [
+        {
+          "to": "scene_neon_bar",
+          "label": "返回霓虹深渊酒吧"
+        },
+        {
+          "to": "scene_data_perimeter",
+          "label": "沿着排水管道向天穹数据中心前进",
+          "gated": {
+            "requireCompletedEvents": [
+              "ch2_blackmarket"
+            ],
+            "hint": "你们还没拿到门禁卡，贸然前往只会打草惊蛇"
+          }
+        },
+        {
+          "to": "scene_tunnel",
+          "label": "潜入地铁隧道系统"
+        }
+      ],
+      "events": [
+        "ch2_blackmarket",
+        "side_black_market_shop"
+      ],
+      "vignettes": [
+        "一个街头小贩在兜售改造义肢：'正宗军用级，拆机甲都够用！'",
+        "雨棚下，几个孩子在围观一台破损的全息投影仪，画面上播放着老旧的功夫片。"
+      ],
+      "tags": [
+        "safe",
+        "main",
+        "shop"
+      ]
+    },
+    {
+      "id": "scene_data_perimeter",
+      "name": "数据中心外围",
+      "type": "wilderness",
+      "icon": "🏢",
+      "description": "天穹数据中心的外墙高耸入云，银色金属表面倒映着城市霓虹。高压电网在围栏上嗡嗡作响。",
+      "coords": {
+        "x": 7,
+        "y": 5
+      },
+      "connections": [
+        {
+          "to": "scene_black_market",
+          "label": "撤回黑市街区"
+        },
+        {
+          "to": "scene_server_core",
+          "label": "渗透进入数据中心内部",
+          "gated": {
+            "requireVariables": {
+              "got_keycard": true
+            },
+            "hint": "大门需要紫色权限门禁卡"
+          }
+        }
+      ],
+      "events": [
+        "ch3_datacenter"
+      ],
+      "vignettes": [
+        "探照灯在围栏上有规律地扫过。夜雨中，数据中心的轮廓像一座沉默的巨兽。",
+        "外墙上的广告屏循环播放着天穹集团CEO的画面：'拥抱未来，拥抱灵柩。'"
+      ],
+      "tags": [
+        "main"
+      ]
+    },
+    {
+      "id": "scene_server_core",
+      "name": "服务器核心",
+      "type": "dungeon",
+      "icon": "💾",
+      "description": "巨大的服务器塔林立在冷却雾气中，蓝色LED指示灯如星河般闪烁。空气中弥漫着臭氧的味道。",
+      "coords": {
+        "x": 9,
+        "y": 5
+      },
+      "connections": [
+        {
+          "to": "scene_data_perimeter",
+          "label": "撤退出数据中心"
+        },
+        {
+          "to": "scene_tunnel",
+          "label": "从紧急通道逃入地铁系统",
+          "gated": {
+            "requireCompletedEvents": [
+              "ch4_server_room"
+            ],
+            "hint": "警报已被触发，需要先完成这里的任务"
+          }
+        }
+      ],
+      "events": [
+        "ch4_server_room"
+      ],
+      "vignettes": [
+        "冷却系统的低鸣在服务器间回荡，如同机械文明的呼吸声。",
+        "一个服务器节点上贴着一张褪色的贴纸：'这里没有上帝，只有代码。'"
+      ],
+      "tags": [
+        "main",
+        "boss"
+      ]
+    },
+    {
+      "id": "scene_tunnel",
+      "name": "地铁隧道",
+      "type": "wilderness",
+      "icon": "🚇",
+      "description": "废弃的地铁隧道中，墙壁上覆盖着涂鸦。隔几分钟就有企业列车从旁边轨道呼啸而过，震落天花板上的灰尘。",
+      "coords": {
+        "x": 11,
+        "y": 8
+      },
+      "connections": [
+        {
+          "to": "scene_black_market",
+          "label": "从隧道出口返回地面"
+        },
+        {
+          "to": "scene_hideout",
+          "label": "沿废弃铁道前往组织藏身处"
+        }
+      ],
+      "events": [
+        "ch5_tunnel_escape"
+      ],
+      "vignettes": [
+        "隧道深处传来滴水声。一只老鼠从铁轨间窜过。",
+        "墙壁上涂鸦着'FREE YOUR MIND'的字样，旁边是天穹集团的logo被喷上了骷髅标记。"
+      ],
+      "tags": [
+        "main"
+      ]
+    },
+    {
+      "id": "scene_hideout",
+      "name": "抵抗组织藏身处",
+      "type": "settlement",
+      "icon": "🏠",
+      "description": "隐藏在一座废弃工厂下的地下基地。墙上贴满了天穹集团的内部资料和地图，几台老旧的终端机闪烁着代码。",
+      "coords": {
+        "x": 13,
+        "y": 10
+      },
+      "connections": [
+        {
+          "to": "scene_tunnel",
+          "label": "返回地铁隧道"
+        },
+        {
+          "to": "scene_skyheadquarters",
+          "label": "出发前往天穹总部大楼——最终决战",
+          "gated": {
+            "requireVariables": {
+              "found_mole": true
+            },
+            "hint": "内鬼还没查出来，贸然出击可能会全军覆没"
+          }
+        }
+      ],
+      "events": [
+        "ch6_hideout"
+      ],
+      "vignettes": [
+        "基地墙上的照片墙记录着被天穹集团迫害的人们。最上面一行字：'不忘来路。'",
+        "影鸦的终端上闪烁着代码流。她偶尔停下来揉一揉酸涩的义眼。"
+      ],
+      "tags": [
+        "safe",
+        "main"
+      ]
+    },
+    {
+      "id": "scene_skyheadquarters",
+      "name": "天穹总部大楼",
+      "type": "combat",
+      "icon": "🏙️",
+      "description": "天穹集团总部——88层的玻璃钢铁巨塔，新上海最显眼的地标。顶层CEO办公室的灯如同悬在天上的王冠。",
+      "coords": {
+        "x": 7,
+        "y": 2
+      },
+      "connections": [
+        {
+          "to": "scene_hideout",
+          "label": "撤回藏身处"
+        },
+        {
+          "to": "scene_ceo_office",
+          "label": "突入顶层CEO办公室",
+          "gated": {
+            "requireCompletedEvents": [
+              "ch7_headquarters"
+            ],
+            "hint": "大楼安保森严，需要先突破防线"
+          }
+        }
+      ],
+      "events": [
+        "ch7_headquarters"
+      ],
+      "vignettes": [
+        "大楼外墙的全息屏幕上，CEO亚当·格雷正在发表演讲。你们知道他就在88层的某个地方。",
+        "空中巡逻的无人机投下移动的影子，如同秃鹫盘旋。"
+      ],
+      "tags": [
+        "main",
+        "boss"
+      ]
+    },
+    {
+      "id": "scene_ceo_office",
+      "name": "CEO办公室",
+      "type": "dungeon",
+      "icon": "💼",
+      "description": "全景落地窗前，新上海的夜景尽收眼底。一张简洁的金属办公桌后，亚当·格雷坐在真皮座椅上，仿佛一直在等待这一刻。",
+      "coords": {
+        "x": 7,
+        "y": 0
+      },
+      "connections": [
+        {
+          "to": "scene_skyheadquarters",
+          "label": "退出办公室"
+        },
+        {
+          "to": "scene_soul_vault",
+          "label": "开启暗门进入灵柩主控室",
+          "gated": {
+            "requireCompletedEvents": [
+              "ch8_ceo_boss"
+            ],
+            "hint": "CEO的威胁尚未解除"
+          }
+        }
+      ],
+      "events": [
+        "ch8_ceo_boss"
+      ],
+      "vignettes": [
+        "办公桌上放着一张泛黄的照片：年轻的亚当和一群人站在实验室里，笑容满面。那时他还相信科技能改变世界。",
+        "窗外，一辆企业飞车无声掠过，车灯在夜空中拖出一道流光。"
+      ],
+      "tags": [
+        "main",
+        "boss"
+      ]
+    },
+    {
+      "id": "scene_soul_vault",
+      "name": "灵柩主控室",
+      "type": "dungeon",
+      "icon": "🧠",
+      "description": "巨大地下空间的核心，悬浮着一颗脉动的蓝色数据球。无数数据线如神经突触般连接着它和整座城市。空气中充斥着数字生命的呼吸感。",
+      "coords": {
+        "x": 9,
+        "y": 2
+      },
+      "connections": [
+        {
+          "to": "scene_rooftop",
+          "label": "战斗结束后前往楼顶",
+          "gated": {
+            "requireCompletedEvents": [
+              "ch9_ai_guardian"
+            ],
+            "hint": "灵柩AI还在运转，必须先解决它"
+          }
+        }
+      ],
+      "events": [
+        "ch9_ai_guardian"
+      ],
+      "vignettes": [
+        "数据球中偶尔闪过零碎的画面：新上海市民的生活片段、梦境、恐惧、希望——灵柩从每个植入者那里采集的记忆。",
+        "在主控室的角落，你们发现了最初的灵柩原型机——看起来像一把普通的神经接入椅。"
+      ],
+      "tags": [
+        "main",
+        "boss"
+      ]
+    },
+    {
+      "id": "scene_rooftop",
+      "name": "天穹之顶",
+      "type": "ending",
+      "icon": "🌅",
+      "description": "天穹总部的楼顶停机坪——新上海最高的观景点。整座城市在脚下铺展开来，霓虹如血管般延伸。远处，地平线上第一缕晨光正在驱散夜幕。",
+      "coords": {
+        "x": 9,
+        "y": 0
+      },
+      "connections": [],
+      "events": [
+        "ch10_epilogue_liberation",
+        "ch10_epilogue_sacrifice"
+      ],
+      "vignettes": [
+        "晨风拂过楼顶，带着雨水和自由的气息。新上海从未如此安静，也从未如此充满希望。"
+      ],
+      "tags": [
+        "epilogue",
+        "main",
+        "safe"
+      ]
+    }
+  ],
+  "map": {
+    "id": "map_cyberpunk_001",
+    "name": "新上海 · 2087",
+    "description": "被天穹集团统治的未来都市",
+    "width": 24,
+    "height": 16,
+    "tileSize": 64,
+    "tileTypes": {
+      "R": {
+        "name": "道路",
+        "color": "#4a4a5a",
+        "walkable": true,
+        "moveCost": 0.5,
+        "image": ""
+      },
+      "B": {
+        "name": "建筑",
+        "color": "#6a6a7a",
+        "walkable": true,
+        "moveCost": 1,
+        "image": ""
+      },
+      "N": {
+        "name": "霓虹区",
+        "color": "#8a2be2",
+        "walkable": true,
+        "moveCost": 1,
+        "image": ""
+      },
+      "G": {
+        "name": "贫民区",
+        "color": "#3a3a3a",
+        "walkable": true,
+        "moveCost": 2,
+        "image": ""
+      },
+      "W": {
+        "name": "水域",
+        "color": "#1a1a4a",
+        "walkable": false,
+        "moveCost": 99,
+        "image": ""
+      },
+      "P": {
+        "name": "公园",
+        "color": "#2a5a2a",
+        "walkable": true,
+        "moveCost": 1,
+        "image": ""
+      },
+      "I": {
+        "name": "工业区",
+        "color": "#5a4a3a",
+        "walkable": true,
+        "moveCost": 2,
+        "image": ""
+      },
+      "C": {
+        "name": "企业总部",
+        "color": "#1a1aff",
+        "walkable": true,
+        "moveCost": 1,
+        "image": ""
+      },
+      "S": {
+        "name": "起点",
+        "color": "#ffcc00",
+        "walkable": true,
+        "moveCost": 1,
+        "image": ""
+      }
+    },
+    "grid": [
+      "WWWWWNNNNBBBBBBBBNNNWWWW",
+      "WWWWNNNBBCCCCCBBBNNNWWWW",
+      "WWWNNNBBCCCCCCCBBBNNNWWW",
+      "WWNNNBBBCCCCCCCBBBBNNWWW",
+      "WNNNBBBBBCCCCBBBBBBBNNWW",
+      "NNNRRBBBBBCCBBBBBRRRNNNN",
+      "NNNRRRNNBBBBBBBNNRRRNNNN",
+      "NNNRRRRRNNBBBNNRRRRRNNGG",
+      "NNNRRRRRRRNNNNRRRRRRRNGG",
+      "NNNRRRRRRRRRRRRRRRRRRNGG",
+      "GGNRRRRRRPPPPPRRRRRRNNGG",
+      "GGNRRRRRPPPPPPPRRRRNNGGG",
+      "GGGNRRRPPPPPIPPPRRRNNGGG",
+      "GGGGNRRPPIPPPIPPRRNNGGGG",
+      "GGGGGNNRRPPPRRRNNGGGGGGG",
+      "GGGGGGGNNNRRRNNNGGGGGGGG"
+    ],
+    "pointsOfInterest": [
+      {
+        "id": "poi_neon_bar",
+        "x": 3,
+        "y": 7,
+        "name": "霓虹深渊酒吧",
+        "type": "spawn",
+        "linkedEventId": null
+      },
+      {
+        "id": "poi_black_market",
+        "x": 5,
+        "y": 7,
+        "name": "黑市街区",
+        "type": "village",
+        "linkedEventId": null
+      },
+      {
+        "id": "poi_data_center",
+        "x": 9,
+        "y": 5,
+        "name": "天穹数据中心",
+        "type": "dungeon",
+        "linkedEventId": null
+      },
+      {
+        "id": "poi_hideout",
+        "x": 13,
+        "y": 10,
+        "name": "抵抗组织藏身处",
+        "type": "village",
+        "linkedEventId": null
+      },
+      {
+        "id": "poi_hq",
+        "x": 7,
+        "y": 2,
+        "name": "天穹总部大楼",
+        "type": "dungeon",
+        "linkedEventId": null
+      }
+    ],
+    "fogOfWar": true,
+    "revealRadius": 3,
+    "tags": [
+      "cyberpunk",
+      "city",
+      "night"
+    ],
+    "notes": ""
+  },
+  "rules": {
+    "diceType": "d20",
+    "combatFormula": "(attack + dice) - defense",
+    "maxPartySize": 4,
+    "startingGold": 200,
+    "deathPenalty": "revive_at_hideout"
+  },
+  "aiConfig": {
+    "systemPromptTemplate": "compact",
+    "customSystemPrompt": "",
+    "temperature": 0.7,
+    "maxResponseTokens": 1000,
+    "useStructuredOutput": true,
+    "language": "zh-CN"
+  }
+}

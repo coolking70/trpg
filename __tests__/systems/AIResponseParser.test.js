@@ -39,6 +39,43 @@ describe('AIResponseParser', () => {
       const r = parser.parse('');
       expect(r.actions).toEqual([]);
     });
+
+    test('Level 4: narrative 内含未转义引号时宽松抽取（多行格式）', () => {
+      // 真实玩测中 AI 偶尔会在 narrative 字段里夹未转义的中文/英文引号导致 JSON.parse 失败
+      const broken = `{
+  "narrative": ""那位骑士..."村民压低声音，"曾是英雄"。今已迷失。",
+  "actions": [],
+  "diceRequests": [],
+  "stateUpdate": null,
+  "creativeOutcome": null
+}`;
+      const r = parser.parse(broken);
+      // 应抽出 narrative 主体（含引号），且 actions 为空数组
+      expect(r.narrative).toContain('那位骑士');
+      expect(r.narrative).toContain('村民压低声音');
+      expect(r.narrative).not.toContain('"actions"');
+      expect(r.actions).toEqual([]);
+    });
+
+    test('Level 4: 单行 JSON 含未转义引号也能宽松抽取', () => {
+      // 来自真实玩测 — single-line 损坏 JSON，narrative 里夹未转义引号
+      const broken = `{"narrative":"你们拨开荒草向北，薇拉低语："这水里有腐化气息，别碰。"雷恩观察周围。", "actions":[], "diceRequests":[], "stateUpdate":null, "creativeOutcome":null}`;
+      const r = parser.parse(broken);
+      expect(r.narrative).toContain('拨开荒草');
+      expect(r.narrative).toContain('腐化气息');
+      expect(r.narrative).not.toContain('"actions"');
+      expect(r.narrative).not.toContain('diceRequests');
+      expect(r.actions).toEqual([]);
+    });
+
+    test('fallback 防御性清洗：剥掉 JSON 残壳', () => {
+      // 当宽松抽取也失败时，至少不应让 UI 显示生 JSON
+      // 这里给一个连 narrative 字段都被破坏到无法定位结尾的串
+      const broken = `{"narrative":"残破内容`;  // 不完整、无尾巴
+      const r = parser.parse(broken);
+      expect(r.narrative).not.toContain('"narrative"');
+      expect(r.narrative).not.toMatch(/^\{/);
+    });
   });
 
   describe('creativeOutcome 标准化', () => {

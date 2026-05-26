@@ -13,20 +13,54 @@ export class DiceSystem extends GameSystem {
 
   /**
    * 解析骰子公式
-   * 支持格式：NdM, NdM+K, NdM-K, d20, 2d6+3
+   * 支持格式：
+   *   - 标准: NdM, NdM+K, NdM-K, d20, 2d6+3
+   *   - 多项: d20+5-2+3（任意 ±K 链）
+   *   - 容错: (attack+1d20)-defense  → 括号被剥离，未知字母标识被当作 0
+   *
    * @param {string} formula - 骰子公式
    * @returns {{ count: number, sides: number, modifier: number }}
    */
   parseFormula(formula) {
-    const cleaned = formula.replace(/\s/g, '').toLowerCase();
-    const match = cleaned.match(/^(\d*)d(\d+)([+-]\d+)?$/);
+    let cleaned = formula.replace(/\s/g, '').toLowerCase();
+    // 1. 剥离括号（语义上多余）
+    cleaned = cleaned.replace(/[()]/g, '');
+    // 2. 把未知字母标识符（如 attack/def/atk/strength/magicattack）替换为 0
+    //    — 因为这些应该由调用方在传入前替换为数字；落到这里说明被遗漏，宽容为 0
+    //    保留 d 作为骰子分隔符（前后是数字）
+    //    分两步：先把"非紧邻数字的字母序列"换成 0，再把"+0/-0"清掉
+    cleaned = cleaned.replace(/(?<![0-9])[a-z][a-z_]*(?![0-9])/g, (m) => {
+      // 'd' 不能被替换 — 但它后面必须紧跟数字才是骰子；裸 d 也兜底为 0
+      return m === 'd' ? '0' : '0';
+    });
+    cleaned = cleaned.replace(/([+-])0(?=[+-]|$)/g, '');
+    // 剥离前导 0+ / +0 / 0-（变量被替换为 0 后留下的痕迹）
+    cleaned = cleaned.replace(/^0([+-])/, '$1');
+    if (cleaned.startsWith('+')) cleaned = cleaned.slice(1);
+    if (cleaned === '' || cleaned === '0') {
+      // 没有骰子部分；返回纯 modifier 0
+      return { count: 0, sides: 0, modifier: 0 };
+    }
+    // 3. 支持任意数量的 +K / -K 修正符
+    const match = cleaned.match(/^(\d*)d(\d+)((?:[+-]\d+)*)$/);
     if (!match) {
+      // 兜底：尝试当作纯数字 modifier
+      const numOnly = cleaned.match(/^([+-]?\d+)((?:[+-]\d+)*)$/);
+      if (numOnly) {
+        const parts = (cleaned.match(/[+-]?\d+/g) || []).map(p => parseInt(p, 10));
+        return { count: 0, sides: 0, modifier: parts.reduce((a, b) => a + b, 0) };
+      }
       throw new Error(`无效的骰子公式: ${formula}`);
+    }
+    let modifier = 0;
+    if (match[3]) {
+      const parts = match[3].match(/[+-]\d+/g) || [];
+      for (const p of parts) modifier += parseInt(p, 10);
     }
     return {
       count: match[1] ? parseInt(match[1]) : 1,
       sides: parseInt(match[2]),
-      modifier: match[3] ? parseInt(match[3]) : 0,
+      modifier,
     };
   }
 

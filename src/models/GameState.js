@@ -31,10 +31,41 @@ export class GameState {
     // 地图状态
     this.mapState = {
       playerPosition: { x: 0, y: 0 },
-      revealedTiles: [],    // "x,y" 格式字符串数组
-      visitedTiles: [],     // "x,y" 格式字符串数组
+      revealedTiles: [],         // "x,y" 格式字符串数组（旧格子模式）
+      visitedTiles: [],          // "x,y" 格式字符串数组（旧格子模式）
+      currentSceneId: null,      // 场景图模式下的当前节点
+      visitedSceneIds: [],       // 已访问过的场景节点 ID 列表
       ...(data.mapState || {}),
     };
+
+    // Phase 19A — 玩家创建时选定的标签（race/origin/background/faith + 自定义）
+    this.playerTags = [...(data.playerTags || [])];
+
+    // Phase 26B — AI tier 控制叙事丰度
+    //   'none'/'light'/'standard'/'advanced'；与 preset.aiHooks 协同决定何时调 AI
+    this.aiTier = data.aiTier || 'standard';
+
+    // Phase 19C — 故事时间（与游戏回合 turnNumber 独立）
+    this.storyTime = {
+      day: 1,
+      hour: 8,
+      ...(data.storyTime || {}),
+    };
+
+    // Phase 19B — NPC 运行时状态池
+    //   key: npc.id, value: { affection, currentScene, inventory, alive, mood, knownTo }
+    this.npcState = { ...(data.npcState || {}) };
+    // 当前同行的伙伴 NPC id 列表（按入队顺序）
+    this.companions = [...(data.companions || [])];
+
+    // Phase 22 预留 — 全局世界状态（discrete narrative flags）
+    this.worldFlags = { ...(data.worldFlags || {}) };
+
+    // Phase 20B — 当前活跃对话（NPC + 节点 id）
+    this.activeDialogue = data.activeDialogue || null;
+
+    // Phase 21B — 已发现的隐藏连接（编码为 "fromId→toId" 字符串）
+    this.discoveredConnections = [...(data.discoveredConnections || [])];
 
     // 已完成的事件ID列表
     this.completedEventIds = [...(data.completedEventIds || [])];
@@ -153,8 +184,21 @@ export class GameState {
     // 复制角色卡数据
     state.activeCharacters = (preset.characters || []).map(c => deepClone(c));
 
-    // 设置起始位置
-    if (preset.map) {
+    // 场景图模式：设置起始场景
+    if (preset.scenes && preset.scenes.length > 0) {
+      const startSceneId = preset.startingSceneId || preset.scenes[0].id;
+      const startScene = preset.scenes.find(s => s.id === startSceneId);
+      state.mapState.currentSceneId = startSceneId;
+      state.mapState.visitedSceneIds = [startSceneId];
+      // 兼容：把场景坐标同步到 playerPosition，让旧的地形卡/UI 能用
+      if (startScene && startScene.coords) {
+        state.mapState.playerPosition = { x: startScene.coords.x, y: startScene.coords.y };
+      }
+    }
+
+    // 设置起始位置（兼容旧格子地图 — 仅当没有场景图时使用）
+    const hasScenes = preset.scenes && preset.scenes.length > 0;
+    if (preset.map && !hasScenes) {
       const mapData = preset.map;
       // 查找起点
       let spawnX = 0, spawnY = 0;
@@ -206,6 +250,16 @@ export class GameState {
       diceHistory: this.diceHistory,
       variables: this.variables,
       gold: this.gold,
+      // Phase 19
+      playerTags: this.playerTags,
+      storyTime: this.storyTime,
+      npcState: this.npcState,
+      companions: this.companions,
+      worldFlags: this.worldFlags,
+      activeDialogue: this.activeDialogue,
+      discoveredConnections: this.discoveredConnections,
+      // Phase 26B
+      aiTier: this.aiTier,
     });
   }
 

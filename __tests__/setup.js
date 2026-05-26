@@ -57,3 +57,8 @@ if (!global.performance) {
 if (!global.performance.now) {
   global.performance.now = () => Date.now();
 }
+
+// structuredClone polyfill（fake-indexeddb 需要，但 jsdom 不带）
+if (!global.structuredClone) {
+  global.structuredClone = (val) => JSON.parse(JSON.stringify(val));
+}

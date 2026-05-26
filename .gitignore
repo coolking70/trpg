@@ -15,5 +15,8 @@ dist/
 coverage/
 .jest-cache/
 
+# 玩测日志（LogSystem 导出，可能含 token 消耗等运行时数据）
+logs/
+
 # Claude 工具的本机设置（保留 launch.json 共享）
 .claude/settings.local.json
