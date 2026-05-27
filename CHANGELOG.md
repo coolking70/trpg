@@ -4,6 +4,96 @@
 
 ## [Unreleased]
 
+### Phase 26E — 新游戏 / 清空存档流程 🧹（2026-05-26）
+
+**Fixed — 4 个真 bug**
+- `_handleNewGame.clearAllSlots` 删错 LS key（`trpg_game_state` 应为 `trpg_save`）；现在同时清 `trpg_save`/`trpg_game_state`/`trpg_current_preset` + IDB current 缓存
+- `_buildPresetChoices` 硬编码 4 项，没读 `presets/` 目录；改用 `import.meta.glob('/presets/*.json')` 自动收集，**选项从 4 → 8**（默认 + 4 个 bundled + 3 个 random）
+- "清空全部存档"按钮不带 presetKey 跳到 fallback 默认剧本；现在强制 `gameState/preset=null` 并**自动重新打开 EndgameModal** 让玩家选剧本
+- 误报"已从自动存档恢复"toast（实际是旧 LS key 没清干净）随 1+3 修复一起解决
+
+**Added**
+- `toast:show` 通用事件订阅（ToastManager），任意系统可主动弹通知
+- `_resolvePresetByKey` 支持 `bundled:<presetId>` / `saved:<presetId>` 两种新 key 格式
+
+### Phase 26D — 内容扩充：多题材预设 🎭
+
+**Added — 3 个新预设**
+- 「永燃之冠」`presets/eternal-crown-stress-test.json` — 中世纪奇幻 **101 节点 / 87 事件 / 22 NPC / 4 ending**，4 个 boss 都有 phases，22 关系图
+- 「最后的避难所」`presets/last-shelter-survival.json` — 末日生存 39 节点 / 12 NPC，变种领主 boss 用 2-phase 演示
+- 「青锋录」`presets/qingfeng-wuxia.json` — 武侠 26 节点 / 11 NPC，邪教教主 2-phase
+- 三个生成脚本：`scripts/generate-large-script.mjs` / `generate-survival-preset.mjs` / `generate-wuxia-preset.mjs`
+- 跨预设元进度隔离测试（`__tests__/integration/multiRun.test.js` +1 case）
+- 文档：`docs/PRESETS.md` 横向对比 / `docs/STRESS_TEST_2026-05-26.md` 13 次 AI vs AI playtest 全程
+
+### Phase 26C — 战斗深化 ⚔
+
+**Added — StatusEffect 核心**
+- `CombatSystem.getEffectiveStat(combatant, statName)` — buff/debuff 影响实时 stat
+- `CombatSystem.applyStatusEffect(combatant, { type, stat, value, duration })` — 同 type+stat 续期不重复
+- `CombatSystem._processStatusEffectsTick` — 每回合开始 tick：`dot` 扣血 / `regen` 回血 / 倒计时
+- `ability.effect.applyStatus: { type, stat, value, duration }` — 技能附带状态
+
+**Added — AOE / 多目标**
+- `ability.effect.aoe: true` 或 `target: 'all_enemies'|'all_allies'|'self'|'random_enemy'`
+- 单技能自动施于多目标，`result.subResults[]` 含逐个结果
+- AOE 配合 `applyStatus` 给全部目标加状态
+
+**Added — Boss 阶段战 (phases)**
+- `enemy.phases = [{ id, hpThreshold, statBoosts, abilities, narrative }]`
+- 跨 HP 阈值时一次性激活；高 → 低 hpThreshold 依次触发
+- 已激活的 phase 不重复，新 abilities 追加到 enemy.abilities
+- 演示：龙王 380HP 3-phase / 变种领主 2-phase / 邪教教主 2-phase
+
+**Added — escape_combat 消耗品**
+- 新 `consumeEffect.type: 'escape_combat'`，全队 HP 扣 `hpPenaltyPct%`（默认 10%）
+- 调用 `CombatSystem.endCombat('flee')` 真正脱战
+- 至少保 1 HP（不会自我团灭）
+
+**Added — 数值平衡 Monte Carlo 模拟器**
+- `scripts/combat-balance-check.mjs` — 用真实 CombatSystem + DiceSystem 跑 N=1000 模拟
+- 输出每场战斗：胜率 / 平均回合数 / 剩余 HP P10/P50/P90 / 最低安全入场 HP
+- 支持 `--include-companions` / `--party-by-chapter` / `--entry-hp-pct 0.5`
+- **AI playtest 替代**：5 秒审计 17 战斗，比 AI vs AI 玩测快 10000 倍
+- MCP 工具 `combat_simulate` 暴露给作者用
+
+**Tests**: Jest CombatSystem +13 (status/AOE/phases) / ProgressionSystem +3 (escape_combat) / MCP +2
+
+### Phase 26B — AI Hooks gate 🚪
+
+**Added**
+- `AIGMEngine.shouldCallAI(hookName, options)` — 按 `preset.aiHooks` × `gameState.aiTier` 决定调不调 AI
+- `aiTier`: `none` / `light` / `standard`（默认）/ `advanced`
+  - `none`: 全 fallback，0 token
+  - `light`: 仅首访 sceneArrival / main 事件 / 首遇 NPC
+  - `standard`: 大部分调（vignette 重访 30% 概率）
+  - `advanced`: 全开
+- preset 作者可强制 `always` / `never` 覆盖玩家设置
+- SettingsModal 加"🤖 AI 叙事丰度"下拉，localStorage 持久化
+- 钩到的 actionType: `narrate_scene_arrival` / `narrate_event` / `narrate_npc_dialogue` / `narrate_vignette` / `narrate_world_ripple`
+
+**Tests**: `__tests__/systems/AIGMEngine.test.js` 新增 14 case
+
+### Phase 26A — 大型剧本压力测试 + DiceSystem 容错 + playtest harness 🔧
+
+**Added — DiceSystem 容错升级**
+- 多项修正符: `d20+13-9` 求和 = +4（原仅支持单个 ±K）
+- 容错括号 + 未知变量: `(ATK+1d20)-DEF` → 解析为 d20 + 0（变量不替换时当 0，不再抛错）
+- AIResponseParser / GM AI 生成的非标准公式不再 crash 战斗
+
+**Added — playtest harness 升级**
+- `scripts/playtest-large-script.mjs` — 大型剧本专用 headless AI vs AI
+- PlayerAI: HP 监控 + 自动撤退 prompt + 精确 itemId 校验 + `nextObjective` 推断
+- HeadlessApp: `useItem` / `nearestSceneByTag` BFS / `travelTo` 自动寻路（多跳）
+- 指数退避 retry（GM 3 次 / Player 3 次），fetch failed 不再中断
+- 自动 `meetNPC` 入场景（修生产端 codex 永远统计不到野外 NPC 的 bug）
+- `recruit_companion` 真正 push 到 `activeCharacters`（修 playtest 静默 bug — 招到的伙伴根本没参与战斗）
+
+**Added — 文档**
+- `docs/STRESS_TEST_2026-05-26.md` — 13 次完整 AI vs AI playtest 数据 + 5 项问题修复历程
+
+**Tests**: DiceSystem +5 (容错回归) / Integration multiRun +5 (跨周目存档恢复 + 元进度累积)
+
 ### Phase 22 — 世界因果与 NPC 关系图 🕸（收尾）
 
 把 Phase 19 准备好的 `worldFlags` 数据层真正接入 AI 叙事，加上 NPC 关系图让 NPC 互相影响。

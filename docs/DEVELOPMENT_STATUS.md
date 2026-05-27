@@ -11,10 +11,11 @@
 - **是什么**：浏览器端 AI GM TRPG，AI 担任游戏主持人，玩家通过卡牌/**场景节点图**/文本推进冒险
 - **技术**：原生 ES Modules + Vite + Three.js (3D 骰子) + Canvas2D，无前端框架
 - **AI 接口**：OpenAI 兼容 `/chat/completions`，实测兼容 OpenAI / DeepSeek / Ollama / 小米 MiMo
-- **当前状态**：Phase 16-25 完成、**Jest 370 / MCP 32 全过**、场景图作为主架构、生产就绪
-- **支持超大型剧本（300+ 节点）**：角色创建 / NPC 关系图 / 故事时间 / 营地对话 / 网状叙事 / IndexedDB 存储 / 编辑器分页 / AI 上下文检索 / 元进度图鉴 / 多结局 / MCP 模板
-- **核心模型**：**场景图**（节点 + 连接 + 门控）— 每次跳节点 = 一段戏 = 一次 AI 抵达叙事；不再有"走 50 格才碰一个剧情"的稀释
-- **下一步候选**：编辑器加场景图可视化编辑 / 真实 API 回归玩测 / 多语言 / 社区预设库
+- **当前状态**：Phase 16-26 完成、**Jest 417 / MCP 34 全过**、场景图作为主架构、生产就绪
+- **已验证规模**：单预设 **101 节点 / 87 事件 / 22 NPC**，13 次 AI vs AI 端到端 playtest 验证，4 个 bundled 题材并存（奇幻 / 霓虹朋克 / 末日 / 武侠）
+- **核心能力栈**：场景图 + 角色创建 4 轴 + NPC schedule/关系图 + 故事时间 + 营地交互 + worldFlags AI 注入 + 隐藏路径 + IndexedDB + 跨周目元进度 + AI 上下文检索 + AI Hooks gate(4 tier) + 战斗 buff/AOE/phases + escape_combat + 数值 Monte Carlo 模拟器
+- **MCP 服务器**：54 个工具（preset_apply_template / scene_chain_create / combat_simulate / npc_relation_add 等）
+- **下一步候选**：编辑器加场景图可视化编辑 / 部署+真人玩测反馈 / 多语言 / 社区预设上传
 
 ---
 
@@ -22,12 +23,15 @@
 
 ```bash
 npm install
-npm test          # 297 tests in 18 suites, ~0.6s
+npm test          # 417 tests in 24 suites, ~1.2s
 npm run dev       # localhost:3000
 npm run build     # 生产构建到 dist/
 
-# 纯后端 AI vs AI 完整玩测（场景图版，~120k tokens）
-node scripts/playtest-ai-vs-ai-scene.mjs
+# 数值平衡审计（5 秒，无 AI 调用）
+node scripts/combat-balance-check.mjs --preset presets/eternal-crown-stress-test.json --party-by-chapter
+
+# 端到端 AI vs AI 完整玩测（headless，需 MIMO_KEY env var）
+MIMO_KEY=sk-... node scripts/playtest-large-script.mjs --max-iter 200
 ```
 
 启动后：**⚙ 设置** 填 API key（任意 OpenAI 兼容服务）→ 工具栏 🔄 **新游戏** → 选剧本（默认主线 / 随机森林/荒漠/废墟）→ 节点图地图开局。
@@ -69,7 +73,13 @@ git show <commit> --stat
 | `b1fc703` | **诊断日志系统** | LogSystem + 工具栏导出 JSON/Markdown + 21 个测试 |
 | _(unreleased)_ | **Phase 15 玩测留痕 + 解析健壮性** | 玩家叙事全程留痕 + AIResponseParser 单行损坏 JSON 宽松抽取 + 修复 6 处裸 JSON 泄露 |
 | _(unreleased)_ | **Phase 16 场景图重构 🎯** | SceneSystem + SceneGraphRenderer + 默认预设重写为 12 节点图 + 剧本选择库（4 个）+ EndgameModal + 修 8 个 bug |
-| _(unreleased)_ | **Phase 17 场景编辑器 + MCP 服务器 + 多结局 🤖** | `SceneEditor.js`（节点 + 出边 + gated 表单 + vignettes）+ `mcp-server/preset-server.mjs`（34 个工具 + batch_apply 原子操作 + 12 烟雾测试）+ ch10_redeemed 救赎结局 + 存档元数据场景图友好化 |
+| _(unreleased)_ | **Phase 17 场景编辑器 + MCP 服务器 + 多结局 🤖** | `SceneEditor.js` + `mcp-server/preset-server.mjs`（34 工具 + batch_apply）+ ch10_redeemed 救赎结局 |
+| _(unreleased)_ | **Phase 19 角色+NPC+故事时间** | 4 轴角色创建（race/origin/background/faith）+ NPCSystem（affection/schedule/giftPreferences/对话树）+ storyTime{day,hour} |
+| _(unreleased)_ | **Phase 20-21 单人 + 隐藏路径** | 单人模式 + CampModal（对话/赠礼/索物/休息）+ 场景变体 + 隐藏连接（reveal_connection） |
+| _(unreleased)_ | **Phase 22 worldFlags + NPC 关系图** | AIPromptBuilder 注入 worldFlags + npcRelations[] 一级传播 + applyNPCDeath 死亡冲击 |
+| _(unreleased)_ | **Phase 23-25 存储 + 工具链** | IndexedDB + PresetStorage（大预设自动分发）+ MetaProgression（跨周目）+ ContextRetriever（AI 上下文检索）+ MCP 54 工具 |
+| `bb57f9c` | **Phase 26A-D 战斗深化 + 多题材 + 玩测** | DiceSystem 容错 + AI Hooks gate(4 tier) + buff/debuff/dot/AOE/phases/escape_combat + 3 新预设（永燃之冠 101 节点/末日避难所/武侠青锋录）+ Monte Carlo 数值模拟器 + combat_simulate MCP 工具 |
+| `d3a1f42` | **Phase 26E 新游戏流程 🧹** | 修 4 bug：清空存档不彻底/presets 不在选项/跳默认/误报恢复；用 import.meta.glob 自动列出 bundled 预设 |
 
 详细 bug 见第 5 章。
 

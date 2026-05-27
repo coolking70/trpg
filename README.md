@@ -3,7 +3,8 @@
 > 基于 AI 的 TRPG 浏览器跑团游戏。AI 担任 Game Master，玩家通过卡牌、地图和文本交互推进冒险。
 
 [![CI](https://github.com/USERNAME/REPONAME/actions/workflows/ci.yml/badge.svg)](https://github.com/USERNAME/REPONAME/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-297%2F297-brightgreen)](./__tests__)
+[![Tests](https://img.shields.io/badge/tests-417%2F417-brightgreen)](./__tests__)
+[![MCP](https://img.shields.io/badge/mcp_tools-34%2F34-brightgreen)](./mcp-server)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 支持完整的玩法闭环：探索 → 事件触发 → 战斗 → 角色成长 → 商店 → 主线推进，并配备完整的预设创作器，任何用户都能在浏览器中打造自己的故事。
@@ -18,22 +19,27 @@
 ## 特性亮点
 
 - **场景图地图模型** — 节点 + 路径而非格子；每次跳节点 = 一段戏 = 一次 AI 抵达叙事，**桌游跑团的体感**
+- **角色创建 4 轴** — race × origin × background × faith，玩家身份决定起始场景 + statBonus + AI 上下文
+- **NPC 系统** — schedule（按 storyTime 切换场景）/ affection / giftPreferences / 关系图（一级传播 + 死亡冲击）
+- **战斗深化** — buff/debuff/dot 持续状态 / AOE 多目标 / **Boss 阶段战 (phases)** / escape_combat 道具
+- **AI 叙事丰度可调** — 4 档 aiTier（none/light/standard/advanced）× preset.aiHooks 三态控制（always/never/optional）
+- **跨周目元进度** — 按 presetId 隔离存档 + 图鉴 + 解锁项；3 个题材并存互不污染
 - **可视化场景编辑器** — 浏览器内编辑节点 / 出边 / 门控 / 事件挂载 / vignettes（无需写 JSON）
-- **MCP 服务器** — 暴露 34 个工具让 Claude 等 MCP 客户端批量、精细化生成 TRPG 剧本（参见 [mcp-server/README](mcp-server/README.md)）
+- **MCP 服务器** — 暴露 **54 个工具**让 Claude 等 MCP 客户端批量、精细化生成 TRPG 剧本（参见 [mcp-server/README](mcp-server/README.md)），含 `combat_simulate` Monte Carlo 数值平衡审计
 - **AI GM 接地** — 通过结构化地图上下文 + JSON 响应格式 + Action 白名单校验，避免 AI 编造内容
 - **复合触发器** — 事件可按 scene/tile/POI/变量/前置事件/HP/回合/物品/概率等 **7 维度**组合触发
-- **状态机驱动剧情** — `set_variable` + `trigger_event` 让创作者编排出有起承转合的多章节剧情
+- **状态机驱动剧情** — `set_variable` / `set_worldFlag` / `trigger_event` / `reveal_connection` / `teleport_to_scene` 让创作者编排出有起承转合的多章节剧情
 - **AI 长期记忆** — 分层记忆系统（World Facts + Key Events + Recent Context），长时间游玩 AI 不"失忆"
-- **战斗 Option B 设计** — 常规攻击走 CombatSystem 机制，文本"创意行动"（推柱子砸怪）由 AI 评估难度返回骰子判定
+- **IndexedDB 大预设存储** — 100+ 节点剧本 (200+ KB JSON) 自动落 IDB，跨刷新无损
 - **门控与防剧透** — 锁定节点显示 🔒 ??? 而非真名，gated reason 永不暴露内部变量名 / 事件 ID
-- **剧本选择库** — 新游戏对话框含 4 个预制剧本：默认主线 + 随机森林/荒漠/废墟主题
+- **剧本选择库** — 新游戏对话框含 **8 个**预制剧本：默认主线 + 4 个 bundled 题材（霓虹叛潮 / 永燃之冠 / 末日避难所 / 武侠青锋录）+ 3 个随机主题
 - **结算流程** — 主线完成自动弹结算 modal（含统计 + 再来一局 / 继续探索 / 清空存档）
 - **可视化预设编辑器** — 浏览器内编辑世界/角色/敌人/物品/事件，导入导出 JSON
 - **多槽位存档** — 4 槽 + 自动存档 + 元数据预览（章节/HP/金币/回合）
 - **移动端 + PWA** — 768px 抽屉式布局、触控地图、manifest 支持添加到主屏幕
 - **Token 成本面板** — 采集 API usage / 本地估算，工具栏实时显示并支持预算告警
 - **诊断日志导出** — 一键导出 JSON / Markdown，包含状态、叙事、骰子、Token、错误日志
-- **零后端依赖** — 纯前端，所有数据 localStorage，AI 走 OpenAI 兼容接口
+- **零后端依赖** — 纯前端，所有数据 localStorage / IndexedDB，AI 走 OpenAI 兼容接口
 
 ## 快速开始
 
