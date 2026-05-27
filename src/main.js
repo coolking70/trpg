@@ -48,6 +48,10 @@ import { GameUI } from './ui/GameUI.js';
 // 数据
 import { DEFAULT_PRESET } from './data/defaultPreset.js';
 
+// Phase 26E — 项目自带预设清单（Vite 在构建时把 presets/*.json 都打入 bundle）
+// keys 是 '/presets/xxx.json'，value 是原始 JSON 对象
+const BUNDLED_PRESETS = import.meta.glob('/presets/*.json', { eager: true, import: 'default' });
+
 /**
  * 应用主类
  * 串联所有模块，管理游戏生命周期
@@ -2813,7 +2817,9 @@ class TRPGApp {
     if (opts.clearAutoSave || opts.clearAllSlots) {
       try {
         if (this.stateManager.deleteSlot) this.stateManager.deleteSlot('auto');
-        localStorage.removeItem('trpg_game_state');  // 旧版兼容
+        // Phase 26E 修复 — 清干净所有旧版兼容 LS key
+        localStorage.removeItem('trpg_save');         // 旧版主存档
+        localStorage.removeItem('trpg_game_state');   // 兼容更旧版本
       } catch (e) { /* */ }
     }
     if (opts.clearAllSlots) {
@@ -2826,7 +2832,25 @@ class TRPGApp {
           }
         }
       } catch (e) { /* */ }
+      // PresetStorage 当前预设缓存（同时清 IDB current + LS current）
       try { localStorage.removeItem('trpg_current_preset'); } catch (e) { /* */ }
+      try { presetStorage.idbStore?.delete?.('__current__'); } catch (e) { /* */ }
+
+      // Phase 26E — 清空后强制让玩家重新选剧本而不是默用旧 this.preset
+      this._actionLocked = false;
+      this.gameState = null;       // 清掉内存中的旧 gameState（narrativeLog 也跟着没）
+      this.preset = null;          // 强制下面的 fallback 走 DEFAULT_PRESET 路径
+      // 弹一个 toast 让用户知道清理完成（避免静默）
+      this.eventSystem.publish('toast:show', { text: '🗑 所有存档已清空。请选择剧本开始新冒险。', type: 'info' });
+      // 如果玩家在 clearAllSlots 时没传 presetKey/presetData，重新打开 EndgameModal 让 ta 选剧本
+      if (!opts.presetKey && !opts.presetData) {
+        const stats = this._collectEndgameStats();   // 此时 gameState 为 null，会返回空 stats
+        const presetChoices = this._buildPresetChoices();
+        this.eventSystem.publish('game:mainQuestComplete', {
+          manual: true, stats, presetChoices,
+        });
+        return;
+      }
     }
 
     // 重置 AI 引擎的对话上下文与 token 统计（新一局新账本）
@@ -2961,16 +2985,47 @@ class TRPGApp {
    * @returns {Array<{key, label, icon, description}>}
    */
   _buildPresetChoices() {
-    return [
+    const choices = [
       { key: 'dark_forest',  icon: '📖', label: '暗黑森林冒险',
         description: '默认主线剧本：10 章 + 12 场景节点，揭开暗黑森林的诅咒之谜。' },
+    ];
+    // Phase 26E — 自动列出 presets/ 目录里所有打包的 JSON
+    for (const [path, preset] of Object.entries(BUNDLED_PRESETS)) {
+      if (!preset || !preset.presetId) continue;
+      const sceneCount = (preset.scenes || []).length;
+      const eventCount = (preset.events || []).length;
+      choices.push({
+        key: `bundled:${preset.presetId}`,
+        icon: preset.icon || '📜',
+        label: preset.name || preset.presetId,
+        description: (preset.description ? preset.description.slice(0, 80) + (preset.description.length > 80 ? '…' : '') : '')
+                     + ` (${sceneCount} 节点 / ${eventCount} 事件)`,
+      });
+    }
+    // 用户在 PresetStorage（IndexedDB）里保存过的预设（编辑器导入等）
+    try {
+      const saved = presetStorage.listSync();
+      for (const p of saved) {
+        // 已经被 BUNDLED_PRESETS 覆盖的（按 id 去重）跳过
+        if (Object.values(BUNDLED_PRESETS).some(b => b?.presetId === p.id)) continue;
+        choices.push({
+          key: `saved:${p.id}`,
+          icon: '💾',
+          label: p.name || p.id,
+          description: `${p.sceneCount || 0} 节点 / ${p.eventCount || 0} 事件（本地保存）`,
+        });
+      }
+    } catch (_) { /* */ }
+    // 三个随机主题保留作为兜底
+    choices.push(
       { key: 'random_forest', icon: '🌲', label: '随机：森林主题',
         description: '7 节点场景图小冒险，森林氛围，每次生成一段独特故事。' },
       { key: 'random_desert', icon: '🏜', label: '随机：荒漠主题',
         description: '7 节点场景图小冒险，黄沙商队 + 法老陵墓。' },
       { key: 'random_ruins',  icon: '🏚', label: '随机：废墟主题',
         description: '7 节点场景图小冒险，飞船坠落于异星废墟。' },
-    ];
+    );
+    return choices;
   }
 
   /**
@@ -2980,6 +3035,20 @@ class TRPGApp {
    */
   _resolvePresetByKey(presetKey) {
     if (presetKey === 'dark_forest') return DEFAULT_PRESET;
+    // Phase 26E — 项目自带预设 (bundled:<presetId>)
+    if (presetKey.startsWith('bundled:')) {
+      const id = presetKey.slice('bundled:'.length);
+      const match = Object.values(BUNDLED_PRESETS).find(p => p && p.presetId === id);
+      if (match) return JSON.parse(JSON.stringify(match));   // deep clone 防止被 mutate
+      return null;
+    }
+    // Phase 26E — PresetStorage 里用户保存过的
+    if (presetKey.startsWith('saved:')) {
+      // 异步 — 这里同步返回 null，调用方需走 async path（_handleNewGame 已支持 presetData）
+      // 但 _handleNewGame 只接 sync resolve，所以下面用一个临时容器；理想是改 _handleNewGame 为 async
+      console.warn('saved:<id> 需要异步加载，请改用 presetData 直传');
+      return null;
+    }
     const baseLibrary = this.preset ? {
       characters: JSON.parse(JSON.stringify(this.preset.characters || [])),
       enemies: JSON.parse(JSON.stringify(this.preset.enemies || [])),

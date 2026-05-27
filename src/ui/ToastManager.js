@@ -75,6 +75,18 @@ export class ToastManager {
         lifetime: 5000,
       });
     });
+
+    // 通用 toast:show — 任意系统都可主动弹通知
+    this._subscribe('toast:show', (evt) => {
+      const d = evt.data || {};
+      this.show({
+        type: d.type || 'info',
+        icon: d.icon || (d.type === 'error' ? '❗' : d.type === 'success' ? '✓' : 'ℹ'),
+        title: d.title || d.text || '',
+        msg: d.title ? (d.msg || d.text || '') : (d.msg || ''),
+        lifetime: d.lifetime || 4500,
+      });
+    });
   }
 
   _subscribe(eventType, callback) {
