@@ -566,6 +566,10 @@ export class AIGMEngine extends GameSystem {
     if (summaryParts.length > 0) {
       this.summarizedHistory = summaryParts.join(' ').substring(0, 200);
     }
+
+    while (this.contextWindow.length > 0 && this.contextWindow[0].role !== 'user') {
+      this.contextWindow.shift();
+    }
   }
 
   /**
