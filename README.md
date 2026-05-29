@@ -171,7 +171,7 @@ npm run test:mcp
 ✅ **Phase 14**：移动端响应式 + PWA
 ✅ **Phase 15**：覆盖率提升 + 诊断日志导出 + 玩家叙事全程留痕 + JSON 解析健壮性
 ✅ **Phase 16**：**场景图全量重构**（节点 + 边代替格子）+ 剧本选择库 + 主线结算 modal + 防剧透
-✅ **真实 AI 端到端验证**（OpenAI 兼容 API，含小米 MiMo Pro vs 普通双 AI 完整通关 9/10 章）
+✅ **真实 AI 端到端验证**（OpenAI 兼容 API，默认本地 Qwen GM 链路已通过 headless playtest）
 ✅ **Phase 27**：MCP API-only 小说/设定集导入、超大型剧本外部 manifest、新游戏规模分组、API 连通性测试、叙事清空/身份连续性/玩家可见提示词清洗
 
 🔮 后续可能方向：

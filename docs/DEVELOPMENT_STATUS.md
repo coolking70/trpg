@@ -10,7 +10,7 @@
 
 - **是什么**：浏览器端 AI GM TRPG，AI 担任游戏主持人，玩家通过卡牌/**场景节点图**/文本推进冒险
 - **技术**：原生 ES Modules + Vite + Three.js (3D 骰子) + Canvas2D，无前端框架
-- **AI 接口**：OpenAI 兼容 `/chat/completions`，实测兼容 OpenAI / DeepSeek / Ollama / 小米 MiMo
+- **AI 接口**：OpenAI 兼容 `/chat/completions`，默认本地 `qwen/qwen3.6-35b-a3b @ http://127.0.0.1:1234/v1`
 - **当前状态**：Phase 16-27 完成、**Jest 421 / MCP 37 全过**、场景图作为主架构、生产就绪
 - **已验证规模**：bundled 最大 **101 节点 / 87 事件 / 22 NPC**；外部生成超大型剧本 **298 场景 / 305 事件 / 87 NPC / 7 势力 / 21 结局**
 - **核心能力栈**：场景图 + 角色创建 4 轴 + NPC schedule/关系图 + 故事时间 + 营地交互 + worldFlags AI 注入 + 隐藏路径 + IndexedDB + 跨周目元进度 + AI 上下文检索 + AI Hooks gate(4 tier) + 战斗 buff/AOE/phases + escape_combat + 数值 Monte Carlo 模拟器
@@ -31,8 +31,8 @@ npm run test:mcp  # 37 MCP smoke tests
 # 数值平衡审计（5 秒，无 AI 调用）
 node scripts/combat-balance-check.mjs --preset presets/eternal-crown-stress-test.json --party-by-chapter
 
-# 端到端 AI vs AI 完整玩测（headless，需 MIMO_KEY env var）
-MIMO_KEY=sk-... node scripts/playtest-large-script.mjs --max-iter 200
+# 端到端 AI vs AI 完整玩测（headless；默认走本地 http://127.0.0.1:1234/v1）
+node scripts/playtest-large-script.mjs --max-iter 200
 ```
 
 启动后：**⚙ 设置** 填 API key（任意 OpenAI 兼容服务）→ 工具栏 🔄 **新游戏** → 选剧本（默认主线 / 随机森林/荒漠/废墟）→ 节点图地图开局。
@@ -81,7 +81,7 @@ git show <commit> --stat
 | _(unreleased)_ | **Phase 23-25 存储 + 工具链** | IndexedDB + PresetStorage（大预设自动分发）+ MetaProgression（跨周目）+ ContextRetriever（AI 上下文检索）+ MCP 54 工具 |
 | `bb57f9c` | **Phase 26A-D 战斗深化 + 多题材 + 玩测** | DiceSystem 容错 + AI Hooks gate(4 tier) + buff/debuff/dot/AOE/phases/escape_combat + 3 新预设（永燃之冠 101 节点/末日避难所/武侠青锋录）+ Monte Carlo 数值模拟器 + combat_simulate MCP 工具 |
 | `d3a1f42` | **Phase 26E 新游戏流程 🧹** | 修 4 bug：清空存档不彻底/presets 不在选项/跳默认/误报恢复；用 import.meta.glob 自动列出 bundled 预设 |
-| _(unreleased)_ | **Phase 27 超大型剧本与 API 体验** | MCP API-only 小说/设定集导入 + MiMo 测试；外部 generated manifest；新游戏按规模分组；API 连通性测试按钮；修新游戏叙事残留、身份串线、AI 空叙事无反馈；清洗超大型剧本玩家可见提示词痕迹 |
+| _(unreleased)_ | **Phase 27 超大型剧本与 API 体验** | MCP API-only 小说/设定集导入 + 本地 Qwen 验证；外部 generated manifest；新游戏按规模分组；API 连通性测试按钮；修新游戏叙事残留、身份串线、AI 空叙事无反馈；清洗超大型剧本玩家可见提示词痕迹 |
 
 详细 bug 见第 5 章。
 
@@ -350,26 +350,26 @@ AI 偶尔返回的 JSON 在 `narrative` 字段里夹未转义的引号（`"narra
 
 ### 6.1 真实 AI 玩测
 
-测试用了 OpenAI 兼容 API。验证模板（用过的小米 MiMo 例子）：
+测试使用 OpenAI 兼容 API。默认本地模型：`qwen/qwen3.6-35b-a3b @ http://127.0.0.1:1234/v1`。
 
 ```js
 // 1. localStorage.clear() + reload
 // 2. 等 1500ms 让 app 初始化
-// 3. aiEngine.setAPIConfig({ endpoint, apiKey, model: 'mimo-v2.5' })
+// 3. aiEngine.setAPIConfig({ endpoint, apiKey, model: 'qwen/qwen3.6-35b-a3b' })
 // 4. 通过 publish/调用 _xxx 方法触发剧情
 // 5. await 几秒等 AI 真实响应
 // 6. 检查 narrative / activeEvent / completedEventIds / keyEvents
 ```
 
 **重要**：
-- 模型名大小写敏感；以接口 `/v1/models` 返回为准（当前 MiMo 接口返回 `mimo-v2.5` / `mimo-v2.5-pro`）
+- 模型名大小写敏感；以接口 `/v1/models` 返回为准
 - 真 AI 调用 1-6s，等待时间要足够
 - token 监控可见，一场 10 章测试 ~30K tokens（成本 ¥0.05-0.2）
 
-**2026-05-21 最新验证**：
-- 小米 MiMo 接口 `/v1/models` 返回的可用模型 ID 是小写：`mimo-v2.5` / `mimo-v2.5-pro`。
-- 使用大写 `MiMo-V2.5` 会返回 400 `Not supported model`；页面会按设计写入系统错误叙事并切换到本地 fallback。
-- 使用 `mimo-v2.5` 通过浏览器真实链路验证：事件选择、自由行动、移动触发事件、Token 面板更新均正常。
+**2026-05-29 最新验证**：
+- 默认配置已切到本地 OpenAI 兼容端点 `http://127.0.0.1:1234/v1` 和模型 `qwen/qwen3.6-35b-a3b`。
+- 本地 127.0.0.1/localhost 端点允许 API key 留空；远端接口仍需要填写密钥。
+- 设置面板测试按钮和 headless playtest 共用同一条 `/chat/completions` 链路。
 
 ### 6.2 Mock AI 单元测试
 

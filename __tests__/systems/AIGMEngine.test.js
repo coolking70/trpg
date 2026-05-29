@@ -121,24 +121,24 @@ describe('AIGMEngine.testAPIConnection', () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        model: 'mimo-v2.5',
+        model: 'test-model',
         choices: [{ message: { content: '{"ok":true,"message":"pong"}' } }],
         usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 },
       }),
     });
 
     const result = await ai.testAPIConnection({
-      endpoint: 'https://token-plan-cn.xiaomimimo.com/v1/',
+      endpoint: 'https://example.test/v1/',
       apiKey: 'test-key',
-      model: 'mimo-v2.5',
+      model: 'test-model',
       timeoutMs: 5000,
     });
 
     expect(result.ok).toBe(true);
-    expect(result.model).toBe('mimo-v2.5');
+    expect(result.model).toBe('test-model');
     expect(result.usage.total_tokens).toBe(12);
     expect(global.fetch).toHaveBeenCalledWith(
-      'https://token-plan-cn.xiaomimimo.com/v1/chat/completions',
+      'https://example.test/v1/chat/completions',
       expect.objectContaining({ method: 'POST' }),
     );
   });
@@ -154,8 +154,35 @@ describe('AIGMEngine.testAPIConnection', () => {
     await expect(ai.testAPIConnection({
       endpoint: 'https://example.test/v1',
       apiKey: 'bad-key',
-      model: 'mimo-v2.5',
+      model: 'test-model',
     })).rejects.toThrow('API 测试失败 (401)');
+  });
+
+  test('本地 OpenAI 兼容端点可不填 API 密钥，并自动补 /v1', async () => {
+    const ai = new AIGMEngine();
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        model: 'qwen/qwen3.6-35b-a3b',
+        choices: [{ message: { content: '{"ok":true,"message":"pong"}' } }],
+        usage: { total_tokens: 10 },
+      }),
+    });
+
+    const result = await ai.testAPIConnection({
+      endpoint: 'http://127.0.0.1:1234',
+      apiKey: '',
+      model: 'qwen/qwen3.6-35b-a3b',
+    });
+
+    expect(result.ok).toBe(true);
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:1234/v1/chat/completions',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
   });
 });
 

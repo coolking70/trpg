@@ -31,8 +31,8 @@ import path from 'node:path';
 // 默认目标文件
 const DEFAULT_FILE = path.resolve(process.cwd(), 'preset-draft.json');
 const filePath = process.argv[2] ? path.resolve(process.argv[2]) : DEFAULT_FILE;
-const DEFAULT_OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || process.env.MIMO_BASE_URL || 'https://api.openai.com/v1';
-const DEFAULT_OPENAI_MODEL = process.env.OPENAI_MODEL || process.env.MIMO_MODEL || 'gpt-4o-mini';
+const DEFAULT_OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'http://127.0.0.1:1234/v1';
+const DEFAULT_OPENAI_MODEL = process.env.OPENAI_MODEL || 'qwen/qwen3.6-35b-a3b';
 
 // ============================================================
 // 内存中的预设
@@ -234,29 +234,62 @@ function filterStorySections(sections, includeNonStory = false) {
   return sections.filter(section => !isNonStorySection(section));
 }
 
+function normalizeOpenAIBaseUrl(baseUrl) {
+  const trimmed = String(baseUrl || DEFAULT_OPENAI_BASE_URL).trim().replace(/\/+$/, '');
+  if (!trimmed) return '';
+  try {
+    const url = new URL(trimmed);
+    if (!url.pathname || url.pathname === '/') {
+      url.pathname = '/v1';
+      return url.toString().replace(/\/+$/, '');
+    }
+  } catch {
+    return trimmed;
+  }
+  return trimmed;
+}
+
+function isLocalOpenAIBaseUrl(baseUrl) {
+  try {
+    const host = new URL(normalizeOpenAIBaseUrl(baseUrl)).hostname;
+    return host === 'localhost' || host === '127.0.0.1' || host === '::1';
+  } catch {
+    return false;
+  }
+}
+
 async function callOpenAICompatible({ baseUrl, apiKey, model, messages, temperature = 0.2, maxTokens = 1200 }) {
-  const key = apiKey || process.env.OPENAI_API_KEY || process.env.MIMO_KEY;
-  if (!key) throw new Error('缺少 API key：请传 apiKey，或设置 OPENAI_API_KEY / MIMO_KEY');
-  const url = `${(baseUrl || DEFAULT_OPENAI_BASE_URL).replace(/\/$/, '')}/chat/completions`;
+  const key = apiKey || process.env.OPENAI_API_KEY;
+  const normalizedBaseUrl = normalizeOpenAIBaseUrl(baseUrl);
+  if (!key && !isLocalOpenAIBaseUrl(normalizedBaseUrl)) {
+    throw new Error('缺少 API key：请传 apiKey，或设置 OPENAI_API_KEY；本地 127.0.0.1/localhost 端点可留空');
+  }
+  const url = `${normalizedBaseUrl}/chat/completions`;
   const controller = new AbortController();
-  const timeoutMs = Number(process.env.OPENAI_TIMEOUT_MS || process.env.MIMO_TIMEOUT_MS || 180000);
+  const timeoutMs = Number(process.env.OPENAI_TIMEOUT_MS || 180000);
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const requestBody = {
+    model: model || DEFAULT_OPENAI_MODEL,
+    messages,
+    temperature,
+    max_tokens: maxTokens,
+  };
+  if (isLocalOpenAIBaseUrl(normalizedBaseUrl)) {
+    requestBody.reasoning_effort = 'none';
+  } else {
+    requestBody.response_format = { type: 'json_object' };
+  }
+
   let res;
   try {
     res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${key}`,
+        ...(key ? { Authorization: `Bearer ${key}` } : {}),
       },
       signal: controller.signal,
-      body: JSON.stringify({
-        model: model || DEFAULT_OPENAI_MODEL,
-        messages,
-        temperature,
-        max_tokens: maxTokens,
-        response_format: { type: 'json_object' },
-      }),
+      body: JSON.stringify(requestBody),
     });
   } catch (e) {
     if (e.name === 'AbortError') {
@@ -3321,7 +3354,7 @@ tools.novel_build_mega_preset = {
     includeNonStory: z.boolean().default(false).describe('true=保留后记/插图/特典等非正文；默认过滤'),
     confirm: z.boolean().default(false).describe('当前预设非空时必须 true 才覆盖'),
     useApi: z.boolean().default(true).describe('必须为 true；保留该字段仅兼容旧调用'),
-    apiKey: z.string().optional().describe('可选；不传则读取 OPENAI_API_KEY 或 MIMO_KEY 环境变量'),
+    apiKey: z.string().optional().describe('可选；不传则读取 OPENAI_API_KEY 环境变量；本地 127.0.0.1/localhost 端点可留空'),
     baseUrl: z.string().optional().describe(`默认 ${DEFAULT_OPENAI_BASE_URL}`),
     model: z.string().optional().describe(`默认 ${DEFAULT_OPENAI_MODEL}`),
     maxApiSections: z.number().min(1).max(20).default(6).describe('每批最多调用 API 分析多少个章节/片段；会循环处理 maxSections 覆盖的全部正文片段'),
@@ -3398,7 +3431,7 @@ tools.preset_canonicalize_entities_api = {
   title: '通过 API 归一化当前预设实体',
   description: '调用 OpenAI-compatible API 合并当前预设中跨批生成造成的势力 id/name 漂移，并按 API 返回的 alias 映射修正 factions、起源、NPC 阵营标签、声望变量和起点规则。',
   schema: {
-    apiKey: z.string().optional().describe('可选；不传则读取 OPENAI_API_KEY 或 MIMO_KEY 环境变量'),
+    apiKey: z.string().optional().describe('可选；不传则读取 OPENAI_API_KEY 环境变量；本地 127.0.0.1/localhost 端点可留空'),
     baseUrl: z.string().optional().describe(`默认 ${DEFAULT_OPENAI_BASE_URL}`),
     model: z.string().optional().describe(`默认 ${DEFAULT_OPENAI_MODEL}`),
     factionLimit: z.number().min(3).max(12).default(8).describe('归一化后最多保留多少个可玩势力'),
@@ -3471,7 +3504,7 @@ tools.preset_expand_routes_api = {
   title: '通过 API 扩写不同起点的专属路线',
   description: '调用 OpenAI-compatible API 为当前预设的每个势力起点创作专属支线场景、事件、NPC 和可选结局尾声，用于修复所有起点过早汇入同一主线的问题。',
   schema: {
-    apiKey: z.string().optional().describe('可选；不传则读取 OPENAI_API_KEY 或 MIMO_KEY 环境变量'),
+    apiKey: z.string().optional().describe('可选；不传则读取 OPENAI_API_KEY 环境变量；本地 127.0.0.1/localhost 端点可留空'),
     baseUrl: z.string().optional().describe(`默认 ${DEFAULT_OPENAI_BASE_URL}`),
     model: z.string().optional().describe(`默认 ${DEFAULT_OPENAI_MODEL}`),
     factionIds: z.array(z.string()).optional().describe('只扩写这些势力；省略=当前 factions 全部扩写'),
@@ -3527,7 +3560,7 @@ tools.preset_generate_strategic_layer_api = {
 生成结果写入 preset.strategicLayer，并可在各势力起点自动创建"战略汇报"事件，让玩家通过 TRPG 的汇报、询问、有限命令和现场行动参与，而不是像策略游戏一样直接操作全局。`,
   schema: {
     mode: z.enum(['novel_adaptation', 'original']).default('novel_adaptation').describe('novel_adaptation=基于小说剧情反推；original=原创剧本主动补齐'),
-    apiKey: z.string().optional().describe('可选；不传则读取 OPENAI_API_KEY 或 MIMO_KEY 环境变量'),
+    apiKey: z.string().optional().describe('可选；不传则读取 OPENAI_API_KEY 环境变量；本地 127.0.0.1/localhost 端点可留空'),
     baseUrl: z.string().optional().describe(`默认 ${DEFAULT_OPENAI_BASE_URL}`),
     model: z.string().optional().describe(`默认 ${DEFAULT_OPENAI_MODEL}`),
     sourcePath: z.string().optional().describe('小说/设定集路径；省略时使用 preset.sourceMaterial.path'),
@@ -3583,7 +3616,7 @@ tools.preset_review_strategic_layer_api = {
   - 检查玩家职务是否越权、是否变成策略游戏式全局操作
   - 返回审稿问题列表，并可写回校正后的 strategicLayer 与战略汇报事件`,
   schema: {
-    apiKey: z.string().optional().describe('可选；不传则读取 OPENAI_API_KEY 或 MIMO_KEY 环境变量'),
+    apiKey: z.string().optional().describe('可选；不传则读取 OPENAI_API_KEY 环境变量；本地 127.0.0.1/localhost 端点可留空'),
     baseUrl: z.string().optional().describe(`默认 ${DEFAULT_OPENAI_BASE_URL}`),
     model: z.string().optional().describe(`默认 ${DEFAULT_OPENAI_MODEL}`),
     sourcePath: z.string().optional().describe('小说/设定集路径；省略时使用 preset.sourceMaterial.path'),

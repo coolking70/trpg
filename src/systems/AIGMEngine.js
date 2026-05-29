@@ -15,10 +15,10 @@ export class AIGMEngine extends GameSystem {
 
     /** API配置 */
     this.apiConfig = {
-      endpoint: 'https://api.openai.com/v1',
+      endpoint: 'http://127.0.0.1:1234/v1',
       apiKey: '',
-      model: 'gpt-4o-mini',
-      maxTokens: 1000,  // 修复 Bug #6: 300 太小，复杂场景（creativeOutcome JSON）会截断
+      model: 'qwen/qwen3.6-35b-a3b',
+      maxTokens: 3200,  // 本地推理模型会先产出 reasoning，过小会截断正式 JSON
       temperature: 0.7,
       useStructuredOutput: true,
     };
@@ -119,6 +119,9 @@ export class AIGMEngine extends GameSystem {
    */
   setAPIConfig(config) {
     Object.assign(this.apiConfig, config);
+    if (this.apiConfig.endpoint) {
+      this.apiConfig.endpoint = this._normalizeEndpoint(this.apiConfig.endpoint);
+    }
   }
 
   /**
@@ -134,7 +137,12 @@ export class AIGMEngine extends GameSystem {
     // 应用预设中的AI配置
     if (preset.aiConfig) {
       if (preset.aiConfig.temperature) this.apiConfig.temperature = preset.aiConfig.temperature;
-      if (preset.aiConfig.maxResponseTokens) this.apiConfig.maxTokens = preset.aiConfig.maxResponseTokens;
+      if (preset.aiConfig.maxResponseTokens) {
+        const presetMaxTokens = Number(preset.aiConfig.maxResponseTokens);
+        this.apiConfig.maxTokens = this._isLocalEndpoint(this.apiConfig.endpoint)
+          ? Math.max(this.apiConfig.maxTokens, presetMaxTokens)
+          : presetMaxTokens;
+      }
     }
   }
 
@@ -142,7 +150,42 @@ export class AIGMEngine extends GameSystem {
    * 检查AI是否已配置
    */
   isConfigured() {
-    return !!(this.apiConfig.endpoint && this.apiConfig.apiKey);
+    return !!(this.apiConfig.endpoint && this.apiConfig.model && this._hasRequiredAuth(this.apiConfig));
+  }
+
+  _normalizeEndpoint(endpoint) {
+    const trimmed = String(endpoint || '').trim().replace(/\/+$/, '');
+    if (!trimmed) return '';
+    try {
+      const url = new URL(trimmed);
+      if (!url.pathname || url.pathname === '/') {
+        url.pathname = '/v1';
+        return url.toString().replace(/\/+$/, '');
+      }
+    } catch {
+      return trimmed;
+    }
+    return trimmed;
+  }
+
+  _isLocalEndpoint(endpoint) {
+    try {
+      const host = new URL(this._normalizeEndpoint(endpoint)).hostname;
+      return host === 'localhost' || host === '127.0.0.1' || host === '::1';
+    } catch {
+      return false;
+    }
+  }
+
+  _hasRequiredAuth(config) {
+    return this._isLocalEndpoint(config.endpoint) || !!String(config.apiKey || '').trim();
+  }
+
+  _buildAPIHeaders(config) {
+    const headers = { 'Content-Type': 'application/json' };
+    const apiKey = String(config.apiKey || '').trim();
+    if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+    return headers;
   }
 
   /**
@@ -153,12 +196,12 @@ export class AIGMEngine extends GameSystem {
    */
   async testAPIConnection(config = {}) {
     const probeConfig = { ...this.apiConfig, ...config };
-    const endpoint = String(probeConfig.endpoint || '').trim().replace(/\/+$/, '');
+    const endpoint = this._normalizeEndpoint(probeConfig.endpoint);
     const apiKey = String(probeConfig.apiKey || '').trim();
     const model = String(probeConfig.model || '').trim();
 
     if (!endpoint) throw new Error('请填写 API 端点');
-    if (!apiKey) throw new Error('请填写 API 密钥');
+    if (!this._isLocalEndpoint(endpoint) && !apiKey) throw new Error('请填写 API 密钥');
     if (!model) throw new Error('请填写模型名称');
 
     const controller = new AbortController();
@@ -172,11 +215,16 @@ export class AIGMEngine extends GameSystem {
         { role: 'system', content: 'You are a connection health-check endpoint. Return only JSON.' },
         { role: 'user', content: 'Return {"ok":true,"message":"pong"} to confirm connectivity.' },
       ],
-      max_tokens: 32,
+      max_tokens: this._isLocalEndpoint(endpoint) ? 512 : 32,
       temperature: 0,
     };
 
-    if (probeConfig.useStructuredOutput !== false) {
+    const isLocalEndpoint = this._isLocalEndpoint(endpoint);
+    if (isLocalEndpoint) {
+      body.reasoning_effort = 'none';
+    }
+
+    if (probeConfig.useStructuredOutput !== false && !isLocalEndpoint) {
       body.response_format = { type: 'json_object' };
     }
 
@@ -184,10 +232,7 @@ export class AIGMEngine extends GameSystem {
     try {
       response = await fetch(`${endpoint}/chat/completions`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
+        headers: this._buildAPIHeaders({ ...probeConfig, endpoint, apiKey }),
         body: JSON.stringify(body),
         signal: controller.signal,
       });
@@ -394,7 +439,7 @@ export class AIGMEngine extends GameSystem {
   }
 
   /**
-   * 调用 AI API（带 30 秒超时 + 网络失败指数退避重试 3 次）
+   * 调用 AI API（远端默认 30 秒、本地默认 120 秒 + 网络失败指数退避重试 3 次）
    * @param {Array<{role: string, content: string}>} messages
    * @returns {Promise<string>} AI响应文本
    */
@@ -420,7 +465,8 @@ export class AIGMEngine extends GameSystem {
   }
 
   async _callAIOnce(messages) {
-    const url = `${this.apiConfig.endpoint}/chat/completions`;
+    const endpoint = this._normalizeEndpoint(this.apiConfig.endpoint);
+    const url = `${endpoint}/chat/completions`;
 
     const body = {
       model: this.apiConfig.model,
@@ -429,22 +475,24 @@ export class AIGMEngine extends GameSystem {
       temperature: this.apiConfig.temperature,
     };
 
-    if (this.apiConfig.useStructuredOutput) {
+    const isLocalEndpoint = this._isLocalEndpoint(endpoint);
+    if (isLocalEndpoint) {
+      body.reasoning_effort = 'none';
+    }
+
+    if (this.apiConfig.useStructuredOutput && !isLocalEndpoint) {
       body.response_format = { type: 'json_object' };
     }
 
     const controller = new AbortController();
-    const timeoutMs = this.apiConfig.timeoutMs || 30000;
+    const timeoutMs = this.apiConfig.timeoutMs || (isLocalEndpoint ? 120000 : 30000);
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     let response;
     try {
       response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiConfig.apiKey}`,
-        },
+        headers: this._buildAPIHeaders(this.apiConfig),
         body: JSON.stringify(body),
         signal: controller.signal,
       });

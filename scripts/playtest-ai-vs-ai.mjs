@@ -1,8 +1,8 @@
 /**
  * AI vs AI 完整玩测
  *
- * - Pro 模型 (mimo-v2.5-pro) 扮演"玩家大脑"：观察状态、做选择、下战斗指令、写自由文本
- * - 非 Pro 模型 (mimo-v2.5) 走系统 GM 路径，由 AIGMEngine 调用
+ * - 同一个 OpenAI 兼容模型扮演"玩家大脑"：观察状态、做选择、下战斗指令、写自由文本
+ * - GM 路径由 AIGMEngine 调用
  *
  * 这是一次端到端的自动化跑团：让两个 AI 互相对话，把全流程完整跑下来，
  * 并把整局过程导出到 logs/playtest-ai-vs-ai-*.md
@@ -49,10 +49,10 @@ globalThis.localStorage = (() => {
   };
 })();
 
-const KEY = process.env.MIMO_KEY || '';
-const ENDPOINT = process.env.MIMO_ENDPOINT || 'https://token-plan-cn.xiaomimimo.com/v1';
-const GM_MODEL = process.env.MIMO_GM_MODEL || 'mimo-v2.5';
-const PLAYER_MODEL = process.env.MIMO_PLAYER_MODEL || 'mimo-v2.5-pro';
+const KEY = process.env.OPENAI_API_KEY || '';
+const ENDPOINT = process.env.OPENAI_BASE_URL || 'http://127.0.0.1:1234/v1';
+const GM_MODEL = process.env.OPENAI_GM_MODEL || process.env.OPENAI_MODEL || 'qwen/qwen3.6-35b-a3b';
+const PLAYER_MODEL = process.env.OPENAI_PLAYER_MODEL || process.env.OPENAI_MODEL || GM_MODEL;
 
 // ============================================================
 // HeadlessApp（与 v2 共享 — 复刻 TRPGApp 玩家路径方法）
@@ -457,10 +457,17 @@ class PlayerAI {
       max_tokens: 400,
       response_format: { type: 'json_object' },
     };
+    if (/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])/.test(this.endpoint)) {
+      delete body.response_format;
+      body.reasoning_effort = 'none';
+    }
 
     const resp = await fetch(`${this.endpoint}/chat/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.apiKey}` },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
+      },
       body: JSON.stringify(body),
     });
     if (!resp.ok) {
@@ -636,7 +643,7 @@ async function main() {
     endpoint: ENDPOINT,
     apiKey: KEY,
     model: GM_MODEL,
-    maxTokens: 1200,
+    maxTokens: 3200,
     temperature: 0.7,
   });
 

@@ -13,11 +13,11 @@ export class SettingsModal {
 
     // 默认配置
     this.config = {
-      endpoint: 'https://api.openai.com/v1',
+      endpoint: 'http://127.0.0.1:1234/v1',
       apiKey: '',
-      model: 'gpt-4o-mini',
+      model: 'qwen/qwen3.6-35b-a3b',
       temperature: 0.7,
-      maxTokens: 1000,
+      maxTokens: 3200,
       difficulty: 'normal',      // easy | normal | hard
       autoSaveEnabled: true,
       dynamicDifficulty: true,   // 动态难度（基于战斗表现）
@@ -62,21 +62,21 @@ export class SettingsModal {
         <div class="settings__field">
           <label class="settings__label">API 端点</label>
           <input type="text" class="input settings__input" id="setting-endpoint"
-            value="${this.config.endpoint}" placeholder="https://api.openai.com/v1">
-          <span class="settings__hint">支持所有OpenAI兼容接口（OpenAI/Claude代理/DeepSeek/Ollama等）</span>
+            value="${this.config.endpoint}" placeholder="http://127.0.0.1:1234/v1">
+          <span class="settings__hint">支持所有OpenAI兼容接口；本地 127.0.0.1/localhost 端点可不填密钥。</span>
         </div>
 
         <div class="settings__field">
           <label class="settings__label">API 密钥</label>
           <input type="password" class="input settings__input" id="setting-apikey"
-            value="${this.config.apiKey}" placeholder="sk-...">
+            value="${this.config.apiKey}" placeholder="本地模型可留空">
         </div>
 
         <div class="settings__field">
           <label class="settings__label">模型名称</label>
           <input type="text" class="input settings__input" id="setting-model"
-            value="${this.config.model}" placeholder="gpt-4o-mini">
-          <span class="settings__hint">如：gpt-4o-mini、deepseek-chat、qwen2.5:7b</span>
+            value="${this.config.model}" placeholder="qwen/qwen3.6-35b-a3b">
+          <span class="settings__hint">如：qwen/qwen3.6-35b-a3b、deepseek-chat、qwen2.5:7b</span>
         </div>
 
         <div class="settings__field">
@@ -88,7 +88,7 @@ export class SettingsModal {
         <div class="settings__field">
           <label class="settings__label">最大响应Token</label>
           <input type="number" class="input settings__input" id="setting-maxtokens"
-            value="${this.config.maxTokens}" min="50" max="2000" step="50">
+            value="${this.config.maxTokens}" min="50" max="6000" step="50">
         </div>
 
         <div class="settings__field">

@@ -19,23 +19,23 @@
 ```js
 // 设置面板里填写：
 {
-  endpoint: 'https://api.openai.com/v1',
-  apiKey: 'sk-...',
-  model: 'gpt-4o-mini',  // 或 deepseek-chat / qwen2.5:7b / mimo-v2.5 等
+  endpoint: 'http://127.0.0.1:1234/v1',
+  apiKey: '',            // 本地 127.0.0.1/localhost 端点可留空
+  model: 'qwen/qwen3.6-35b-a3b',
   temperature: 0.7,
-  maxTokens: 1000        // 推荐 ≥ 1000 防止 creativeOutcome JSON 被截断
+  maxTokens: 3200        // 本地推理模型建议 ≥ 3200，避免 reasoning 截断正式 JSON
 }
 ```
 
-> 注意：模型名通常**大小写敏感**。如果 API 报 `Not supported model`，先 GET `/v1/models` 看准确拼写（如小米 MiMo 是 `mimo-v2.5` 不是 `MiMo-V2.5`）。
+> 注意：模型名通常**大小写敏感**。如果 API 报 `Not supported model`，先 GET `/v1/models` 看准确拼写。本地模型服务通常需要端点包含 `/v1`；只填 `http://127.0.0.1:1234` 时代码会自动补齐。
 
 ### 推荐配置
 
 | 模型 | 适合场景 | 备注 |
 |---|---|---|
+| `qwen/qwen3.6-35b-a3b` | 本地中文叙事 / GM | 默认本地配置 |
 | `gpt-4o-mini` | 通用 | 性价比高 |
 | `deepseek-chat` | 中文叙事 | 价格友好 |
-| `mimo-v2.5` / `mimo-v2.5-pro` | 中文叙事 | 小米 MiMo（实测兼容） |
 | `qwen2.5:7b` (Ollama) | 本地部署 | 无网络依赖 |
 | `claude-haiku-4-5` (代理) | 长上下文 | 通过代理转 OpenAI 格式 |
 
@@ -53,7 +53,7 @@
 
 ### 离线兜底
 
-未配置 API key 时自动走 `AIGMEngine._localFallback`，使用模板叙事。功能可用但叙事乏味。
+远端接口未配置 API key 时自动走 `AIGMEngine._localFallback`，使用模板叙事。127.0.0.1/localhost 本地接口不要求填写 API key。
 
 ---
 

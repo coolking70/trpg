@@ -9,7 +9,7 @@
  * 使用：
  *   node scripts/playtest-v2.mjs
  * 环境变量（可选）：
- *   MIMO_KEY, MIMO_ENDPOINT, MIMO_MODEL
+ *   OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL
  */
 
 import { GameEngine } from '../src/core/GameEngine.js';
@@ -57,9 +57,9 @@ globalThis.localStorage = (() => {
   };
 })();
 
-const MIMO_KEY = process.env.MIMO_KEY || '';
-const MIMO_ENDPOINT = process.env.MIMO_ENDPOINT || 'https://token-plan-cn.xiaomimimo.com/v1';
-const MIMO_MODEL = process.env.MIMO_MODEL || 'mimo-v2.5';
+const API_KEY = process.env.OPENAI_API_KEY || '';
+const API_ENDPOINT = process.env.OPENAI_BASE_URL || 'http://127.0.0.1:1234/v1';
+const API_MODEL = process.env.OPENAI_MODEL || 'qwen/qwen3.6-35b-a3b';
 
 // ---------- HeadlessApp：复刻 TRPGApp 玩家路径中的关键方法 ----------
 class HeadlessApp {
@@ -394,17 +394,17 @@ class HeadlessApp {
 // ---------- 主流程 ----------
 async function main() {
   console.log('=== TRPG 完整玩测 v2 启动 ===');
-  console.log(`API: ${MIMO_MODEL} @ ${MIMO_ENDPOINT}`);
+  console.log(`API: ${API_MODEL} @ ${API_ENDPOINT}`);
 
   const app = new HeadlessApp();
 
   // 配置 AI
   const aiEngine = app.engine.getSystem('AIGMEngine');
   aiEngine.setAPIConfig({
-    endpoint: MIMO_ENDPOINT,
-    apiKey: MIMO_KEY,
-    model: MIMO_MODEL,
-    maxTokens: 1200,
+    endpoint: API_ENDPOINT,
+    apiKey: API_KEY,
+    model: API_MODEL,
+    maxTokens: 3200,
     temperature: 0.7,
   });
 
@@ -564,8 +564,8 @@ async function main() {
   const outDir = path.join(__dirname, '..', 'logs');
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
   const ts = new Date().toISOString().substring(0, 10);
-  const mdFile = path.join(outDir, `playtest-mimo-${ts}-v2.md`);
-  const jsonFile = path.join(outDir, `playtest-mimo-${ts}-v2.json`);
+  const mdFile = path.join(outDir, `playtest-local-llm-${ts}-v2.md`);
+  const jsonFile = path.join(outDir, `playtest-local-llm-${ts}-v2.json`);
   fs.writeFileSync(mdFile, md, 'utf-8');
   fs.writeFileSync(jsonFile, json, 'utf-8');
   console.log(`✓ Markdown 日志: ${mdFile}`);

@@ -1,8 +1,8 @@
 /**
  * AI vs AI 完整玩测 — 场景图版
  *
- * - Pro 模型 (mimo-v2.5-pro) 扮演"玩家大脑"：观察当前场景 + 邻居，选下一步去哪 / 选择事件
- * - 普通模型 (mimo-v2.5) 担任 GM，给抵达叙事 / 事件叙事
+ * - 同一个 OpenAI 兼容模型扮演"玩家大脑"：观察当前场景 + 邻居，选下一步去哪 / 选择事件
+ * - GM 路径由 AIGMEngine 调用，给抵达叙事 / 事件叙事
  *
  * 与旧 grid 版的差异：
  *   - 玩家决策只看 "当前场景 + 邻居 + 事件" 这三件事
@@ -51,10 +51,10 @@ globalThis.localStorage = (() => {
   };
 })();
 
-const KEY = process.env.MIMO_KEY || '';
-const ENDPOINT = process.env.MIMO_ENDPOINT || 'https://token-plan-cn.xiaomimimo.com/v1';
-const GM_MODEL = process.env.MIMO_GM_MODEL || 'mimo-v2.5';
-const PLAYER_MODEL = process.env.MIMO_PLAYER_MODEL || 'mimo-v2.5-pro';
+const KEY = process.env.OPENAI_API_KEY || '';
+const ENDPOINT = process.env.OPENAI_BASE_URL || 'http://127.0.0.1:1234/v1';
+const GM_MODEL = process.env.OPENAI_GM_MODEL || process.env.OPENAI_MODEL || 'qwen/qwen3.6-35b-a3b';
+const PLAYER_MODEL = process.env.OPENAI_PLAYER_MODEL || process.env.OPENAI_MODEL || GM_MODEL;
 
 // ============================================================
 // HeadlessApp — 场景图版
@@ -571,9 +571,16 @@ class PlayerAI {
       max_tokens: 400,
       response_format: { type: 'json_object' },
     };
+    if (/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])/.test(this.endpoint)) {
+      delete body.response_format;
+      body.reasoning_effort = 'none';
+    }
     const resp = await fetch(`${this.endpoint}/chat/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.apiKey}` },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
+      },
       body: JSON.stringify(body),
     });
     if (!resp.ok) {
@@ -666,7 +673,7 @@ async function main() {
     endpoint: ENDPOINT,
     apiKey: KEY,
     model: GM_MODEL,
-    maxTokens: 1200,
+    maxTokens: 3200,
     temperature: 0.7,
   });
 
