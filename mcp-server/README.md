@@ -12,7 +12,7 @@ npm run mcp
 # 指定输出文件路径
 node mcp-server/preset-server.mjs /path/to/my-preset.json
 
-# 跑端到端烟雾测试（12 个用例）
+# 跑端到端烟雾测试（37 个用例）
 npm run test:mcp
 ```
 
@@ -34,7 +34,7 @@ npm run test:mcp
 }
 ```
 
-接入后 Claude 会看到 34 个工具，可以让它"写一份太空船难主题的剧本"，它会自己组合 `scene_create / event_create / enemy_create / preset_batch_apply` 把整套预设产出来。
+接入后 Claude 会看到 60 个工具，可以让它"写一份太空船难主题的剧本"，也可以读取本地长篇小说/设定集，生成多势力、分支结局的超大剧本骨架。
 
 ## 暴露的工具一览
 
@@ -71,6 +71,70 @@ npm run test:mcp
 
 ### 批量原子（1）
 - `preset_batch_apply` — 一次执行多个操作。**全部成功才提交，任何一步失败自动回滚**。AI 写整套剧本的首选入口。
+
+### 小说 / 设定集导入（6）
+- `novel_source_inspect` — 读取本地 `.txt/.md` 长文本，只统计体量、章节/片段和正文过滤结果；不会本地猜测人物、势力或剧情，也不会把原文写入预设。
+- `novel_build_mega_preset` — 从整部小说/设定集生成超大剧本骨架：多势力起点、章节节拍场景、分支事件、结局种子、NPC 候选和 `sourceMaterial` 元数据。该工具必须接入 OpenAI-compatible `/chat/completions` API；本地逻辑只负责读取、切章、过滤和装配 MCP 预设，不再用正则/关键词自动分析正文内容。
+- `preset_canonicalize_entities_api` — 对当前预设再调用一次 API，归一化跨批生成造成的势力 id/name 漂移，并修正 factions / origins / NPC tags / 声望变量 / 起点规则。
+- `preset_expand_routes_api` — 对当前预设调用 API，为不同势力起点补写专属支线场景、事件、NPC 和可选结局尾声，增强多起点玩法差异。
+- `preset_generate_strategic_layer_api` — 对当前预设调用 API，补充势力城市、村庄、矿产、特产、人口、生产效率、内政外交和情报可见性。小说改编模式会基于剧情反推并标注 `explicit/inferred`，原创模式会更主动补齐设定；生成内容通过 TRPG 的汇报、询问和有限命令事件呈现，不提供策略游戏式全局操作。
+- `preset_review_strategic_layer_api` — 对 `preset.strategicLayer` 调用 API 审稿/校正，检查误造或过度确定的地名、人口、产能、外交和职务权限；可只返回审稿报告，也可写回校正后的战略层并刷新起点战略汇报事件。
+
+示例：
+
+```json
+{
+  "sourcePath": "/Users/me/Downloads/novel.txt",
+  "title": "北境群像",
+  "inspectSections": 500,
+  "beatsPerSection": 3,
+  "factionLimit": 8,
+  "npcLimit": 60,
+  "mainSectionCount": 36,
+  "endingSectionCount": 10,
+  "confirm": true,
+  "useApi": true,
+  "baseUrl": "https://token-plan-cn.xiaomimimo.com/v1",
+  "model": "mimo-v2.5-pro",
+  "maxApiSections": 6,
+  "canonicalizeEntities": true
+}
+```
+
+API key 不会写入预设；可通过工具参数 `apiKey` 临时传入，或设置 `MIMO_KEY` / `OPENAI_API_KEY` 环境变量。
+`maxApiSections` 表示单批 API 分析窗口；工具会循环处理 `maxSections` 覆盖的全部正文片段。
+`canonicalizeEntities` 会在分批抽取完成后再调用一次 API，把跨批势力 id/name 漂移归一化。
+
+战略设定补强示例：
+
+```json
+{
+  "mode": "novel_adaptation",
+  "baseUrl": "https://token-plan-cn.xiaomimimo.com/v1",
+  "model": "mimo-v2.5-pro",
+  "maxSourceSections": 8,
+  "createBriefingEvents": true
+}
+```
+
+战略设定审稿/校正示例：
+
+```json
+{
+  "model": "mimo-v2.5",
+  "baseUrl": "https://token-plan-cn.xiaomimimo.com/v1",
+  "factionIds": ["brune"],
+  "maxSourceSections": 6,
+  "applyCorrections": true,
+  "refreshBriefingEvents": true
+}
+```
+
+`mode=novel_adaptation` 适合小说改编：API 会把未明示的人口、产能、矿产、外交等作为剧情逻辑反推，并保留可信度标记。`mode=original` 适合原创剧本：API 可以更完整地创造战略背景，但玩家仍只能按角色职务获取对应情报并通过叙事命令影响局势。
+
+注意：超大剧本 JSON 不建议直接输出到项目的 `presets/` 目录，因为 `src/main.js` 会把 `presets/*.json` 当作 bundled preset 打进前端包。推荐输出到 `generated/`、`~/Downloads/` 或其他外部路径；若要在新游戏列表中自动显示，可把可公开访问的副本放到 `public/generated/`，并在 `public/generated-presets.json` 中登记 `{ key, path, sceneCount, eventCount, npcCount }`。
+
+生成器会尽量把给模型看的素材摘要转成玩家可见叙述，避免在 `description` 中写出 `AI改编节拍`、`GM 应围绕`、`API 抽取` 等提示词痕迹。生成后仍建议运行 `preset_analyze` / `preset_validate`，并抽样检查玩家可见文本。
 
 ## 使用模式：让 Claude 写一份完整剧本
 
@@ -129,4 +193,4 @@ gated: {
 npm run test:mcp
 ```
 
-12 个端到端用例覆盖：场景 CRUD / 连接 / 门控 / 事件挂载 / 校验断引用 / 批量回滚等关键路径。
+37 个端到端用例覆盖：场景 CRUD / 连接 / 门控 / 事件挂载 / 校验断引用 / 批量回滚 / NPC / 对话树 / 模板 / 战斗模拟 / 小说导入 / OpenAI-compatible API 增强等关键路径。

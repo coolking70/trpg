@@ -90,6 +90,12 @@ export class SettingsModal {
           <input type="number" class="input settings__input" id="setting-maxtokens"
             value="${this.config.maxTokens}" min="50" max="2000" step="50">
         </div>
+
+        <div class="settings__field">
+          <button class="btn settings__test-btn" id="setting-test-api" type="button">测试 API 连接</button>
+          <div class="settings__api-test-result" id="setting-api-test-result" aria-live="polite"></div>
+          <span class="settings__hint">会向当前端点发送一次极小的 chat/completions 请求，并显示成功、错误原因和耗时。</span>
+        </div>
       </div>
 
       <div class="settings__section">
@@ -164,6 +170,11 @@ export class SettingsModal {
     tempRange.addEventListener('input', () => {
       tempValue.textContent = tempRange.value;
     });
+
+    const testBtn = body.querySelector('#setting-test-api');
+    if (testBtn) {
+      testBtn.addEventListener('click', () => this._testAPI(body));
+    }
 
     modal.appendChild(body);
 
@@ -251,22 +262,77 @@ export class SettingsModal {
 
   /** 保存配置 */
   _save(body) {
-    this.config.endpoint = body.querySelector('#setting-endpoint').value.trim();
-    this.config.apiKey = body.querySelector('#setting-apikey').value.trim();
-    this.config.model = body.querySelector('#setting-model').value.trim();
-    this.config.temperature = parseFloat(body.querySelector('#setting-temperature').value);
-    this.config.maxTokens = parseInt(body.querySelector('#setting-maxtokens').value);
-    this.config.difficulty = body.querySelector('#setting-difficulty').value;
-    this.config.autoSaveEnabled = body.querySelector('#setting-autosave').checked;
-    this.config.dynamicDifficulty = body.querySelector('#setting-dynamic-difficulty').checked;
-    this.config.allyAIMode = body.querySelector('#setting-ally-mode').value;
-    this.config.budgetWarningTokens = parseInt(body.querySelector('#setting-budget').value) || 0;
-    const tierEl = body.querySelector('#setting-ai-tier');
-    if (tierEl) this.config.aiTier = tierEl.value;
+    this.config = this._readFormConfig(body);
 
     this._saveConfig();
     this.eventSystem.publish('settings:changed', this.config);
     this.hide();
+  }
+
+  /** 从表单读取当前配置，不要求用户先保存 */
+  _readFormConfig(body) {
+    const tierEl = body.querySelector('#setting-ai-tier');
+    return {
+      ...this.config,
+      endpoint: body.querySelector('#setting-endpoint').value.trim(),
+      apiKey: body.querySelector('#setting-apikey').value.trim(),
+      model: body.querySelector('#setting-model').value.trim(),
+      temperature: parseFloat(body.querySelector('#setting-temperature').value),
+      maxTokens: parseInt(body.querySelector('#setting-maxtokens').value),
+      difficulty: body.querySelector('#setting-difficulty').value,
+      autoSaveEnabled: body.querySelector('#setting-autosave').checked,
+      dynamicDifficulty: body.querySelector('#setting-dynamic-difficulty').checked,
+      allyAIMode: body.querySelector('#setting-ally-mode').value,
+      budgetWarningTokens: parseInt(body.querySelector('#setting-budget').value) || 0,
+      aiTier: tierEl ? tierEl.value : this.config.aiTier,
+    };
+  }
+
+  /** 测试当前表单中的 API 配置 */
+  _testAPI(body) {
+    const btn = body.querySelector('#setting-test-api');
+    const resultEl = body.querySelector('#setting-api-test-result');
+    if (!btn || !resultEl) return;
+
+    const config = this._readFormConfig(body);
+    const requestId = `api_test_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+    btn.disabled = true;
+    btn.textContent = '测试中...';
+    resultEl.className = 'settings__api-test-result settings__api-test-result--pending';
+    resultEl.textContent = '正在请求模型，请稍候。';
+
+    const cleanup = (subId, timeoutId) => {
+      if (subId) this.eventSystem.unsubscribe('settings:testApiResponse', subId);
+      if (timeoutId) clearTimeout(timeoutId);
+      btn.disabled = false;
+      btn.textContent = '测试 API 连接';
+    };
+
+    let subId = null;
+    const timeoutId = setTimeout(() => {
+      cleanup(subId, null);
+      resultEl.className = 'settings__api-test-result settings__api-test-result--error';
+      resultEl.textContent = '测试请求没有返回结果，请检查网络、端点地址或浏览器控制台。';
+    }, 65000);
+
+    subId = this.eventSystem.subscribe('settings:testApiResponse', (evt) => {
+      const data = evt.data || {};
+      if (data.requestId !== requestId) return true;
+
+      cleanup(subId, timeoutId);
+      if (data.ok) {
+        const usageText = data.usage?.total_tokens ? `，${data.usage.total_tokens} tokens` : '';
+        resultEl.className = 'settings__api-test-result settings__api-test-result--ok';
+        resultEl.textContent = `${data.message || '连接成功'}。模型：${data.model || config.model}，耗时 ${data.latencyMs || 0}ms${usageText}。`;
+      } else {
+        resultEl.className = 'settings__api-test-result settings__api-test-result--error';
+        resultEl.textContent = data.message || '连接失败，但没有返回具体错误。';
+      }
+      return false;
+    });
+
+    this.eventSystem.publish('settings:testApiRequest', { requestId, config });
   }
 
   /** 保存到localStorage */

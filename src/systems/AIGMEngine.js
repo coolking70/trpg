@@ -96,6 +96,20 @@ export class AIGMEngine extends GameSystem {
       this.eventSystem.subscribe('settings:changed', (evt) => {
         this.setAPIConfig(evt.data);
       });
+      this.eventSystem.subscribe('settings:testApiRequest', (evt) => {
+        const { requestId, config } = evt.data || {};
+        this.testAPIConnection(config)
+          .then(result => {
+            this.eventSystem.publish('settings:testApiResponse', { requestId, ...result });
+          })
+          .catch(error => {
+            this.eventSystem.publish('settings:testApiResponse', {
+              requestId,
+              ok: false,
+              message: error.message,
+            });
+          });
+      });
     }
   }
 
@@ -129,6 +143,89 @@ export class AIGMEngine extends GameSystem {
    */
   isConfigured() {
     return !!(this.apiConfig.endpoint && this.apiConfig.apiKey);
+  }
+
+  /**
+   * 测试 OpenAI-compatible API 连通性。
+   * 只发一个很小的请求，不写入对话上下文，也不计入游戏 token 统计。
+   * @param {object} config
+   * @returns {Promise<{ok: boolean, message: string, latencyMs: number, model: string, usage: object|null, preview: string}>}
+   */
+  async testAPIConnection(config = {}) {
+    const probeConfig = { ...this.apiConfig, ...config };
+    const endpoint = String(probeConfig.endpoint || '').trim().replace(/\/+$/, '');
+    const apiKey = String(probeConfig.apiKey || '').trim();
+    const model = String(probeConfig.model || '').trim();
+
+    if (!endpoint) throw new Error('请填写 API 端点');
+    if (!apiKey) throw new Error('请填写 API 密钥');
+    if (!model) throw new Error('请填写模型名称');
+
+    const controller = new AbortController();
+    const timeoutMs = Math.max(3000, Math.min(Number(probeConfig.timeoutMs) || 15000, 60000));
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const startedAt = performance.now();
+
+    const body = {
+      model,
+      messages: [
+        { role: 'system', content: 'You are a connection health-check endpoint. Return only JSON.' },
+        { role: 'user', content: 'Return {"ok":true,"message":"pong"} to confirm connectivity.' },
+      ],
+      max_tokens: 32,
+      temperature: 0,
+    };
+
+    if (probeConfig.useStructuredOutput !== false) {
+      body.response_format = { type: 'json_object' };
+    }
+
+    let response;
+    try {
+      response = await fetch(`${endpoint}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        throw new Error(`API 测试超时（${Math.floor(timeoutMs / 1000)}秒）`);
+      }
+      throw new Error(`网络错误: ${e.message}`);
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    const latencyMs = Math.round(performance.now() - startedAt);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API 测试失败 (${response.status}): ${errorText.substring(0, 300)}`);
+    }
+
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error('API 返回内容不是合法 JSON');
+    }
+
+    const content = data.choices?.[0]?.message?.content;
+    if (typeof content !== 'string') {
+      throw new Error('API 响应缺少 choices[0].message.content');
+    }
+
+    return {
+      ok: true,
+      message: '连接成功，模型已返回响应',
+      latencyMs,
+      model: data.model || model,
+      usage: data.usage || null,
+      preview: content.slice(0, 120),
+    };
   }
 
   /**
@@ -251,6 +348,13 @@ export class AIGMEngine extends GameSystem {
       // 应用状态更新
       if (parsed.stateUpdate) {
         this.responseParser.applyStateUpdate(parsed.stateUpdate, gameState);
+      }
+
+      if (!parsed.narrative) {
+        parsed.narrative = this._buildLocalFallbackNarrative(actionType, actionData, gameState);
+        if (this.eventSystem) {
+          this.eventSystem.publish('ai:error', { error: 'AI 返回了空叙事，已使用本地兜底。' });
+        }
       }
 
       // 添加到上下文
@@ -555,6 +659,12 @@ export class AIGMEngine extends GameSystem {
    * @returns {object}
    */
   _localFallback(actionType, actionData, gameState) {
+    const narrative = this._buildLocalFallbackNarrative(actionType, actionData, gameState);
+    gameState.addNarrative('gm', narrative);
+    return { narrative, actions: [], diceRequests: [], diceResults: [] };
+  }
+
+  _buildLocalFallbackNarrative(actionType, actionData, gameState) {
     let narrative = '';
 
     switch (actionType) {
@@ -629,8 +739,7 @@ export class AIGMEngine extends GameSystem {
         narrative = '...';
     }
 
-    gameState.addNarrative('gm', narrative);
-    return { narrative, actions: [], diceRequests: [], diceResults: [] };
+    return narrative;
   }
 
   /**

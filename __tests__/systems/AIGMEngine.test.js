@@ -107,3 +107,80 @@ describe('AIGMEngine._hookNameForAction', () => {
     expect(ai._hookNameForAction('narrate_combat', {}, {})).toBe(null);
   });
 });
+
+describe('AIGMEngine.testAPIConnection', () => {
+  const originalFetch = global.fetch;
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    jest.restoreAllMocks();
+  });
+
+  test('发送最小 chat/completions 探测并返回成功信息', async () => {
+    const ai = new AIGMEngine();
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        model: 'mimo-v2.5',
+        choices: [{ message: { content: '{"ok":true,"message":"pong"}' } }],
+        usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 },
+      }),
+    });
+
+    const result = await ai.testAPIConnection({
+      endpoint: 'https://token-plan-cn.xiaomimimo.com/v1/',
+      apiKey: 'test-key',
+      model: 'mimo-v2.5',
+      timeoutMs: 5000,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.model).toBe('mimo-v2.5');
+    expect(result.usage.total_tokens).toBe(12);
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://token-plan-cn.xiaomimimo.com/v1/chat/completions',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  test('HTTP 错误会返回可读错误', async () => {
+    const ai = new AIGMEngine();
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      text: async () => '{"error":"bad key"}',
+    });
+
+    await expect(ai.testAPIConnection({
+      endpoint: 'https://example.test/v1',
+      apiKey: 'bad-key',
+      model: 'mimo-v2.5',
+    })).rejects.toThrow('API 测试失败 (401)');
+  });
+});
+
+describe('AIGMEngine 空叙事兜底', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('AI 返回空 narrative 时写入本地兜底，避免界面无反馈', async () => {
+    const ai = new AIGMEngine();
+    ai.setAPIConfig({ endpoint: 'https://example.test/v1', apiKey: 'ok', model: 'm' });
+    ai._cachedSystemPrompt = 'system';
+    ai.eventSystem = { publish: jest.fn() };
+    ai._callAIOnce = jest.fn().mockResolvedValue('{"narrative":"","actions":[],"diceRequests":[]}');
+    const gameState = {
+      mapState: { playerPosition: { x: 0, y: 0 } },
+      addNarrative: jest.fn(),
+    };
+
+    const result = await ai.processGameAction('player_action', { text: '观察四周', moved: false }, gameState);
+
+    expect(result.narrative).toBe('你观察四周。');
+    expect(gameState.addNarrative).toHaveBeenCalledWith('gm', '你观察四周。');
+    expect(ai.eventSystem.publish).toHaveBeenCalledWith('ai:error', expect.objectContaining({
+      error: expect.stringContaining('空叙事'),
+    }));
+  });
+});

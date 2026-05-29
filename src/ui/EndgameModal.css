@@ -16,6 +16,8 @@
   border-radius: 16px;
   padding: 32px 40px;
   max-width: 580px;
+  max-height: calc(100vh - 48px);
+  overflow: auto;
   width: calc(100vw - 48px);
   box-shadow:
     0 20px 60px rgba(0, 0, 0, 0.6),
@@ -109,8 +111,20 @@
   letter-spacing: 0.04em;
 }
 .endgame-modal__lib-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.endgame-modal__lib-section-title {
+  color: #f8fafc;
+  font-weight: 800;
+  font-size: 13px;
+  margin-bottom: 8px;
+  letter-spacing: 0.04em;
+}
+.endgame-modal__lib-group-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 .endgame-modal__lib-card {
@@ -139,6 +153,12 @@
   color: #fff;
   margin-bottom: 4px;
 }
+.endgame-modal__lib-meta {
+  font-size: 11px;
+  color: #fbbf24;
+  margin-bottom: 5px;
+  font-weight: 700;
+}
 .endgame-modal__lib-desc {
   font-size: 12px;
   color: #a0a0c0;
@@ -151,5 +171,5 @@
   }
   .endgame-modal__title { font-size: 22px; }
   .endgame-modal__grid { grid-template-columns: repeat(2, 1fr); }
-  .endgame-modal__lib-grid { grid-template-columns: 1fr; }
+  .endgame-modal__lib-group-grid { grid-template-columns: 1fr; }
 }

@@ -42,6 +42,43 @@
   margin-top: 3px;
 }
 
+.settings__test-btn {
+  width: 100%;
+}
+
+.settings__api-test-result {
+  display: none;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.settings__api-test-result--pending,
+.settings__api-test-result--ok,
+.settings__api-test-result--error {
+  display: block;
+}
+
+.settings__api-test-result--pending {
+  color: #bfdbfe;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.22);
+}
+
+.settings__api-test-result--ok {
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.22);
+}
+
+.settings__api-test-result--error {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.24);
+}
+
 .settings__range {
   width: 100%;
   height: 4px;

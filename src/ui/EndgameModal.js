@@ -129,20 +129,49 @@ export class EndgameModal {
 
       const libGrid = document.createElement('div');
       libGrid.className = 'endgame-modal__lib-grid';
+      const groups = new Map();
       for (const choice of presetChoices) {
-        const card = document.createElement('button');
-        card.className = 'endgame-modal__lib-card';
-        card.innerHTML = `
-          <div class="endgame-modal__lib-icon">${choice.icon || '📜'}</div>
-          <div class="endgame-modal__lib-title">${choice.label}</div>
-          <div class="endgame-modal__lib-desc">${choice.description || ''}</div>
-        `;
-        card.addEventListener('click', () => {
-          // 让 main.js 实际去生成/获取预设数据
-          this.eventSystem.publish('game:newGame', { presetKey: choice.key });
-          this.hide();
-        });
-        libGrid.appendChild(card);
+        const groupKey = choice.scaleId || 'other';
+        if (!groups.has(groupKey)) {
+          groups.set(groupKey, {
+            id: groupKey,
+            label: choice.scaleLabel || '其他剧本',
+            icon: choice.scaleIcon || '📜',
+            order: choice.scaleOrder || 99,
+            choices: [],
+          });
+        }
+        groups.get(groupKey).choices.push(choice);
+      }
+      for (const group of [...groups.values()].sort((a, b) => a.order - b.order)) {
+        const section = document.createElement('section');
+        section.className = 'endgame-modal__lib-section';
+        const heading = document.createElement('div');
+        heading.className = 'endgame-modal__lib-section-title';
+        heading.textContent = `${group.icon} ${group.label}`;
+        section.appendChild(heading);
+
+        const groupGrid = document.createElement('div');
+        groupGrid.className = 'endgame-modal__lib-group-grid';
+        for (const choice of group.choices) {
+          const card = document.createElement('button');
+          card.className = 'endgame-modal__lib-card';
+          const sizeText = `${choice.sceneCount || 0} 节点 / ${choice.eventCount || 0} 事件`;
+          card.innerHTML = `
+            <div class="endgame-modal__lib-icon">${choice.icon || '📜'}</div>
+            <div class="endgame-modal__lib-title">${choice.label}</div>
+            <div class="endgame-modal__lib-meta">${sizeText}</div>
+            <div class="endgame-modal__lib-desc">${choice.description || ''}</div>
+          `;
+          card.addEventListener('click', () => {
+            // 让 main.js 实际去生成/获取预设数据
+            this.eventSystem.publish('game:newGame', { presetKey: choice.key });
+            this.hide();
+          });
+          groupGrid.appendChild(card);
+        }
+        section.appendChild(groupGrid);
+        libGrid.appendChild(section);
       }
       libBody.appendChild(libGrid);
       modal.appendChild(libBody);

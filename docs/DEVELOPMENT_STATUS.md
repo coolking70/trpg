@@ -11,11 +11,11 @@
 - **是什么**：浏览器端 AI GM TRPG，AI 担任游戏主持人，玩家通过卡牌/**场景节点图**/文本推进冒险
 - **技术**：原生 ES Modules + Vite + Three.js (3D 骰子) + Canvas2D，无前端框架
 - **AI 接口**：OpenAI 兼容 `/chat/completions`，实测兼容 OpenAI / DeepSeek / Ollama / 小米 MiMo
-- **当前状态**：Phase 16-26 完成、**Jest 417 / MCP 34 全过**、场景图作为主架构、生产就绪
-- **已验证规模**：单预设 **101 节点 / 87 事件 / 22 NPC**，13 次 AI vs AI 端到端 playtest 验证，4 个 bundled 题材并存（奇幻 / 霓虹朋克 / 末日 / 武侠）
+- **当前状态**：Phase 16-27 完成、**Jest 421 / MCP 37 全过**、场景图作为主架构、生产就绪
+- **已验证规模**：bundled 最大 **101 节点 / 87 事件 / 22 NPC**；外部生成超大型剧本 **298 场景 / 305 事件 / 87 NPC / 7 势力 / 21 结局**
 - **核心能力栈**：场景图 + 角色创建 4 轴 + NPC schedule/关系图 + 故事时间 + 营地交互 + worldFlags AI 注入 + 隐藏路径 + IndexedDB + 跨周目元进度 + AI 上下文检索 + AI Hooks gate(4 tier) + 战斗 buff/AOE/phases + escape_combat + 数值 Monte Carlo 模拟器
-- **MCP 服务器**：54 个工具（preset_apply_template / scene_chain_create / combat_simulate / npc_relation_add 等）
-- **下一步候选**：编辑器加场景图可视化编辑 / 部署+真人玩测反馈 / 多语言 / 社区预设上传
+- **MCP 服务器**：60 个工具（小说/设定集 API-only 导入、路线扩写、战略层生成/审稿、preset_apply_template / scene_chain_create / combat_simulate 等）
+- **下一步候选**：超大型剧本文本与分支质量继续审稿 / 编辑器加场景图可视化编辑 / 部署+真人玩测反馈 / 多语言 / 社区预设上传
 
 ---
 
@@ -23,9 +23,10 @@
 
 ```bash
 npm install
-npm test          # 417 tests in 24 suites, ~1.2s
+npm test          # 421 tests in 25 suites
 npm run dev       # localhost:3000
 npm run build     # 生产构建到 dist/
+npm run test:mcp  # 37 MCP smoke tests
 
 # 数值平衡审计（5 秒，无 AI 调用）
 node scripts/combat-balance-check.mjs --preset presets/eternal-crown-stress-test.json --party-by-chapter
@@ -80,6 +81,7 @@ git show <commit> --stat
 | _(unreleased)_ | **Phase 23-25 存储 + 工具链** | IndexedDB + PresetStorage（大预设自动分发）+ MetaProgression（跨周目）+ ContextRetriever（AI 上下文检索）+ MCP 54 工具 |
 | `bb57f9c` | **Phase 26A-D 战斗深化 + 多题材 + 玩测** | DiceSystem 容错 + AI Hooks gate(4 tier) + buff/debuff/dot/AOE/phases/escape_combat + 3 新预设（永燃之冠 101 节点/末日避难所/武侠青锋录）+ Monte Carlo 数值模拟器 + combat_simulate MCP 工具 |
 | `d3a1f42` | **Phase 26E 新游戏流程 🧹** | 修 4 bug：清空存档不彻底/presets 不在选项/跳默认/误报恢复；用 import.meta.glob 自动列出 bundled 预设 |
+| _(unreleased)_ | **Phase 27 超大型剧本与 API 体验** | MCP API-only 小说/设定集导入 + MiMo 测试；外部 generated manifest；新游戏按规模分组；API 连通性测试按钮；修新游戏叙事残留、身份串线、AI 空叙事无反馈；清洗超大型剧本玩家可见提示词痕迹 |
 
 详细 bug 见第 5 章。
 
@@ -425,8 +427,8 @@ __tests__/
 scripts/
 ├─ playtest-v2.mjs               纯后端手动驱动玩测（场景前的版本）
 ├─ playtest-ai-vs-ai.mjs         Pro AI 玩测（grid 版，旧）
-└─ playtest-ai-vs-ai-scene.mjs   Pro AI 玩测（场景图版，**当前主要测试**）
-                                 一次完整通关 ~24 次决策 / ~120k tokens
+├─ playtest-ai-vs-ai-scene.mjs   Pro AI 玩测（默认场景图主线）
+└─ playtest-large-script.mjs     大型/超大型剧本 AI vs AI 玩测（支持 API timeout 配置）
 ```
 
 **给接手者**：新增功能要先想"怎么测"。系统级的测试比 UI 测试容易写（不需要 DOM mock）。

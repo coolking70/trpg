@@ -7,8 +7,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import http from 'node:http';
 
 const TMP = path.join(os.tmpdir(), `trpg-mcp-test-${Date.now()}.json`);
+const NOVEL_TMP = path.join(os.tmpdir(), `trpg-mcp-novel-${Date.now()}.txt`);
 
 let pass = 0;
 let fail = 0;
@@ -26,6 +28,245 @@ async function test(name, fn) {
 
 function assert(cond, msg = 'assertion failed') {
   if (!cond) throw new Error(msg);
+}
+
+function startMockChatCompletionsServer() {
+  let calls = 0;
+  const server = http.createServer((req, res) => {
+    if (req.method !== 'POST' || req.url !== '/v1/chat/completions') {
+      res.writeHead(404);
+      res.end('not found');
+      return;
+    }
+    calls++;
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString('utf-8'); });
+    req.on('end', () => {
+      const parsed = JSON.parse(body || '{}');
+      const userContent = parsed.messages?.find(m => m.role === 'user')?.content || '';
+      if (String(userContent).includes('实体归一化')) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          choices: [{
+            message: {
+              content: JSON.stringify({
+                canonicalFactions: [
+                  { id: 'academy', name: '学院', description: '研究星门的组织', tags: ['faction:academy'] },
+                  { id: 'empire', name: '帝国', description: '试图控制星门的军事势力', tags: ['faction:empire'] },
+                  { id: 'church', name: '教会', description: '宣称星门属于神迹的宗教势力', tags: ['faction:church'] },
+                ],
+                aliases: [
+                  { fromId: 'academy_alt', toId: 'academy', reason: '同一学院势力的别名' },
+                ],
+              }),
+            },
+          }],
+        }));
+        return;
+      }
+      if (String(userContent).includes('起点专属支线包')) {
+        const payload = JSON.parse(userContent);
+        const routes = (payload.factions || []).map(f => ({
+          factionId: f.id,
+          npc: { name: `${f.name}引路人`, title: '路线导师', description: `${f.name}的专属支线导师。`, personality: 'route_guide' },
+          scenes: [{
+            title: `${f.name}的分歧前夜`,
+            type: 'settlement',
+            summary: `${f.name}必须在进入星门主线前处理内部矛盾。`,
+            event: {
+              title: `${f.name}的专属抉择`,
+              type: 'story',
+              choices: [
+                { id: 'support_faction', text: '支持本势力方案', outcome: '本势力声望提升。', setVariable: `route_${f.id}_support` },
+                { id: 'seek_compromise', text: '寻找折中方案', outcome: '保留后续谈判空间。', setVariable: `route_${f.id}_compromise` },
+              ],
+            },
+          }],
+          ending: {
+            title: `${f.name}的尾声`,
+            summary: `${f.name}路线在星门结局后的专属收束。`,
+            choices: [{ id: 'accept', text: '接受路线代价', outcome: '路线完成。', setVariable: `ending_${f.id}` }],
+          },
+        }));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ routes }) } }] }));
+        return;
+      }
+      if (String(userContent).includes('战略设定层')) {
+        const payload = JSON.parse(userContent);
+        const factions = (payload.existingFactions || []).map(f => ({
+          factionId: f.id,
+          strategicSummary: `${f.name}围绕星门资源形成了有限治理能力。`,
+          holdings: [
+            {
+              id: `${f.id}_capital`,
+              name: `${f.name}主城`,
+              type: 'capital',
+              population: 42000,
+              resources: ['粮食', '铁矿'],
+              specialties: ['边境贸易'],
+              productionEfficiency: 82,
+              security: 68,
+              narrativeRole: '用于开局汇报和后续外交压力事件。',
+              confidence: 'inferred',
+              evidence: '由势力规模与星门争夺剧情反推。',
+            },
+            {
+              id: `${f.id}_mine`,
+              name: `${f.name}北矿`,
+              type: 'mine',
+              population: 3200,
+              resources: ['铁矿'],
+              specialties: ['军械原料'],
+              productionEfficiency: 74,
+              security: 45,
+              narrativeRole: '矿区动荡会影响军备和谈判筹码。',
+              confidence: 'inferred',
+              evidence: '战争势力需要稳定军械来源。',
+            },
+          ],
+          resources: [
+            { id: 'grain', name: '粮食', category: 'food', abundance: 'stable', strategicUse: '维持军队与城市稳定', confidence: 'inferred' },
+            { id: 'iron', name: '铁矿', category: 'ore', abundance: 'limited', strategicUse: '军备制造', confidence: 'inferred' },
+          ],
+          economy: {
+            totalPopulation: 45200,
+            laborPool: 19000,
+            foodBalance: '略有余粮但运输脆弱',
+            treasuryPressure: '战争税引发不满',
+            mobilizationCapacity: '可短期动员两支地方队',
+            productionFormula: 'effective_output = population * productionEfficiency * stability_modifier',
+          },
+          internalPolitics: `${f.name}内部围绕星门态度分裂。`,
+          diplomacy: (payload.existingFactions || [])
+            .filter(other => other.id !== f.id)
+            .slice(0, 2)
+            .map(other => ({
+              targetFactionId: other.id,
+              stance: 'rival',
+              publicReason: '争夺星门解释权',
+              hiddenTension: '暗中接触对方边境贵族',
+              confidence: 'inferred',
+            })),
+          intelligenceProfile: {
+            publicKnowledge: '民众只知道税赋和征发增加。',
+            restrictedKnowledge: '高层掌握星门失控风险。',
+            misinformation: '商队流传夸大的敌军数字。',
+            uncertainty: '矿区真实产量仍需现场核查。',
+          },
+          playableRoles: [
+            {
+              roleId: 'border_commander',
+              title: '边境指挥官',
+              authorityScope: '可向直属幕僚下令侦察、安抚或筹备防务。',
+              visibleIntel: '能看到军政汇报，但无法直接掌握宫廷密谋。',
+              commandLimits: '命令需要时间执行，地方官可能隐瞒结果。',
+              reportCadence: '每个关键事件后收到汇报。',
+            },
+          ],
+        }));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify({
+          designPrinciples: ['战略设定只通过 TRPG 汇报与命令呈现'],
+          accessRules: { commoner: '传闻级情报', officer: '局部军政汇报', ruler: '高层汇总但仍有误差' },
+          formulas: {
+            production: 'effective_output = population * productionEfficiency * stability_modifier',
+            stability: 'stability_modifier = security/100',
+            intelligence: 'visible_intel = role_scope - secrecy',
+          },
+          factions,
+        }) } }] }));
+        return;
+      }
+      if (String(userContent).includes('审稿并校正 TRPG strategicLayer')) {
+        const payload = JSON.parse(userContent);
+        const correctedFactions = Object.values(payload.strategicLayer?.factions || {}).map(f => ({
+          ...f,
+          strategicSummary: `${f.strategicSummary || f.name}（已审稿：保留为小说逻辑推断，不视为原文明示。）`,
+          holdings: (f.holdings || []).map(h => ({
+            ...h,
+            confidence: h.confidence === 'explicit' ? 'inferred' : h.confidence,
+            evidence: `${h.evidence || '缺少依据'}；审稿后标注为可校正推断。`,
+          })),
+          intelligenceProfile: {
+            ...(f.intelligenceProfile || {}),
+            uncertainty: '审稿确认：人口、产能和地名均需在后续剧情中允许校正。',
+          },
+        }));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify({
+          summary: '发现部分设定过于确定，已改为可校正推断。',
+          issues: [
+            {
+              id: 'over_precise_population',
+              severity: 'warning',
+              factionId: correctedFactions[0]?.factionId || 'academy',
+              path: `factions.${correctedFactions[0]?.factionId || 'academy'}.economy.totalPopulation`,
+              problem: '人口数值缺乏原文直接证据。',
+              recommendation: '保留为估算，并在 evidence/uncertainty 中说明。',
+              confidence: 'high',
+            },
+          ],
+          correctedFactions,
+          reviewerNotes: 'mock review completed',
+        }) } }] }));
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              world: { name: '星门试作', background: '星门争夺让学院、帝国与教会形成三方张力。', gmStyle: '政治奇幻冒险' },
+              factions: [
+                { id: 'academy', name: '学院', description: '研究星门的组织', tags: ['faction:academy'] },
+                { id: 'empire', name: '帝国', description: '试图控制星门的军事势力', tags: ['faction:empire'] },
+                { id: 'church', name: '教会', description: '宣称星门属于神迹的宗教势力', tags: ['faction:church'] },
+              ],
+              characters: [
+                { id: 'lin_zhou', name: '林舟', title: '星门见习守卫', factionId: 'academy', description: '卷入星门争夺的青年', recruitable: true },
+                { id: 'ailin', name: '艾琳', title: '学院谈判者', factionId: 'academy', description: '反对交出星门的代表', recruitable: true },
+                { id: 'imperial_envoy', name: '帝国使者', title: '帝国谈判官', factionId: 'empire', description: '要求接管星门', recruitable: false },
+              ],
+              sections: [
+                {
+                  title: '第一章 星门',
+                  summary: 'API 摘要：星门争夺让学院、帝国与教会形成三方张力。',
+                  locations: ['星门', '学院'],
+                  conflicts: ['星门控制权'],
+                  beats: [
+                    {
+                      title: '钟声响起',
+                      sceneType: 'settlement',
+                      eventType: 'story',
+                      summary: 'API 摘要：学院钟声宣告星门危机开始。',
+                      focusFactionId: 'academy',
+                      choices: [
+                        { id: 'protect_gate', text: '保护星门', outcome: '学院获得喘息。', setVariable: 'gate_protected' },
+                        { id: 'hear_empire', text: '听取帝国条件', outcome: '帝国使者愿意说明真正目的。', setVariable: 'empire_heard' },
+                      ],
+                      tags: ['main'],
+                    },
+                  ],
+                },
+              ],
+            }),
+          },
+        }],
+      }));
+    });
+  });
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const { port } = server.address();
+      resolve({
+        baseUrl: `http://127.0.0.1:${port}/v1`,
+        get calls() { return calls; },
+        close: () => new Promise(done => server.close(done)),
+      });
+    });
+  });
 }
 
 // 启动 server 子进程并用 JSON-RPC over stdio 与之通讯
@@ -585,8 +826,137 @@ async function main() {
     assert(m && parseFloat(m[1]) > 80, `胜率应该 >80%，实际：${m && m[1]}`);
   });
 
+  await test('novel_source_inspect 读取长文本并识别章节', async () => {
+    fs.writeFileSync(NOVEL_TMP, [
+      '第一章 星门',
+      '林舟说道，学院的钟声已经响起。帝国使者穿过街道，教会祭司沉默旁观。',
+      '第二章 交涉',
+      '艾琳回答，公会不会接受帝国的条件。林舟决定寻找第三条道路。',
+      '第三章 夜战',
+      '地下势力逼近学院，艾琳喊道，必须保护星门。',
+    ].join('\n'), 'utf-8');
+    const r = await client.call('novel_source_inspect', { sourcePath: NOVEL_TMP, maxSections: 20 });
+    const info = JSON.parse(r);
+    assert(info.sections >= 3, `应识别至少 3 个章节，实际：${r}`);
+    assert(info.excludedNonStorySections === 0, '测试素材不应过滤正文');
+    assert(info.note.includes('不再本地猜测人物或势力'), '应说明 inspect 不做本地人物/势力分析');
+  });
+
+  await test('novel_build_mega_preset 拒绝本地启发式生成', async () => {
+    try {
+      await client.call('novel_build_mega_preset', {
+        sourcePath: NOVEL_TMP,
+        title: '星门试作',
+        maxSections: 3,
+        inspectSections: 20,
+        confirm: true,
+        useApi: false,
+      });
+      assert(false, '应拒绝本地启发式生成');
+    } catch (e) {
+      assert(e.message.includes('本地启发式自动分析已废除'), `应提示本地启发式已废除，实际：${e.message}`);
+    }
+  });
+
+  await test('novel_build_mega_preset 可通过 OpenAI-compatible API 增强摘要', async () => {
+    const mock = await startMockChatCompletionsServer();
+    try {
+      const r = await client.call('novel_build_mega_preset', {
+        sourcePath: NOVEL_TMP,
+        title: '星门 API 试作',
+        maxSections: 3,
+        inspectSections: 20,
+        confirm: true,
+        useApi: true,
+        apiKey: 'test-key',
+        baseUrl: mock.baseUrl,
+        model: 'mock-model',
+        maxApiSections: 1,
+      });
+      const result = JSON.parse(r);
+      assert(result.apiEnhanced === true, `应标记 API 增强，实际：${r}`);
+      assert(mock.calls === 4, `应按每批 1 个片段调用 mock API 三次，并额外调用一次实体归一化，实际 ${mock.calls}`);
+      const exported = JSON.parse(await client.call('preset_export'));
+      assert(exported.sourceMaterial.apiEnhanced === true, 'sourceMaterial 应记录 apiEnhanced');
+      assert(exported.sourceMaterial.analysisMode === 'api_only', 'sourceMaterial 应记录 api_only');
+      assert(exported.sourceMaterial.canonicalizedEntities === true, 'sourceMaterial 应记录 API 实体归一化');
+      assert(exported.scenes.some(s => String(s.description).includes('API 摘要')), '场景描述应采用 API 摘要');
+      assert(exported.startingOptions.origins.length >= 3, '应使用 API 势力生成多个起点');
+      assert(exported.startingSceneId === 'scene_start_academy', `应设置 API 势力首个开局场景，实际：${exported.startingSceneId}`);
+      assert(!exported.scenes.some(s => s.type === 'ending'), '短样本不应仅因末段窗口被强行标为 ending');
+
+      exported.factions.push({ id: 'academy_alt', name: '学院别称', description: '研究星门的组织', reputationVar: 'rep_academy_alt', tags: ['faction:academy_alt'] });
+      fs.writeFileSync(TMP, JSON.stringify(exported, null, 2), 'utf-8');
+      await client.call('preset_load', {});
+      const canon = JSON.parse(await client.call('preset_canonicalize_entities_api', {
+        apiKey: 'test-key',
+        baseUrl: mock.baseUrl,
+        model: 'mock-model',
+        factionLimit: 3,
+      }));
+      assert(canon.canonicalFactionCount === 3, `应归一化为 3 个势力，实际：${JSON.stringify(canon)}`);
+      const canonExport = JSON.parse(await client.call('preset_export'));
+      assert(canonExport.sourceMaterial.canonicalizedEntities === true, '单独工具应记录 canonicalizedEntities');
+      assert(!canonExport.factions.some(f => f.id === 'academy_alt'), 'API alias 指向的重复势力应被合并');
+      const expanded = JSON.parse(await client.call('preset_expand_routes_api', {
+        apiKey: 'test-key',
+        baseUrl: mock.baseUrl,
+        model: 'mock-model',
+        factionIds: ['academy'],
+        routeLength: 1,
+        includeEndings: true,
+      }));
+      assert(expanded.createdCounts.scenes === 2, `应新增 1 个支线场景 + 1 个结局场景，实际：${JSON.stringify(expanded)}`);
+      const expandedExport = JSON.parse(await client.call('preset_export'));
+      assert(expandedExport.sourceMaterial.routeExpansion.apiEnhanced === true, '应记录 API 路线扩写');
+      assert(expandedExport.scenes.some(s => s.id === 'scene_route_academy_01'), '应创建势力专属路线场景');
+      const strategic = JSON.parse(await client.call('preset_generate_strategic_layer_api', {
+        apiKey: 'test-key',
+        baseUrl: mock.baseUrl,
+        model: 'mock-model',
+        mode: 'novel_adaptation',
+        factionIds: ['academy'],
+        maxSourceSections: 0,
+        createBriefingEvents: true,
+      }));
+      assert(strategic.factionCount === 1, `应为指定势力生成战略层，实际：${JSON.stringify(strategic)}`);
+      const strategicExport = JSON.parse(await client.call('preset_export'));
+      assert(strategicExport.strategicLayer.apiEnhanced === true, '应写入 strategicLayer');
+      assert(strategicExport.strategicLayer.mode === 'novel_adaptation', '应记录小说改编模式');
+      assert(strategicExport.strategicLayer.factions.academy.holdings.length >= 2, '应生成城市/矿区等据点资源');
+      assert(strategicExport.events.some(e => e.id === 'ev_strategy_briefing_academy'), '应创建势力战略汇报事件');
+      assert(strategicExport.scenes.find(s => s.id === 'scene_start_academy').events.includes('ev_strategy_briefing_academy'), '起点应挂载战略汇报事件');
+      const reviewDryRun = JSON.parse(await client.call('preset_review_strategic_layer_api', {
+        apiKey: 'test-key',
+        baseUrl: mock.baseUrl,
+        model: 'mock-model',
+        factionIds: ['academy'],
+        maxSourceSections: 0,
+        applyCorrections: false,
+      }));
+      assert(reviewDryRun.issues.length === 1, `dryRun 应返回审稿问题，实际：${JSON.stringify(reviewDryRun)}`);
+      assert(reviewDryRun.note.includes('未修改'), 'dryRun 应说明未修改');
+      const reviewApply = JSON.parse(await client.call('preset_review_strategic_layer_api', {
+        apiKey: 'test-key',
+        baseUrl: mock.baseUrl,
+        model: 'mock-model',
+        factionIds: ['academy'],
+        maxSourceSections: 0,
+        applyCorrections: true,
+      }));
+      assert(reviewApply.issueCounts.warning === 1, `写回后应记录 warning 计数，实际：${JSON.stringify(reviewApply)}`);
+      const reviewedExport = JSON.parse(await client.call('preset_export'));
+      assert(reviewedExport.strategicLayer.lastReview.issues.length === 1, '应记录 lastReview issues');
+      assert(reviewedExport.strategicLayer.factions.academy.intelligenceProfile.uncertainty.includes('审稿确认'), '应写回校正后的 uncertainty');
+      assert(reviewedExport.sourceMaterial.strategicLayerReview.apiEnhanced === true, '应记录 sourceMaterial.strategicLayerReview');
+    } finally {
+      await mock.close();
+    }
+  });
+
   client.close();
   if (fs.existsSync(TMP)) fs.unlinkSync(TMP);
+  if (fs.existsSync(NOVEL_TMP)) fs.unlinkSync(NOVEL_TMP);
 
   console.log(`\n通过 ${pass} / 失败 ${fail}`);
   process.exit(fail > 0 ? 1 : 0);

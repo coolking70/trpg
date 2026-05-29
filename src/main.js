@@ -52,6 +52,14 @@ import { DEFAULT_PRESET } from './data/defaultPreset.js';
 // keys 是 '/presets/xxx.json'，value 是原始 JSON 对象
 const BUNDLED_PRESETS = import.meta.glob('/presets/*.json', { eager: true, import: 'default' });
 
+function classifyPresetScale(sceneCount = 0, eventCount = 0) {
+  const score = Math.max(sceneCount, eventCount);
+  if (score >= 250) return { id: 'mega', label: '超大型剧本', icon: '🌐', order: 4 };
+  if (score >= 80) return { id: 'large', label: '大型剧本', icon: '🗺', order: 3 };
+  if (score >= 25) return { id: 'medium', label: '中型剧本', icon: '📚', order: 2 };
+  return { id: 'short', label: '短篇剧本', icon: '🎲', order: 1 };
+}
+
 /**
  * 应用主类
  * 串联所有模块，管理游戏生命周期
@@ -88,6 +96,9 @@ class TRPGApp {
     /** @type {boolean} 操作锁定标志（AI处理期间禁止新操作） */
     this._actionLocked = false;
 
+    /** @type {Array<object>} public/generated-presets.json 提供的外部剧本索引 */
+    this.externalPresetIndex = [];
+
     // 让引擎的getGameState返回当前gameState
     this.engine.getGameState = () => this.gameState;
   }
@@ -110,10 +121,13 @@ class TRPGApp {
     // 4. 绑定事件
     this._bindEvents();
 
-    // 5. 加载预设（优先尝试存档，否则用默认预设）
+    // 5. 加载外部剧本索引，然后加载预设（优先尝试存档，否则用默认预设）
+    await this._loadExternalPresetIndex();
+
+    // 6. 加载预设（优先尝试存档，否则用默认预设）
     this._loadInitialData();
 
-    // 6. 启动引擎
+    // 7. 启动引擎
     this.engine.start();
 
     console.log('TRPG AI跑团 初始化完成！');
@@ -436,7 +450,10 @@ class TRPGApp {
 
     // ---- 新游戏：清空 gameState、可选清空存档、重载预设 ----
     es.subscribe('game:newGame', (evt) => {
-      this._handleNewGame(evt.data || {});
+      this._handleNewGame(evt.data || {}).catch(err => {
+        console.error('新游戏启动失败:', err);
+        this.eventSystem.publish('toast:show', { text: `新游戏启动失败：${err.message}`, type: 'error' });
+      });
     });
 
     // ---- 角色创建完成 → 真正执行 loadPreset（带玩家选择） ----
@@ -798,6 +815,23 @@ class TRPGApp {
     this._updateMapHighlights();
   }
 
+  async _loadExternalPresetIndex() {
+    try {
+      const res = await fetch('/generated-presets.json', { cache: 'no-store' });
+      if (!res.ok) {
+        this.externalPresetIndex = [];
+        return;
+      }
+      const list = await res.json();
+      this.externalPresetIndex = Array.isArray(list)
+        ? list.filter(item => item && item.key && item.path)
+        : [];
+    } catch (e) {
+      console.warn('外部剧本索引加载失败:', e.message);
+      this.externalPresetIndex = [];
+    }
+  }
+
   /**
    * 加载预设
    * @param {object} presetData - 原始预设数据
@@ -825,7 +859,13 @@ class TRPGApp {
 
     // 初始化 AI 长期记忆（从预设 lore 导入 World Facts）
     const memorySystem = this.engine.getSystem('MemorySystem');
-    if (memorySystem) memorySystem.initializeFromPreset(this.gameState, this.preset);
+    if (memorySystem) {
+      memorySystem.initializeFromPreset(this.gameState, this.preset);
+      const identity = playerChoices ? this._describeCharacter(playerChoices) : '';
+      if (identity) {
+        memorySystem.addWorldFact(this.gameState, `玩家身份：${identity}`);
+      }
+    }
 
     // 初始叙事
     const lore = this.preset.lore || {};
@@ -2703,6 +2743,10 @@ class TRPGApp {
     apply('faiths',      choices.faith);
 
     this.gameState.playerTags = [...new Set(tags)];
+    this.gameState.variables.player_race = choices.race || null;
+    this.gameState.variables.player_origin = choices.origin || null;
+    this.gameState.variables.player_background = choices.background || null;
+    this.gameState.variables.player_faith = choices.faith || null;
 
     // 应用属性加成到主角（activeCharacters[0]）
     const pc = this.gameState.activeCharacters?.[0];
@@ -2812,7 +2856,7 @@ class TRPGApp {
    * 处理新游戏请求
    * @param {{clearAutoSave?: boolean, clearAllSlots?: boolean}} opts
    */
-  _handleNewGame(opts = {}) {
+  async _handleNewGame(opts = {}) {
     // 清理存档
     if (opts.clearAutoSave || opts.clearAllSlots) {
       try {
@@ -2878,9 +2922,10 @@ class TRPGApp {
     if (opts.presetData) {
       presetData = opts.presetData;
     } else if (opts.presetKey) {
-      presetData = this._resolvePresetByKey(opts.presetKey);
+      presetData = await this._resolvePresetByKey(opts.presetKey);
       if (!presetData) {
         console.warn('未知的 presetKey:', opts.presetKey);
+        this.eventSystem.publish('toast:show', { text: '未能加载所选剧本，已回退当前剧本。', type: 'warning' });
         presetData = this.preset ? this.preset.toJSON() : DEFAULT_PRESET;
       }
     } else {
@@ -2987,7 +3032,8 @@ class TRPGApp {
   _buildPresetChoices() {
     const choices = [
       { key: 'dark_forest',  icon: '📖', label: '暗黑森林冒险',
-        description: '默认主线剧本：10 章 + 12 场景节点，揭开暗黑森林的诅咒之谜。' },
+        description: '默认主线剧本：10 章 + 12 场景节点，揭开暗黑森林的诅咒之谜。',
+        sceneCount: 12, eventCount: 10 },
     ];
     // Phase 26E — 自动列出 presets/ 目录里所有打包的 JSON
     for (const [path, preset] of Object.entries(BUNDLED_PRESETS)) {
@@ -3000,6 +3046,22 @@ class TRPGApp {
         label: preset.name || preset.presetId,
         description: (preset.description ? preset.description.slice(0, 80) + (preset.description.length > 80 ? '…' : '') : '')
                      + ` (${sceneCount} 节点 / ${eventCount} 事件)`,
+        sceneCount,
+        eventCount,
+        npcCount: (preset.npcs || []).length,
+      });
+    }
+    for (const item of this.externalPresetIndex || []) {
+      choices.push({
+        key: item.key,
+        icon: item.icon || '🌐',
+        label: item.name || item.presetId || item.key,
+        description: (item.description ? item.description.slice(0, 80) + (item.description.length > 80 ? '…' : '') : '外部生成剧本')
+          + ` (${item.sceneCount || 0} 节点 / ${item.eventCount || 0} 事件)`,
+        sceneCount: item.sceneCount || 0,
+        eventCount: item.eventCount || 0,
+        npcCount: item.npcCount || 0,
+        externalPath: item.path,
       });
     }
     // 用户在 PresetStorage（IndexedDB）里保存过的预设（编辑器导入等）
@@ -3013,19 +3075,25 @@ class TRPGApp {
           icon: '💾',
           label: p.name || p.id,
           description: `${p.sceneCount || 0} 节点 / ${p.eventCount || 0} 事件（本地保存）`,
+          sceneCount: p.sceneCount || 0,
+          eventCount: p.eventCount || 0,
+          saved: true,
         });
       }
     } catch (_) { /* */ }
     // 三个随机主题保留作为兜底
     choices.push(
       { key: 'random_forest', icon: '🌲', label: '随机：森林主题',
-        description: '7 节点场景图小冒险，森林氛围，每次生成一段独特故事。' },
+        description: '7 节点场景图小冒险，森林氛围，每次生成一段独特故事。', sceneCount: 7, eventCount: 7 },
       { key: 'random_desert', icon: '🏜', label: '随机：荒漠主题',
-        description: '7 节点场景图小冒险，黄沙商队 + 法老陵墓。' },
+        description: '7 节点场景图小冒险，黄沙商队 + 法老陵墓。', sceneCount: 7, eventCount: 7 },
       { key: 'random_ruins',  icon: '🏚', label: '随机：废墟主题',
-        description: '7 节点场景图小冒险，飞船坠落于异星废墟。' },
+        description: '7 节点场景图小冒险，飞船坠落于异星废墟。', sceneCount: 7, eventCount: 7 },
     );
-    return choices;
+    return choices.map(choice => {
+      const scale = classifyPresetScale(choice.sceneCount || 0, choice.eventCount || 0);
+      return { ...choice, scaleId: scale.id, scaleLabel: scale.label, scaleIcon: scale.icon, scaleOrder: scale.order };
+    }).sort((a, b) => (a.scaleOrder - b.scaleOrder) || String(a.label).localeCompare(String(b.label), 'zh-Hans-CN'));
   }
 
   /**
@@ -3033,7 +3101,7 @@ class TRPGApp {
    * @param {string} presetKey
    * @returns {object|null}
    */
-  _resolvePresetByKey(presetKey) {
+  async _resolvePresetByKey(presetKey) {
     if (presetKey === 'dark_forest') return DEFAULT_PRESET;
     // Phase 26E — 项目自带预设 (bundled:<presetId>)
     if (presetKey.startsWith('bundled:')) {
@@ -3042,12 +3110,17 @@ class TRPGApp {
       if (match) return JSON.parse(JSON.stringify(match));   // deep clone 防止被 mutate
       return null;
     }
+    if (presetKey.startsWith('external:')) {
+      const meta = (this.externalPresetIndex || []).find(p => p.key === presetKey);
+      if (!meta?.path) return null;
+      const res = await fetch(meta.path, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`外部剧本加载失败 (${res.status})`);
+      return await res.json();
+    }
     // Phase 26E — PresetStorage 里用户保存过的
     if (presetKey.startsWith('saved:')) {
-      // 异步 — 这里同步返回 null，调用方需走 async path（_handleNewGame 已支持 presetData）
-      // 但 _handleNewGame 只接 sync resolve，所以下面用一个临时容器；理想是改 _handleNewGame 为 async
-      console.warn('saved:<id> 需要异步加载，请改用 presetData 直传');
-      return null;
+      const id = presetKey.slice('saved:'.length);
+      return await presetStorage.load(id);
     }
     const baseLibrary = this.preset ? {
       characters: JSON.parse(JSON.stringify(this.preset.characters || [])),

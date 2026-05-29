@@ -52,6 +52,7 @@ function argVal(flag, def) {
 }
 const PRESET_PATH = path.resolve(__dirname, '..', argVal('--preset', 'presets/eternal-crown-stress-test.json'));
 const MAX_ITER = parseInt(argVal('--max-iter', '200'), 10);
+const API_TIMEOUT_MS = parseInt(process.env.MIMO_TIMEOUT_MS || argVal('--timeout-ms', '60000'), 10);
 
 // ---------- 环境补丁 ----------
 globalThis.requestAnimationFrame ||= (cb) => setTimeout(() => cb(Date.now()), 16);
@@ -919,11 +920,14 @@ class PlayerAI {
     let lastErr = null;
     let resp = null;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
       try {
         resp = await fetch(`${this.endpoint}/chat/completions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.apiKey}` },
           body: JSON.stringify(body),
+          signal: controller.signal,
         });
         if (resp.ok) { lastErr = null; break; }
         // 4xx (非 429) 不重试，直接抛
@@ -936,7 +940,11 @@ class PlayerAI {
         lastErr = new Error(`Player AI HTTP ${resp.status}: ${t.slice(0, 200)}`);
       } catch (e) {
         // fetch failed / 网络断开
-        lastErr = e;
+        lastErr = e.name === 'AbortError'
+          ? new Error(`Player AI 请求超时（${Math.floor(API_TIMEOUT_MS / 1000)}秒）`)
+          : e;
+      } finally {
+        clearTimeout(timeoutId);
       }
       if (attempt < MAX_RETRIES - 1) {
         const backoffMs = 1000 * Math.pow(2, attempt) + Math.floor(Math.random() * 500);
@@ -1050,6 +1058,7 @@ async function main() {
     model: GM_MODEL,
     maxTokens: 1200,
     temperature: 0.7,
+    timeoutMs: API_TIMEOUT_MS,
   });
 
   // 加载自定义预设

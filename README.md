@@ -3,8 +3,8 @@
 > 基于 AI 的 TRPG 浏览器跑团游戏。AI 担任 Game Master，玩家通过卡牌、地图和文本交互推进冒险。
 
 [![CI](https://github.com/USERNAME/REPONAME/actions/workflows/ci.yml/badge.svg)](https://github.com/USERNAME/REPONAME/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-417%2F417-brightgreen)](./__tests__)
-[![MCP](https://img.shields.io/badge/mcp_tools-34%2F34-brightgreen)](./mcp-server)
+[![Tests](https://img.shields.io/badge/tests-421%2F421-brightgreen)](./__tests__)
+[![MCP](https://img.shields.io/badge/mcp_tests-37%2F37-brightgreen)](./mcp-server)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 支持完整的玩法闭环：探索 → 事件触发 → 战斗 → 角色成长 → 商店 → 主线推进，并配备完整的预设创作器，任何用户都能在浏览器中打造自己的故事。
@@ -23,16 +23,18 @@
 - **NPC 系统** — schedule（按 storyTime 切换场景）/ affection / giftPreferences / 关系图（一级传播 + 死亡冲击）
 - **战斗深化** — buff/debuff/dot 持续状态 / AOE 多目标 / **Boss 阶段战 (phases)** / escape_combat 道具
 - **AI 叙事丰度可调** — 4 档 aiTier（none/light/standard/advanced）× preset.aiHooks 三态控制（always/never/optional）
+- **API 连通性测试** — 设置面板可直接发送极小 `chat/completions` 探测请求，显示成功/错误、模型、耗时和 token 用量
 - **跨周目元进度** — 按 presetId 隔离存档 + 图鉴 + 解锁项；3 个题材并存互不污染
 - **可视化场景编辑器** — 浏览器内编辑节点 / 出边 / 门控 / 事件挂载 / vignettes（无需写 JSON）
-- **MCP 服务器** — 暴露 **54 个工具**让 Claude 等 MCP 客户端批量、精细化生成 TRPG 剧本（参见 [mcp-server/README](mcp-server/README.md)），含 `combat_simulate` Monte Carlo 数值平衡审计
+- **MCP 服务器** — 暴露 **60 个工具**让 Claude 等 MCP 客户端批量、精细化生成 TRPG 剧本（参见 [mcp-server/README](mcp-server/README.md)），含小说/设定集 API-only 导入、战略层生成/审稿和 `combat_simulate` Monte Carlo 数值平衡审计
 - **AI GM 接地** — 通过结构化地图上下文 + JSON 响应格式 + Action 白名单校验，避免 AI 编造内容
 - **复合触发器** — 事件可按 scene/tile/POI/变量/前置事件/HP/回合/物品/概率等 **7 维度**组合触发
 - **状态机驱动剧情** — `set_variable` / `set_worldFlag` / `trigger_event` / `reveal_connection` / `teleport_to_scene` 让创作者编排出有起承转合的多章节剧情
 - **AI 长期记忆** — 分层记忆系统（World Facts + Key Events + Recent Context），长时间游玩 AI 不"失忆"
 - **IndexedDB 大预设存储** — 100+ 节点剧本 (200+ KB JSON) 自动落 IDB，跨刷新无损
 - **门控与防剧透** — 锁定节点显示 🔒 ??? 而非真名，gated reason 永不暴露内部变量名 / 事件 ID
-- **剧本选择库** — 新游戏对话框含 **8 个**预制剧本：默认主线 + 4 个 bundled 题材（霓虹叛潮 / 永燃之冠 / 末日避难所 / 武侠青锋录）+ 3 个随机主题
+- **剧本选择库** — 新游戏对话框按短篇/中型/大型/超大型分组，支持 bundled 题材、随机主题、本地保存剧本和外部生成剧本 manifest
+- **超大型剧本模式** — 已验证 298 场景 / 305 事件 / 87 NPC / 7 势力的小说改编剧本，含多势力起点、战略汇报、分支路线和 21 个结局
 - **结算流程** — 主线完成自动弹结算 modal（含统计 + 再来一局 / 继续探索 / 清空存档）
 - **可视化预设编辑器** — 浏览器内编辑世界/角色/敌人/物品/事件，导入导出 JSON
 - **多槽位存档** — 4 槽 + 自动存档 + 元数据预览（章节/HP/金币/回合）
@@ -59,7 +61,7 @@ npm test
 
 打开 [http://localhost:3000](http://localhost:3000) 后：
 
-1. 点击工具栏 **⚙ 设置** 配置 AI API（OpenAI / DeepSeek / Ollama 等 OpenAI 兼容接口都支持）
+1. 点击工具栏 **⚙ 设置** 配置 AI API（OpenAI / DeepSeek / Ollama 等 OpenAI 兼容接口都支持），可先点 **测试 API 连接**确认连通性
 2. 默认会加载"暗黑森林冒险"主线预设
 3. 玩 10 章故事 / 用 **📝 编辑器** 创建自己的预设
 
@@ -77,7 +79,7 @@ src/
 ├─ utils/             # 工具函数（idGenerator、deepClone 等）
 └─ main.js            # TRPGApp 主入口
 
-__tests__/            # 279 个单元 + 集成测试
+__tests__/            # 421 个单元 + 集成测试
 docs/                 # 创作者手册 + AI 集成手册 + 接手指南
 ```
 
@@ -147,10 +149,10 @@ docs/                 # 创作者手册 + AI 集成手册 + 接手指南
 
 ```bash
 npm test
-# 297 tests across 18 suites, ~0.6s
+# 421 tests across 25 suites
 
-# AI vs AI 端到端跑通主线（headless）
-node scripts/playtest-ai-vs-ai-scene.mjs
+# MCP 工具端到端烟雾测试
+npm run test:mcp
 ```
 
 - Core: EventSystem / GameEngine / StateManager
@@ -170,9 +172,11 @@ node scripts/playtest-ai-vs-ai-scene.mjs
 ✅ **Phase 15**：覆盖率提升 + 诊断日志导出 + 玩家叙事全程留痕 + JSON 解析健壮性
 ✅ **Phase 16**：**场景图全量重构**（节点 + 边代替格子）+ 剧本选择库 + 主线结算 modal + 防剧透
 ✅ **真实 AI 端到端验证**（OpenAI 兼容 API，含小米 MiMo Pro vs 普通双 AI 完整通关 9/10 章）
+✅ **Phase 27**：MCP API-only 小说/设定集导入、超大型剧本外部 manifest、新游戏规模分组、API 连通性测试、叙事清空/身份连续性/玩家可见提示词清洗
 
 🔮 后续可能方向：
 - 编辑器加场景图可视化拖拽（节点 + 连线）
+- 对超大型剧本继续做 MCP/API 质量审稿：身份视角、分支可玩性、场景文本文学化
 - 云存档同步（社区预设库）
 - 多语言（英文版预设）
 - 战斗视觉特效与移动端细节打磨

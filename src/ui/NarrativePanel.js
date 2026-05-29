@@ -14,6 +14,7 @@ export class NarrativePanel {
     this._sendBtn = null;
     this._loadingEl = null;
     this._disabled = false;
+    this._lastGameId = null;
   }
 
   render() {
@@ -51,11 +52,23 @@ export class NarrativePanel {
 
     // 同步叙事日志
     const log = gameState.narrativeLog || [];
+    const gameChanged = this._lastGameId && this._lastGameId !== gameState.gameId;
+    this._lastGameId = gameState.gameId || null;
+
     // 仅追加新消息（排除loading指示器的DOM节点）
     let currentCount = this._logArea.children.length;
     if (this._loadingEl && this._loadingEl.parentNode === this._logArea) {
       currentCount--;
     }
+
+    // 新游戏会创建更短的新 narrativeLog。旧实现只追加，导致上一局 DOM 残留。
+    if (gameChanged || currentCount > log.length) {
+      const loading = this._loadingEl;
+      this._logArea.innerHTML = '';
+      if (loading) this._logArea.appendChild(loading);
+      currentCount = 0;
+    }
+
     for (let i = currentCount; i < log.length; i++) {
       const msg = this._createMessageEl(log[i].speaker, log[i].text);
       // 在loading指示器之前插入新消息

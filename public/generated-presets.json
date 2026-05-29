@@ -1,0 +1,13 @@
+[
+  {
+    "key": "external:mimo-full-api-only",
+    "path": "/generated/mimo-full-api-only-preset.json",
+    "presetId": "preset_mpoghd3i",
+    "name": "MiMo 全文 API-only 超大剧本",
+    "description": "由长篇小说/设定集导入生成的超大剧本骨架，含多势力起点、路线扩写和战略设定层。",
+    "icon": "🌐",
+    "sceneCount": 298,
+    "eventCount": 305,
+    "npcCount": 87
+  }
+]

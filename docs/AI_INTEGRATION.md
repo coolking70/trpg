@@ -39,6 +39,18 @@
 | `qwen2.5:7b` (Ollama) | 本地部署 | 无网络依赖 |
 | `claude-haiku-4-5` (代理) | 长上下文 | 通过代理转 OpenAI 格式 |
 
+### 连通性测试按钮
+
+设置面板的 **测试 API 连接** 会使用当前表单值直接发送一次极小的 `/chat/completions` 请求：
+
+- 不需要先保存配置
+- 不写入游戏叙事上下文
+- 不计入游戏内 token 统计账本
+- 成功时显示模型名、耗时和 API 返回的 token 用量
+- 失败时显示 HTTP 状态、网络错误或超时原因
+
+这可以区分"API 配置不可用"和"游戏内某次叙事没有产生有效文本"两类问题。
+
 ### 离线兜底
 
 未配置 API key 时自动走 `AIGMEngine._localFallback`，使用模板叙事。功能可用但叙事乏味。
@@ -257,7 +269,8 @@ import { estimateTokens } from './utils/tokenEstimator.js';
 | 错误 | 处理 |
 |---|---|
 | API 超时（30s）| catch → "GM 失联: 超时" + localFallback |
-| 网络错误 | catch → 同上；**自动重试 1 次（800ms backoff）** |
+| 网络错误 / 5xx / 429 | 指数退避，最多 3 次尝试；最终失败后 "GM 失联" + localFallback |
+| AI 返回空 narrative | 发布 `ai:error` toast，并使用本地兜底叙事写入 narrativeLog |
 | 4xx 请求错误 | 立即抛出，**不重试**（请求本身问题，重试无意义） |
 | JSON 解析失败 | 三级 fallback: 直接 → markdown 提取 → brace 提取 → 整文本作为 narrative |
 | AI 返回非法 action | 静默丢弃，console.warn 记录 |
