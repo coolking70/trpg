@@ -100,8 +100,13 @@ export class AIResponseParser {
    * 标准化解析结果
    */
   _normalize(parsed) {
+    const narrative = parsed.narrative
+      ?? parsed.narr
+      ?? parsed.story
+      ?? parsed.text
+      ?? '';
     return {
-      narrative: parsed.narrative || '',
+      narrative: typeof narrative === 'string' ? narrative : '',
       actions: Array.isArray(parsed.actions) ? parsed.actions : [],
       diceRequests: Array.isArray(parsed.diceRequests) ? parsed.diceRequests : [],
       stateUpdate: parsed.stateUpdate || null,

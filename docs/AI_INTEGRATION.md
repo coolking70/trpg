@@ -70,7 +70,22 @@
                               规则:D20...
                               回复格式(JSON)...' },
 
-  // System Message 2: 长期记忆（每次重建）
+  // System Message 2: 本地权威状态（每次重建，优先级高于聊天历史）
+  { role: 'system', content: '【本地权威状态】
+                              以下内容由本地系统维护...
+                              当前场景: 林间村落(scene_village)
+                              关键变量: opened_gate=true
+                              队伍状态: 艾拉 HP:120/120 MP:40/40
+                              当前请求类型: narrate_scene_arrival' },
+
+  // System Message 3: 当前局面检索（只取相关切片）
+  { role: 'system', content: '【当前局面检索】
+                              【当前场景】林间村落: ...
+                              【相关事件】村长请求: ...
+                              【相关物品】符文护身符: ...
+                              【相关势力】秘法会 声望:12: ...' },
+
+  // System Message 4: 长期记忆（每次重建）
   { role: 'system', content: '【世界事实】
                               - 世界: 艾尔大陆 (黑暗纪元第三年)
                               - 背景: ...
@@ -79,7 +94,7 @@
                               2. 从神秘旅人处获得护身符
                               ...' },
 
-  // System Message 3: 近期摘要（可选，contextWindow 压缩结果）
+  // System Message 5: 近期摘要（可选，contextWindow 压缩结果）
   { role: 'system', content: '近期剧情摘要: ...' },
 
   // Context Window: 最近 10 条 user/assistant 对话
@@ -222,6 +237,17 @@ keyEvents = [e6, e7, ..., e21]  // 16 条
 worldFacts.push("早期事件: e1; e2; e3; e4; e5")
 ```
 
+### 本地权威状态与相关性检索
+
+Phase 28 后，长剧本不再依赖"把更多历史塞进上下文"。每次 AI 调用前会额外注入两类系统消息：
+
+| 层 | 来源 | 内容 | 目的 |
+|---|---|---|---|
+| 本地权威状态 | `AIGMEngine._buildLocalStateDigest` | 当前阶段/回合、场景、变量、最近完成事件、队伍 HP/MP、战斗敌人、当前事件 | 防止 AI 与真实游戏状态脱节 |
+| 当前局面检索 | `ContextRetriever.buildContextDigest` | 当前/附近场景、相关 NPC、相关事件、相关物品、相关势力与声望 | 让大型剧本只把此刻相关资料交给 GM |
+
+这两层的优先级高于短期聊天历史。GM 模型应基于这些事实做最低限度的判断和描述，不应自行编造未出现的地图节点、物品、势力状态或战斗结果。
+
 ---
 
 ## 八、Token 成本控制
@@ -238,13 +264,20 @@ this._cachedSystemPrompt = this.promptBuilder.buildSystemPrompt(preset);
 ```js
 // AIGMEngine.contextWindow 长度超过 maxContextMessages (10) 时
 this._compressContext();
-// 旧消息合并为 200 字以内的 summarizedHistory
+// 旧消息合并为 200 字以内的 summarizedHistory；
+// 剩余短期历史会从 user 消息开始，兼容本地模型 chat template
 ```
 
-### 8.3 地图上下文用文字而非字母网格
+### 8.3 检索上下文替代全文上下文
 
-旧做法（浪费）：传整张 20×15 字母 grid（300 tokens）
-新做法（节省）：传 "当前位置: 林间村落 / 四周: 北:草地 南:草地..."（30 tokens）
+旧做法（浪费且不稳定）：传整张 20×15 字母 grid，或把大剧本全文/全场景塞进 prompt。
+
+新做法：
+- 本地权威状态给"现在到底发生了什么"
+- `ContextRetriever` 从场景图、NPC、事件、物品、势力里挑当前最相关的少量条目
+- `MemorySystem` 只给有限世界事实和关键事件
+
+这样 300+ 场景的超大型剧本也可以保持固定规模 prompt。
 
 ### 8.4 估算
 
@@ -255,10 +288,10 @@ import { estimateTokens } from './utils/tokenEstimator.js';
 
 一次普通 AI 调用：
 - 系统提示词缓存：~600 tokens
-- 长期记忆注入：~300 tokens
+- 本地权威状态 + 检索上下文 + 长期记忆：~500-900 tokens
 - 近期对话：~500 tokens
 - 当前消息：~100 tokens
-- **合计约 1500 prompt tokens + 300 completion tokens**
+- **合计约 1700-2200 prompt tokens + 300 completion tokens**
 
 按 gpt-4o-mini ($0.15/1M input + $0.6/1M output) 算 → 一次 ~$0.0004，玩 1 小时 ~$0.05。
 

@@ -4,6 +4,7 @@
  */
 
 import { GameSystem } from '../core/GameEngine.js';
+import { rollDynamicLoot, inferEcology } from '../data/ecology.js';
 
 export class CombatSystem extends GameSystem {
   constructor() {
@@ -479,7 +480,17 @@ export class CombatSystem extends GameSystem {
       // 收集掉落和经验
       for (const enemy of combat.enemies) {
         totalExp += enemy.experienceReward || 0;
-        if (enemy.lootTable) {
+        // Phase 28 — 生态位动态掉落：enemy.lootMode === 'dynamic' 或 (有 ecology 且无静态 lootTable)
+        //   时按 biome/creatureType/tier 实时从掉落池抽取；否则走静态 lootTable（向后兼容）
+        const useDynamic = enemy.lootMode === 'dynamic'
+          || (!enemy.lootTable?.length && enemy.ecology && enemy.ecology.biome);
+        if (useDynamic) {
+          const eco = inferEcology(enemy);
+          if (eco.biome) {
+            const luck = enemy._killerLuck || 0;
+            for (const itemId of rollDynamicLoot({ ...eco, luck })) loot.push(itemId);
+          }
+        } else if (enemy.lootTable) {
           for (const entry of enemy.lootTable) {
             if (Math.random() <= entry.dropRate) {
               loot.push(entry.itemId);

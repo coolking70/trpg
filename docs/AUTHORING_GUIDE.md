@@ -260,7 +260,7 @@ ch_shop (inScene: ['scene_village'], repeatable: true)
 | `icon` | 推荐 | emoji，节点图标 |
 | `coords` | ✓ | 节点屏幕位置（任意单位，仅作可视化用） |
 | `description` | 推荐 | AI 抵达时的写作素材 |
-| `connections[]` | ✓ | 出边 — 想要双向连接就在对方节点写返程 |
+| `connections[]` | ✓ | 出边 — 想要双向连接就在对方节点写返程；`cost` 可作为旅行耗时 |
 | `events[]` | — | 抵达时按 priority 选第一个未完成的触发 |
 | `vignettes[]` | — | 重访时随机选一条作为本地叙事（**不调 AI，省 token**） |
 | `tags` | — | 用于 QuestTracker 等 UI 过滤 |
@@ -312,6 +312,27 @@ ch_shop (inScene: ['scene_village'], repeatable: true)
 #### 重访叙事（vignettes）
 
 玩家重新走过已访问的节点时，系统会**随机抽取 vignette 中的一条**作为本地叙事 — 不调 AI。这让重访有质感但成本接近零。如果场景没有 vignettes，重访时只会写"前往 XXX 名字"。
+
+#### 快速旅行
+
+快速旅行只对**已经探索过**且与当前节点之间存在**当前可通行路径**的节点生效。系统会沿已探索路径寻路，按每段 `connection.cost` 或目标 `scene.travelHours` 推进故事时间，并在危险节点上由代码结算随机遭遇/路途损耗；GM 模型只写最终抵达或中断后的叙事。
+
+推荐写法：
+
+```json
+{
+  "id": "scene_mountain_pass",
+  "name": "风雪山口",
+  "type": "wilderness",
+  "travelHours": 4,
+  "tags": ["mountain", "dangerous", "wilderness"],
+  "connections": [
+    { "to": "scene_way_shrine", "label": "沿旧山路前往路神祠", "cost": 3 }
+  ]
+}
+```
+
+安全城镇、商店、营地建议加 `tags: ["safe"]` 或使用 `type: "settlement" / "shop"`，这样快速旅行路途结算不会在那里刷怪。
 
 #### 设计 checklist
 
@@ -394,6 +415,7 @@ ch_shop (inScene: ['scene_village'], repeatable: true)
   "id": "enemy_002",
   "name": "暗影狼",
   "difficulty": "easy",  // easy/normal/hard/boss
+  "ecology": { "biome": "forest", "creatureType": "beast", "tier": "trivial" },
   "behaviorHint": "aggressive",
   "stats": { /* ... */ },
   "experienceReward": 12,
@@ -406,6 +428,41 @@ ch_shop (inScene: ['scene_village'], repeatable: true)
 战斗启动时按全局难度修正：
 - easy: HP×0.7, ATK-2
 - hard: HP×1.3, ATK+2
+
+#### 4.2.1 生态位与掉落
+
+新敌人建议显式填写 `ecology`，它同时驱动战利品主题和图像匹配：
+
+```json
+{
+  "id": "enemy_marsh_crocodile",
+  "name": "沼泽鳄鱼",
+  "difficulty": "hard",
+  "ecology": {
+    "biome": "swamp",
+    "creatureType": "beast",
+    "tier": "elite"
+  },
+  "lootMode": "static"
+}
+```
+
+字段含义：
+
+| 字段 | 说明 |
+|---|---|
+| `biome` | 地区生态，如 `swamp` / `snowfield` / `desert` / `mountain` / `tunnel` / `ruins` |
+| `creatureType` | 生物类型，如 `beast` / `humanoid` / `undead` / `construct` / `elemental` / `spirit` / `ooze` |
+| `tier` | 强度层级：`trivial` / `common` / `elite` / `boss`；通常由 difficulty 推断即可 |
+| `lootMode` | `static` 使用烘焙好的 `lootTable`；`dynamic` 在战斗结算时实时抽取 |
+
+推荐流程：
+
+1. 用 MCP `ecology_vocab` 查看合法词表
+2. 用 `loot_pool_preview` 预览某生态位会产出哪些战利品
+3. 用 `enemy_assign_ecology` 给敌人写入生态位，让工具自动烘焙 `lootTable`、补齐 `preset.items` 并配图
+
+如果敌人已有手写 `lootTable`，引擎默认继续使用静态表以保持向后兼容；如果只有 `ecology` 且没有 `lootTable`，战斗结算会自动走动态掉落。
 
 ### 4.3 战斗中的 AI 创意行动
 
@@ -541,6 +598,7 @@ Math.random = () => 0.05;  // 让所有概率检查通过
 - 事件 `start_combat` 引用的 `enemyIds` 是否存在
 - 敌人 `lootTable` 引用的 `itemId` 是否存在
 - POI 坐标与 grid 是否一致
+- 生成大剧本时建议额外用 MCP `preset_analyze` 和 `enemy_assign_ecology` 检查生态位/掉落/配图一致性
 
 ---
 

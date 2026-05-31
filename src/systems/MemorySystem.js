@@ -111,11 +111,13 @@ export class MemorySystem extends GameSystem {
    * 获取当前记忆视图（供 AIPromptBuilder 注入到 prompt）
    * @returns {{worldFacts: string[], keyEvents: string[]}}
    */
-  getMemoryView(gameState) {
+  getMemoryView(gameState, options = {}) {
     this._ensureMemoryFields(gameState);
+    const worldFactLimit = Number.isFinite(options.worldFactLimit) ? options.worldFactLimit : 12;
+    const keyEventLimit = Number.isFinite(options.keyEventLimit) ? options.keyEventLimit : 12;
     return {
-      worldFacts: gameState.aiContext.worldFacts.slice(),
-      keyEvents: gameState.aiContext.keyEvents.map(e => e.summary),
+      worldFacts: gameState.aiContext.worldFacts.slice(-worldFactLimit),
+      keyEvents: gameState.aiContext.keyEvents.slice(-keyEventLimit).map(e => e.summary),
     };
   }
 

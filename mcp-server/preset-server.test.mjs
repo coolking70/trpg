@@ -826,6 +826,66 @@ async function main() {
     assert(m && parseFloat(m[1]) > 80, `胜率应该 >80%，实际：${m && m[1]}`);
   });
 
+  // Phase 28 — 生态位 → 掉落表 → 图像
+  await test('ecology_vocab 列出 biome/creatureType/tier', async () => {
+    const r = await client.call('ecology_vocab');
+    assert(r.includes('biome'), '应含 biome');
+    assert(r.includes('swamp'), '应含 swamp');
+    assert(r.includes('creatureType'), '应含 creatureType');
+    assert(r.includes('tier'), '应含 tier');
+  });
+
+  await test('loot_pool_preview 预览掉落表不改预设', async () => {
+    const before = JSON.parse(await client.call('preset_info'));
+    const r = await client.call('loot_pool_preview', { biome: 'swamp', creatureType: 'beast', tier: 'common' });
+    assert(/\d+%/.test(r), `应含百分比掉率：${r}`);
+    assert(r.includes('item_loot_swamp') || r.includes('item_coin'), `应含 swamp/通用战利品：${r}`);
+    const after = JSON.parse(await client.call('preset_info'));
+    assert(after.counts.items === before.counts.items, 'preview 不应改变 items 数量');
+  });
+
+  await test('enemy_assign_ecology 静态烘焙掉落表 + 物料化战利品 + 配图', async () => {
+    await client.call('enemy_create', {
+      id: 'e_croc', name: '沼泽鳄鱼', stats: { hp: 80, attack: 14, defense: 8 }, difficulty: 'hard',
+      tags: ['swamp', 'beast', 'crocodile'],
+    });
+    const itemsBefore = JSON.parse(await client.call('preset_info')).counts.items;
+    const r = await client.call('enemy_assign_ecology', {
+      enemyId: 'e_croc', biome: 'swamp', creatureType: 'beast', mode: 'static',
+    });
+    assert(r.includes('生态位'), `应确认生态位：${r}`);
+    assert(r.includes('静态烘焙'), `应静态烘焙：${r}`);
+    const enemy = JSON.parse(await client.call('enemy_get', { id: 'e_croc' }));
+    assert(enemy.ecology && enemy.ecology.biome === 'swamp', 'enemy.ecology 应写入');
+    assert(enemy.ecology.tier === 'elite', 'difficulty=hard 应推断 tier=elite');
+    assert(Array.isArray(enemy.lootTable) && enemy.lootTable.length > 0, 'lootTable 应被烘焙');
+    const itemsAfter = JSON.parse(await client.call('preset_info')).counts.items;
+    assert(itemsAfter > itemsBefore, '掉落物应被物料化进 preset.items');
+    // 物料化的物品应该都能在 preset 找到（引用完整性）
+    for (const entry of enemy.lootTable) {
+      const item = JSON.parse(await client.call('item_get', { id: entry.itemId }));
+      assert(item.id === entry.itemId, `掉落物 ${entry.itemId} 应存在于 preset.items`);
+    }
+  });
+
+  await test('enemy_assign_ecology dynamic 模式不烘焙静态表', async () => {
+    await client.call('enemy_create', {
+      id: 'e_wisp', name: '鬼火', stats: { hp: 35, attack: 6, defense: 4 }, difficulty: 'normal',
+    });
+    const r = await client.call('enemy_assign_ecology', {
+      enemyId: 'e_wisp', biome: 'swamp', creatureType: 'spirit', mode: 'dynamic',
+    });
+    assert(r.includes('动态'), `应为动态模式：${r}`);
+    const enemy = JSON.parse(await client.call('enemy_get', { id: 'e_wisp' }));
+    assert(enemy.lootMode === 'dynamic', 'lootMode 应为 dynamic');
+    assert(Array.isArray(enemy.lootTable) && enemy.lootTable.length === 0, 'dynamic 不应存静态 lootTable');
+  });
+
+  await test('enemy_assign_ecology 后 preset_validate 仍通过（引用完整）', async () => {
+    const r = await client.call('preset_validate');
+    assert(r.includes('✓') || r.includes('通过'), `物料化后引用应完整：${r}`);
+  });
+
   await test('novel_source_inspect 读取长文本并识别章节', async () => {
     fs.writeFileSync(NOVEL_TMP, [
       '第一章 星门',

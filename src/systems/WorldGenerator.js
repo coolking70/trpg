@@ -1,3 +1,5 @@
+import { assignPresetImages } from '../data/assetLibrary.js';
+
 /**
  * 随机世界生成器
  *
@@ -147,7 +149,7 @@ export function generateMap(options = {}) {
     })),
   ];
 
-  return {
+  return assignPresetImages({
     id: 'map_' + Date.now(),
     name: `随机${theme.name}地图`,
     description: `自动生成的${theme.name}地图（${width}×${height}）`,
@@ -159,7 +161,7 @@ export function generateMap(options = {}) {
     revealRadius: 3,
     tags: ['random', themeKey],
     notes: `Generated ${new Date().toISOString()}`,
-  };
+  });
 }
 
 /**
@@ -294,7 +296,7 @@ export function generateRandomPreset(options = {}) {
   // 自动生成事件骨架
   const events = generateRandomEvents(map, enemies, items, themeKey);
 
-  return {
+  return assignPresetImages({
     version: '1.0.0',
     presetId: 'preset_random_' + Date.now(),
     name: `随机${theme.name}冒险`,
@@ -315,7 +317,7 @@ export function generateRandomPreset(options = {}) {
     map,
     rules: { diceType: 'd20', combatFormula: '(attack + dice) - defense', maxPartySize: 4, startingGold: 100 },
     aiConfig: { temperature: 0.7, maxResponseTokens: 1000, useStructuredOutput: true, language: 'zh-CN' },
-  };
+  });
 }
 
 /** 自动生成事件骨架：开场 + 村庄商店 + 入口 boss */
@@ -657,7 +659,16 @@ export function generateScenePreset(options = {}) {
     },
   ];
 
-  return {
+  for (const event of events) {
+    event.tags = Array.from(new Set([...(event.tags || []), themeKey]));
+    event.themeKey = themeKey;
+  }
+  for (const scene of scenes) {
+    scene.tags = Array.from(new Set([...(scene.tags || []), themeKey]));
+    scene.themeKey = themeKey;
+  }
+
+  return assignPresetImages({
     version: '1.0.0',
     presetId: 'preset_random_' + themeKey + '_' + Date.now(),
     name: `随机${tpl.name}冒险`,
@@ -680,5 +691,5 @@ export function generateScenePreset(options = {}) {
     scenes,
     rules: { diceType: 'd20', combatFormula: '(attack + dice) - defense', maxPartySize: 4, startingGold: 100 },
     aiConfig: { temperature: 0.7, maxResponseTokens: 1000, useStructuredOutput: true, language: 'zh-CN' },
-  };
+  });
 }

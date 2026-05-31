@@ -11,10 +11,10 @@
 - **是什么**：浏览器端 AI GM TRPG，AI 担任游戏主持人，玩家通过卡牌/**场景节点图**/文本推进冒险
 - **技术**：原生 ES Modules + Vite + Three.js (3D 骰子) + Canvas2D，无前端框架
 - **AI 接口**：OpenAI 兼容 `/chat/completions`，默认本地 `qwen/qwen3.6-35b-a3b @ http://127.0.0.1:1234/v1`
-- **当前状态**：Phase 16-27 完成、**Jest 421 / MCP 37 全过**、场景图作为主架构、生产就绪
+- **当前状态**：Phase 16-28 完成、**Jest 470 / MCP 42 全过**、场景图作为主架构、生产就绪
 - **已验证规模**：bundled 最大 **101 节点 / 87 事件 / 22 NPC**；外部生成超大型剧本 **298 场景 / 305 事件 / 87 NPC / 7 势力 / 21 结局**
-- **核心能力栈**：场景图 + 角色创建 4 轴 + NPC schedule/关系图 + 故事时间 + 营地交互 + worldFlags AI 注入 + 隐藏路径 + IndexedDB + 跨周目元进度 + AI 上下文检索 + AI Hooks gate(4 tier) + 战斗 buff/AOE/phases + escape_combat + 数值 Monte Carlo 模拟器
-- **MCP 服务器**：60 个工具（小说/设定集 API-only 导入、路线扩写、战略层生成/审稿、preset_apply_template / scene_chain_create / combat_simulate 等）
+- **核心能力栈**：场景图 + 快速旅行 + 角色创建 4 轴 + NPC schedule/关系图 + 故事时间 + 营地交互 + worldFlags AI 注入 + 隐藏路径 + IndexedDB + 跨周目元进度 + AI 本地权威状态/相关性检索 + AI Hooks gate(4 tier) + 战斗 buff/AOE/phases + escape_combat + 生态位动态掉落 + 数值 Monte Carlo 模拟器
+- **MCP 服务器**：63 个工具（小说/设定集 API-only 导入、路线扩写、战略层生成/审稿、preset_apply_template / scene_chain_create / combat_simulate / enemy_assign_ecology 等）
 - **下一步候选**：超大型剧本文本与分支质量继续审稿 / 编辑器加场景图可视化编辑 / 部署+真人玩测反馈 / 多语言 / 社区预设上传
 
 ---
@@ -23,10 +23,10 @@
 
 ```bash
 npm install
-npm test          # 421 tests in 25 suites
+npm test          # 470 tests in 28 suites
 npm run dev       # localhost:3000
 npm run build     # 生产构建到 dist/
-npm run test:mcp  # 37 MCP smoke tests
+npm run test:mcp  # 42 MCP smoke tests
 
 # 数值平衡审计（5 秒，无 AI 调用）
 node scripts/combat-balance-check.mjs --preset presets/eternal-crown-stress-test.json --party-by-chapter
@@ -82,6 +82,7 @@ git show <commit> --stat
 | `bb57f9c` | **Phase 26A-D 战斗深化 + 多题材 + 玩测** | DiceSystem 容错 + AI Hooks gate(4 tier) + buff/debuff/dot/AOE/phases/escape_combat + 3 新预设（永燃之冠 101 节点/末日避难所/武侠青锋录）+ Monte Carlo 数值模拟器 + combat_simulate MCP 工具 |
 | `d3a1f42` | **Phase 26E 新游戏流程 🧹** | 修 4 bug：清空存档不彻底/presets 不在选项/跳默认/误报恢复；用 import.meta.glob 自动列出 bundled 预设 |
 | _(unreleased)_ | **Phase 27 超大型剧本与 API 体验** | MCP API-only 小说/设定集导入 + 本地 Qwen 验证；外部 generated manifest；新游戏按规模分组；API 连通性测试按钮；修新游戏叙事残留、身份串线、AI 空叙事无反馈；清洗超大型剧本玩家可见提示词痕迹 |
+| _(unreleased)_ | **Phase 28 生态位/掉落/上下文** | `src/data/ecology.js` 生态位词表 + 掉落池；CombatSystem 动态掉落；MCP 生态工具；AIGMEngine 注入本地权威状态 + ContextRetriever 相关事件/物品/势力；SceneSystem 快速旅行 |
 
 详细 bug 见第 5 章。
 
@@ -96,11 +97,11 @@ EventSystem (100) ────── 发布订阅核心
 CardManager (80) ────── 卡牌 CRUD + 按类型/标签索引
 DiceSystem (70) ──────── 公式解析、优势/劣势、表达式求值
 MapSystem (60) ───────── 网格地图、寻路、迷雾（向后兼容用）
-CombatSystem (50) ─────── 先攻、攻击、技能、掉落
+CombatSystem (50) ─────── 先攻、攻击、技能、静态/动态掉落
 TurnManager (40) ──────── 阶段状态机、DoT/HoT 处理
 EventTriggerEngine (35) ─ 7 维度复合触发器（含 inScene）
-SceneSystem (33) ──────── 场景图：节点 / 连接 / 门控 / 旅行（**主路径**）
-AIGMEngine (30) ──────── AI 调用、上下文管理、token 跟踪
+SceneSystem (33) ──────── 场景图：节点 / 连接 / 门控 / 旅行 / 快速旅行（**主路径**）
+AIGMEngine (30) ──────── AI 调用、本地状态/检索上下文管理、token 跟踪
 MemorySystem (28) ────── 分层长期记忆（WorldFacts + KeyEvents）
 ProgressionSystem (25) ── 升级、装备、商店
 AllyAIController (22) ─── AI 队友决策（启发式 / LLM）
@@ -311,6 +312,44 @@ AI 偶尔返回的 JSON 在 `narrative` 字段里夹未转义的引号（`"narra
 
 **重要约束**：战斗中（`activeCombat` 存在）跳过 `EVENT_COMPLETE` 扫描，避免 ch10 这种"完成 ch9 触发"在 ch9 战斗还没真正结束时就把 ending 叙事写出来。等 `COMBAT_END` 时机再补扫。
 
+### 4.11 大剧本上下文策略（Phase 28）
+
+不要再把"更多剧本内容"塞进聊天上下文来解决超大型剧本问题。当前设计是：
+
+- `MemorySystem` 只给有限的世界事实和关键事件
+- `AIGMEngine._buildLocalStateDigest` 每次注入本地权威状态：当前场景、变量、已完成事件、队伍、战斗敌人、当前事件
+- `ContextRetriever.buildContextDigest` 只检索当前相关切片：附近/当前场景、NPC、事件、物品、势力
+- `contextWindow` 只保留短期衔接，压缩后确保从 user 消息开始，兼容本地模型 chat template
+
+这意味着 GM 模型只负责"基于当前权威状态写一小段判断与描述"，不负责记住整部小说、全地图或所有势力细节。新增大剧本功能时，应优先把事实落在 `preset` / `gameState` / `MemorySystem` / `ContextRetriever` 可检索结构里。
+
+### 4.12 快速旅行边界
+
+快速旅行不是 AI teleport。`SceneSystem.planFastTravel` 只允许目标满足：
+
+- 目标已经探索过
+- 从当前节点沿已探索节点、当前可见连接、已满足门控能找到路径
+- 路径耗时由 `connection.cost` 或目标 `scene.travelHours` 计算
+
+`main.js._fastTravelToScene` 在移动前用代码结算耗时、路途损耗、随机遭遇；如果遭遇中断，只把队伍移动到中断节点并启动战斗。GM 模型只参与最终抵达或中断结果的叙事，不能决定是否真的抵达。
+
+### 4.13 生态位 → 掉落表 → 图像
+
+`src/data/ecology.js` 把敌人的生态位显式化为：
+
+```js
+ecology = { biome: 'swamp', creatureType: 'beast', tier: 'elite' }
+```
+
+使用方式：
+
+- 生成时静态烘焙：`resolveLootTable(ecology)` 写入 `enemy.lootTable`
+- 运行时动态抽取：`enemy.lootMode = 'dynamic'`，战斗结束由 `rollDynamicLoot` 实时抽
+- 旧数据兼容：有 `ecology` 但没有静态 `lootTable` 时自动走动态掉落；已有 `lootTable` 默认优先使用静态表
+- MCP 侧用 `enemy_assign_ecology` 写 ecology、烘焙掉落、把缺失物品从 `assetLibrary` 物料化进 `preset.items`，并给敌人配图
+
+以后扩展新地区时，先补 `LOOT_POOLS` 和素材库，再让生成器使用同一套 `biome / creatureType / tier` 词表。
+
 ---
 
 ## 5. 已修复的 17 个 bug（含防回归测试）
@@ -444,13 +483,15 @@ scripts/
 | Obs #1 | AI 偶尔生成 outcome.text 不一致的叙事（如选"使用护身符成功"AI 仍写"石像鬼苏醒"） | prompt 加强"严格按 outcomeText 写" |
 | Obs #2 | 对角线方向（"向西北"）解析为方向但 MapSystem.canMoveTo 拒绝（曼哈顿距离 ≠ 1） | 用户选项不暴露对角线移动 |
 | Obs #3 | Three.js 独立 chunk 仍较大（约 475 KB / 119 KB gzipped）| 当前已分包；后续可考虑按需动态加载 |
-| Obs #4 | 默认 lootTable 设计偏单调（很多 100% 掉率 item_009/008） | 创作者可自定义 |
+| Obs #4 | 部分旧预设仍有手写静态 lootTable，未全部迁入 ecology | 新敌人优先用 `enemy_assign_ecology`；旧数据保持兼容 |
 
 ### 8.2 候选下一步（按价值排）
 
 | 方向 | 工作量 | 价值 |
 |---|---|---|
 | **编辑器加场景图可视化编辑** | 中 | 当前 scenes[] 仅能写 JSON 编辑；拖拽节点 + 连线 GUI 是 Phase 16 的明显缺口 |
+| 生态位覆盖率审计工具 | 小 | 检查大型剧本敌人是否都标了 ecology、lootTable 引用是否都有图 |
+| 素材库继续扩展 | 中 | 更多年龄/职业/建筑状态/天气/同类型 NPC 多变体，提高自动配图辨识度 |
 | 推 GitHub + 上线 Pages/Vercel | 小 | 让别人能玩到 |
 | 真实 API 主线场景图回归玩测 | 小 | 浏览器端跑通 12 节点完整流程（headless 已验证） |
 | WorldGenerator.generateScenePreset 扩主题 | 小 | 当前只有 forest/desert/ruins 三个；可加 sci-fi / 武侠 / 蒸汽 等 |

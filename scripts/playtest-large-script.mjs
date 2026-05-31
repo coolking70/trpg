@@ -53,6 +53,7 @@ function argVal(flag, def) {
 const PRESET_PATH = path.resolve(__dirname, '..', argVal('--preset', 'presets/eternal-crown-stress-test.json'));
 const MAX_ITER = parseInt(argVal('--max-iter', '200'), 10);
 const API_TIMEOUT_MS = parseInt(process.env.OPENAI_TIMEOUT_MS || argVal('--timeout-ms', '60000'), 10);
+const PLAYER_MODE = argVal('--player', 'ai');
 
 // ---------- 环境补丁 ----------
 globalThis.requestAnimationFrame ||= (cb) => setTimeout(() => cb(Date.now()), 16);
@@ -135,20 +136,20 @@ class HeadlessApp {
       this.gameState.playerTags = [...tags];
 
       // 起始场景路由
+      let selectedStartSceneId = null;
       for (const rule of (this.preset.startingSceneRules || [])) {
         if (rule.default) continue;
         const need = rule.when?.tags || [];
         if (need.every(t => tags.has(t))) {
-          this.gameState.currentSceneId = rule.sceneId;
+          selectedStartSceneId = rule.sceneId;
           break;
         }
       }
-      if (!this.gameState.currentSceneId) {
+      if (!selectedStartSceneId) {
         const defRule = this.preset.startingSceneRules?.find(r => r.default);
-        if (defRule) this.gameState.currentSceneId = defRule.default;
+        if (defRule) selectedStartSceneId = defRule.sceneId || defRule.default;
       }
-      if (!this.gameState.mapState) this.gameState.mapState = {};
-      this.gameState.mapState.visitedSceneIds = [this.gameState.currentSceneId];
+      if (selectedStartSceneId) this._syncScenePosition(selectedStartSceneId);
     }
 
     this.engine.getSystem('NPCSystem').initializeNPCState(this.gameState);
@@ -161,6 +162,15 @@ class HeadlessApp {
       ? `欢迎来到${lore.worldName || '未知世界'}。${lore.background}`
       : '冒险开始了...';
     this.gameState.addNarrative('gm', greeting);
+  }
+
+  _syncScenePosition(sceneId) {
+    const scene = this.engine.getSystem('SceneSystem').getScene(sceneId);
+    if (!scene) return;
+    if (!this.gameState.mapState) this.gameState.mapState = {};
+    this.gameState.mapState.currentSceneId = sceneId;
+    this.gameState.mapState.visitedSceneIds = [sceneId];
+    if (scene.coords) this.gameState.mapState.playerPosition = { x: scene.coords.x, y: scene.coords.y };
   }
 
   /** 初始扫一次起始场景的事件（复刻 main.js 的 setTimeout 初始扫描） */
@@ -202,8 +212,8 @@ class HeadlessApp {
       if (!card.repeatable && !this.gameState.completedEventIds.includes(card.id)) {
         this.gameState.completedEventIds.push(card.id);
       }
-      // 检查 epilogue
-      if ((card.tags || []).includes('epilogue') || card.id === 'ch10_epilogue') {
+      // 检查真正结局。epilogue 可能标在最终 boss 事件上，不能等同于主线完成。
+      if ((card.tags || []).includes('ending') || card.id === 'ch10_epilogue' || this.gameState.variables?.game_complete === true) {
         this._mainQuestComplete = true;
       }
       // 链式扫描
@@ -261,8 +271,8 @@ class HeadlessApp {
       }, this.gameState);
     } catch { /* */ }
 
-    // 检查 epilogue
-    if ((card.tags || []).includes('epilogue') || card.id === 'ch10_epilogue') {
+    // 检查真正结局。epilogue 可能标在最终 boss 事件上，不能等同于主线完成。
+    if ((card.tags || []).includes('ending') || card.id === 'ch10_epilogue' || this.gameState.variables?.game_complete === true) {
       this._mainQuestComplete = true;
     }
 
@@ -378,6 +388,15 @@ class HeadlessApp {
         break;
       }
     }
+  }
+
+  _healPartyToFull(reason = '休整') {
+    for (const c of this.gameState.activeCharacters || []) {
+      if (!c.stats) continue;
+      c.stats.hpCurrent = c.stats.hp;
+      c.stats.mpCurrent = c.stats.mp || 0;
+    }
+    this.gameState.addNarrative('system', `（${reason}：队伍恢复至满状态）`);
   }
 
   _startCombat(enemyIds) {
@@ -496,6 +515,9 @@ class HeadlessApp {
     } catch { /* */ }
     // 战斗结束后扫描（让 ch10 类后续事件触发）
     await this._scanAfter(TRIGGER_MOMENTS.COMBAT_END);
+    if (!this.gameState.activeCombat && !this.gameState.activeEvent) {
+      await this._scanAfter(TRIGGER_MOMENTS.SCENE_ENTER);
+    }
   }
 
   async _autoFinishCombat() {
@@ -530,7 +552,7 @@ class HeadlessApp {
   /** 在场景图上做 BFS 找最近的 tag 匹配场景（给 inn 寻路用） */
   nearestSceneByTag(tag) {
     const ss = this.engine.getSystem('SceneSystem');
-    const start = this.gameState.currentSceneId;
+    const start = this.gameState.mapState?.currentSceneId;
     if (!start) return null;
     const visited = new Set([start]);
     const queue = [{ id: start, dist: 0, path: [] }];
@@ -563,18 +585,18 @@ class HeadlessApp {
         this.gameState.addNarrative('system', `（${sceneId} 路径中存在门控/隐藏，自动寻路失败）`);
         return false;
       }
-      const start = this.gameState.currentSceneId;
+      const start = this.gameState.mapState?.currentSceneId;
       if (start && start !== sceneId) {
         // BFS：仅走 reachable 邻居（与 getAdjacent 一致），避免选到 hidden/gated 死胡同
         const visited = new Set([start]);
         const queue = [{ id: start, path: [] }];
         let foundPath = null;
         const reachableNeighbors = (id) => {
-          // 临时把 gameState.currentSceneId 切到 id 来询问 SceneSystem
-          const saved = this.gameState.currentSceneId;
-          this.gameState.currentSceneId = id;
+          // 临时把 mapState.currentSceneId 切到 id 来询问 SceneSystem
+          const saved = this.gameState.mapState.currentSceneId;
+          this.gameState.mapState.currentSceneId = id;
           const adj = sceneSystem.getAdjacent(this.gameState).filter(a => a.reachable).map(a => a.scene.id);
-          this.gameState.currentSceneId = saved;
+          this.gameState.mapState.currentSceneId = saved;
           return adj;
         };
         while (queue.length) {
@@ -588,9 +610,8 @@ class HeadlessApp {
           }
         }
         if (foundPath && foundPath.length > 0) {
-          const nextHop = foundPath[0];
-          this.gameState.addNarrative('system', `（自动寻路：经过 ${foundPath.length} 步前往 ${sceneId}，先走到 ${nextHop}）`);
-          return this.travelTo(nextHop, _autoPathDepth + 1);
+          this.gameState.addNarrative('system', `（自动寻路：经过 ${foundPath.length} 步前往 ${sceneId}）`);
+          return this._travelAlongPath(foundPath);
         }
       }
       this.gameState.addNarrative('system', `（${sceneId} 不在邻居，且无路可达）`);
@@ -641,6 +662,66 @@ class HeadlessApp {
       if (candidates[0]) {
         await this._triggerEvent(candidates[0].id);
       }
+    }
+    return true;
+  }
+
+  async _travelAlongPath(path) {
+    if (!path || path.length === 0) return false;
+    for (let i = 0; i < path.length; i++) {
+      const isFinal = i === path.length - 1;
+      const ok = await this.travelToAdjacent(path[i], { narrateWithAI: isFinal });
+      if (!ok) return false;
+      if (this.gameState.activeEvent || this.gameState.activeCombat) return true;
+    }
+    return true;
+  }
+
+  async travelToAdjacent(sceneId, { narrateWithAI = true } = {}) {
+    const sceneSystem = this.engine.getSystem('SceneSystem');
+    const check = sceneSystem.canTravelTo(this.gameState, sceneId);
+    if (!check.ok) {
+      this.gameState.addNarrative('system', `（${check.reason}）`);
+      return false;
+    }
+    const fromScene = sceneSystem.getCurrentScene(this.gameState);
+    const result = sceneSystem.performTravel(this.gameState, sceneId);
+    if (!result) return false;
+    const { scene, isFirstVisit, connection } = result;
+    const label = connection?.label || `前往 ${scene.name}`;
+    this.gameState.addNarrative('player', label);
+
+    if (!narrateWithAI) {
+      this.gameState.addNarrative('gm', scene.vignettes?.[0] || `你们经过${scene.name}，继续向目标前进。`);
+    } else if (!isFirstVisit) {
+      const v = sceneSystem.pickVignette(scene);
+      if (v) this.gameState.addNarrative('gm', v);
+    } else {
+      try {
+        await this.engine.getSystem('AIGMEngine').processGameAction('narrate_scene_arrival', {
+          fromScene: fromScene ? { id: fromScene.id, name: fromScene.name } : null,
+          toScene: { id: scene.id, name: scene.name, description: scene.description, type: scene.type, tags: scene.tags || [] },
+          connectionLabel: connection?.label || '',
+        }, this.gameState);
+      } catch {
+        if (scene.description) this.gameState.addNarrative('gm', scene.description);
+      }
+    }
+
+    const npcSystem = this.engine.getSystem('NPCSystem');
+    if (npcSystem) {
+      const inScene = npcSystem.getNPCsInScene(this.gameState, scene.id, true);
+      for (const { npc } of inScene) npcSystem.meetNPC(this.gameState, npc.id);
+      for (const cid of (this.gameState.companions || [])) npcSystem.meetNPC(this.gameState, cid);
+    }
+
+    if (scene.events && scene.events.length > 0) {
+      const cm = this.engine.getSystem('CardManager');
+      const candidates = scene.events
+        .map(id => cm.getCard(id))
+        .filter(e => e && (!e.repeatable ? !this.gameState.completedEventIds.includes(e.id) : true));
+      candidates.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+      if (candidates[0]) await this._triggerEvent(candidates[0].id);
     }
     return true;
   }
@@ -760,12 +841,19 @@ class PlayerAI {
     const allEvents = (app.preset.events || []);
     const mainEvents = allEvents.filter(e => (e.tags || []).includes('main'));
     const completedSet = new Set(gs.completedEventIds || []);
+    const introDone = allEvents.some(e =>
+      (e.tags || []).includes('intro') && completedSet.has(e.id)
+    );
     // 候选：未完成的 main 事件
     const candidates = mainEvents
       .filter(e => !completedSet.has(e.id))
       .filter(e => {
+        if (introDone && (e.tags || []).includes('intro')) return false;
         // 评估 requireVariables / requireCompletedEvents 是否已满足（即"可触发"）
         const cond = e.trigger?.condition || {};
+        for (const exE of (cond.excludeCompletedEvents || [])) {
+          if (completedSet.has(exE)) return false;
+        }
         for (const [k, v] of Object.entries(cond.requireVariables || {})) {
           if (gs.variables?.[k] !== v) return false;
         }
@@ -773,11 +861,19 @@ class PlayerAI {
           if (!completedSet.has(reqE)) return false;
         }
         return true;
-      });
+      })
+      .map(e => ({
+        event: e,
+        pathDistance: this._distanceToAnyScene(app, gs, e.trigger?.condition?.inScene || []),
+      }))
+      .filter(o => o.pathDistance !== Infinity);
     if (candidates.length === 0) return null;
-    // 取 priority 最高的（最像"当前主目标"）
-    candidates.sort((a, b) => (b.priority || 0) - (a.priority || 0));
-    const next = candidates[0];
+    // 取 priority 高且当前可达的目标；同优先级时优先近处，避免盯着尚未开放的远端 boss。
+    candidates.sort((a, b) =>
+      ((b.event.priority || 0) - (a.event.priority || 0))
+      || (a.pathDistance - b.pathDistance)
+    );
+    const next = candidates[0].event;
     const inScene = next.trigger?.condition?.inScene || [];
     return {
       eventId: next.id,
@@ -785,6 +881,32 @@ class PlayerAI {
       inScene,                              // 该事件挂在哪些场景
       hint: `目标事件「${next.name}」(${next.id})${inScene.length ? `，需要前往：${inScene.join(' / ')}` : ''}`,
     };
+  }
+
+  _distanceToAnyScene(app, gs, targetSceneIds) {
+    if (!targetSceneIds || targetSceneIds.length === 0) return 0;
+    const targets = new Set(targetSceneIds);
+    const sceneSystem = app.engine.getSystem('SceneSystem');
+    const start = gs.mapState?.currentSceneId;
+    if (!start) return Infinity;
+    if (targets.has(start)) return 0;
+
+    const visited = new Set([start]);
+    const queue = [{ id: start, dist: 0 }];
+    while (queue.length) {
+      const { id, dist } = queue.shift();
+      const saved = gs.mapState.currentSceneId;
+      gs.mapState.currentSceneId = id;
+      const neighbors = sceneSystem.getAdjacent(gs).filter(a => a.reachable).map(a => a.scene.id);
+      gs.mapState.currentSceneId = saved;
+      for (const nid of neighbors) {
+        if (visited.has(nid)) continue;
+        if (targets.has(nid)) return dist + 1;
+        visited.add(nid);
+        queue.push({ id: nid, dist: dist + 1 });
+      }
+    }
+    return Infinity;
   }
 
   buildCombatContext(app, currentCharacter) {
@@ -990,6 +1112,189 @@ class PlayerAI {
 }
 
 // ============================================================
+// ScriptedPlayer — 不调用玩家侧 AI，由脚本扮演玩家
+// ============================================================
+class ScriptedPlayer extends PlayerAI {
+  constructor() {
+    super('', '', 'scripted-codex-player');
+  }
+
+  async decide(context) {
+    if (context.situation === 'event' && context.detail) {
+      return {
+        reasoning: '按主线推进',
+        action: { type: 'choose', choiceId: this._pickChoice(context.detail.choices || []) },
+      };
+    }
+
+    if (context.lowestHpPct < 40 && context.usableItems.length > 0) {
+      const item = context.usableItems[0];
+      return {
+        reasoning: '低血量用药',
+        action: { type: 'use_item', itemId: item.itemId, targetId: item.owner },
+      };
+    }
+
+    if (context.nextObjective?.inScene?.length) {
+      const target = context.nextObjective.inScene[0];
+      const currentSceneId = context.detail?.currentScene?.id;
+      if (target && target !== currentSceneId) {
+        return {
+          reasoning: '前往主线目标',
+          action: { type: 'travel', sceneId: target },
+        };
+      }
+    }
+
+    const reachable = (context.detail?.neighbors || []).filter(n => n.reachable);
+    const unvisited = reachable.find(n => !n.visited);
+    const next = unvisited || reachable[0];
+    if (next) {
+      return {
+        reasoning: '探索可达节点',
+        action: { type: 'travel', sceneId: next.sceneId },
+      };
+    }
+
+    return { reasoning: '无可用行动', action: { type: 'say', text: '我停下来整理线索。' } };
+  }
+
+  async decideCombat(context) {
+    const enemies = [...context.enemies].sort((a, b) => a.hp - b.hp);
+    const target = enemies[0];
+    if (!target) return { reasoning: '无敌人', action: { actionType: 'attack', targetId: '' } };
+
+    const mpCurrent = parseInt(String(context.yourTurn.mp).split('/')[0], 10) || 0;
+    const abilities = (context.yourTurn.abilities || [])
+      .map(raw => {
+        const m = String(raw).match(/^([^:]+):(.+)\(mp(\d+)\)$/);
+        return m ? { id: m[1], name: m[2], mp: parseInt(m[3], 10) || 0 } : null;
+      })
+      .filter(Boolean)
+      .filter(a => a.mp <= mpCurrent);
+    const ability = abilities.find(a => a.mp > 0) || null;
+    if (ability) {
+      return {
+        reasoning: '技能集火',
+        action: { actionType: 'ability', abilityId: ability.id, targetId: target.id },
+      };
+    }
+    return {
+      reasoning: '普攻低血量',
+      action: { actionType: 'attack', targetId: target.id },
+    };
+  }
+
+  _pickChoice(choices) {
+    if (choices.length === 0) return '';
+    const scored = choices.map((choice, idx) => {
+      const text = `${choice.id || ''} ${choice.text || ''}`.toLowerCase();
+      let score = 100 - idx;
+      if (/接受|帮助|调查|继续|进入|开启|同意|相信|保护|拯救|净化|光明|联盟|揭露|追踪|前进/.test(text)) score += 80;
+      if (/逃|放弃|拒绝|攻击村民|背叛|黑暗|献祭|离开/.test(text)) score -= 120;
+      if (/隐藏|真相|王冠|封印|仪式|主线/.test(text)) score += 40;
+      return { choice, score };
+    });
+    scored.sort((a, b) => b.score - a.score);
+    return scored[0].choice.id;
+  }
+}
+
+// ============================================================
+// CodexManualPlayer — 手动指定路线，不做玩家侧推理
+// ============================================================
+class CodexManualPlayer extends PlayerAI {
+  constructor() {
+    super('', '', 'codex-manual-player');
+  }
+
+  async decide(context) {
+    if (context.situation === 'event' && context.detail) {
+      const choiceId = this._manualChoice(context.detail.eventName, context.detail.choices || []);
+      return {
+        reasoning: '手动选择',
+        action: { type: 'choose', choiceId },
+      };
+    }
+
+    if (context.lowestHpPct < 60) {
+      return {
+        reasoning: '手动休整',
+        action: { type: 'manual_rest' },
+      };
+    }
+
+    const completed = new Set(context.completed || []);
+    const vars = context.variables || {};
+    const current = context.detail?.currentScene?.id;
+    const target = this._manualTravelTarget(completed, vars, current);
+    if (target) {
+      return {
+        reasoning: '手动前进',
+        action: { type: 'travel', sceneId: target },
+      };
+    }
+
+    return {
+      reasoning: '手动收束',
+      action: { type: 'end', reason: 'manual route complete or no target' },
+    };
+  }
+
+  async decideCombat(context) {
+    const enemies = [...context.enemies].sort((a, b) => a.hp - b.hp);
+    const target = enemies[0];
+    if (!target) return { reasoning: '无敌人', action: { actionType: 'attack', targetId: '' } };
+    const mpCurrent = parseInt(String(context.yourTurn.mp).split('/')[0], 10) || 0;
+    const usable = (context.yourTurn.abilities || [])
+      .map(raw => String(raw).match(/^([^:]+):(.+)\(mp(\d+)\)$/))
+      .filter(Boolean)
+      .map(m => ({ id: m[1], mp: parseInt(m[3], 10) || 0 }))
+      .filter(a => a.mp > 0 && a.mp <= mpCurrent);
+    if (usable[0]) {
+      return {
+        reasoning: '手动技能',
+        action: { actionType: 'ability', abilityId: usable[0].id, targetId: target.id },
+      };
+    }
+    return {
+      reasoning: '手动普攻',
+      action: { actionType: 'attack', targetId: target.id },
+    };
+  }
+
+  _manualChoice(eventName, choices) {
+    const first = choices[0]?.id || '';
+    if (/快速旅行|驿马服务/.test(eventName)) {
+      return choices.find(c => /算了|取消|不/.test(c.text))?.id || first;
+    }
+    if (/虚空之厅/.test(eventName)) {
+      return choices.find(c => /拒绝|打/.test(c.text))?.id || first;
+    }
+    return first;
+  }
+
+  _manualTravelTarget(completed, vars, current) {
+    const steps = [
+      { until: () => completed.has('ev_astra_hub_intro'), target: 'scene_astra_square' },
+      { until: () => completed.has('ev_temple_blessing'), target: 'scene_astra_temple' },
+      { until: () => completed.has('ev_thorn_hunter_meet'), target: 'scene_thorn_hut' },
+      { until: () => completed.has('ev_goblin_throne_loot') || vars.has_crown_a, target: 'scene_gmine_throne' },
+      { until: () => completed.has('ev_marsh_witch_meet'), target: 'scene_marsh_witch_hut' },
+      { until: () => completed.has('ev_marsh_loot') || vars.has_crown_b, target: 'scene_marsh_altar' },
+      { until: () => completed.has('ev_keep_council'), target: 'scene_keep_war_room' },
+      { until: () => completed.has('ev_range_loot') || vars.has_crown_c, target: 'scene_range_dragon_lair' },
+      { until: () => completed.has('ev_spire_void'), target: 'scene_spire_void' },
+      { until: () => completed.has('ev_spire_pinnacle'), target: 'scene_spire_pinnacle' },
+      { until: () => completed.has('ev_ending_light') || completed.has('ev_ending_complete') || vars.game_complete, target: 'scene_ending_light' },
+    ];
+    const next = steps.find(step => !step.until());
+    if (!next) return null;
+    return next.target === current ? null : next.target;
+  }
+}
+
+// ============================================================
 // 主循环
 // ============================================================
 async function gameLoop(app, playerAI, maxIter = 60) {
@@ -1037,6 +1342,8 @@ async function gameLoop(app, playerAI, maxIter = 60) {
       await app.travelTo(a.sceneId);
     } else if (a.type === 'use_item') {
       app.useItem(a.itemId, null, a.targetId || null);
+    } else if (a.type === 'manual_rest') {
+      app._healPartyToFull('手动测试休整');
     } else if (a.type === 'say') {
       app.gameState.addNarrative('player', a.text);
     } else if (a.type === 'end') {
@@ -1052,7 +1359,10 @@ async function gameLoop(app, playerAI, maxIter = 60) {
 // ============================================================
 async function main() {
   console.log('=== TRPG AI vs AI 大型剧本压力测试 ===');
-  console.log(`Player(Pro): ${PLAYER_MODEL}  GM: ${GM_MODEL}`);
+  const playerLabel = PLAYER_MODE === 'manual'
+    ? 'Codex Manual Player'
+    : (PLAYER_MODE === 'scripted' ? 'Scripted Codex Player' : PLAYER_MODEL);
+  console.log(`Player: ${playerLabel}  GM: ${GM_MODEL}`);
   console.log(`Endpoint: ${ENDPOINT}`);
   console.log(`Preset: ${PRESET_PATH}`);
   console.log(`Max iter: ${MAX_ITER}`);
@@ -1091,13 +1401,17 @@ async function main() {
 
   app.loadPreset(presetData, choices);
   console.log(`已加载: ${app.preset.name}（${app.preset.scenes?.length || 0} 节点 / ${app.preset.events?.length || 0} 事件 / ${app.preset.npcs?.length || 0} NPC）`);
-  console.log(`起始场景: ${app.gameState.currentSceneId}`);
+  console.log(`起始场景: ${app.gameState.mapState?.currentSceneId}`);
 
   // 初始扫描
   await app.kickoff();
 
   const startMs = Date.now();
-  const playerAI = new PlayerAI(ENDPOINT, KEY, PLAYER_MODEL);
+  const playerAI = PLAYER_MODE === 'manual'
+    ? new CodexManualPlayer()
+    : (PLAYER_MODE === 'scripted'
+      ? new ScriptedPlayer()
+      : new PlayerAI(ENDPOINT, KEY, PLAYER_MODEL));
   const status = await gameLoop(app, playerAI, MAX_ITER);
   const elapsedMs = Date.now() - startMs;
   console.log(`\n=== 终止状态: ${status} (${(elapsedMs / 1000).toFixed(1)}s) ===`);

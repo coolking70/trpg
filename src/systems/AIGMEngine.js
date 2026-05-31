@@ -365,12 +365,24 @@ export class AIGMEngine extends GameSystem {
       if (!mapData && this.preset) mapData = this.preset.map;
       const userMessage = this.promptBuilder.buildActionMessage(actionType, actionData, gameState, mapData);
 
-      // 获取长期记忆视图（World Facts + Key Events）
+      // 获取本地持久化记忆与检索出的当前局面切片。
       const memorySystem = this.gameEngine ? this.gameEngine.getSystem('MemorySystem') : null;
-      const memoryView = memorySystem ? memorySystem.getMemoryView(gameState) : null;
+      const memoryView = memorySystem ? memorySystem.getMemoryView(gameState, {
+        worldFactLimit: 10,
+        keyEventLimit: 10,
+      }) : null;
+      const contextRetriever = this.gameEngine ? this.gameEngine.getSystem('ContextRetriever') : null;
+      const retrievedContext = contextRetriever
+        ? contextRetriever.buildContextDigest(gameState, { sceneLimit: 5, npcLimit: 5 })
+        : '';
+      const localStateDigest = this._buildLocalStateDigest(actionType, actionData, gameState);
 
       // 构建消息列表
-      const messages = this._buildMessages(userMessage, memoryView);
+      const messages = this._buildMessages(userMessage, {
+        memoryView,
+        retrievedContext,
+        localStateDigest,
+      });
 
       // 调用AI API
       const responseText = await this.callAI(messages);
@@ -379,7 +391,14 @@ export class AIGMEngine extends GameSystem {
       const parsed = this.responseParser.parse(responseText);
 
       // 应用操作（带 CardManager 校验ID引用合法性）
-      if (parsed.actions.length > 0) {
+      // Phase 28 修复：narrate_* 是「纯叙事」调用 —— 状态由预设 outcome.effects / 引擎权威应用过，
+      //   此处不能再让 AI 的响应 actions 改状态，否则会重复加物品/改变量（如祭司给的太阳坠被加两次）。
+      //   只有 player_action（玩家自由输入，AI 担任裁决者）才允许 AI 的 actions 真正落地。
+      const NARRATION_ONLY = new Set([
+        'narrate_event', 'narrate_scene_arrival', 'narrate_combat',
+        'narrate_npc_dialogue', 'narrate_vignette', 'narrate_world_ripple',
+      ]);
+      if (parsed.actions.length > 0 && !NARRATION_ONLY.has(actionType)) {
         const cardManager = this.gameEngine ? this.gameEngine.getSystem('CardManager') : null;
         this.responseParser.applyActions(parsed.actions, gameState, this.eventSystem, cardManager);
       }
@@ -573,18 +592,29 @@ export class AIGMEngine extends GameSystem {
   }
 
   /**
-   * 构建完整的消息列表（分层记忆 + 上下文 + 当前消息）
+   * 构建完整的消息列表（本地权威状态 + 检索上下文 + 有限短期衔接 + 当前消息）
    * @param {string} currentMessage - 当前用户消息
-   * @param {object} [memoryView] - {worldFacts, keyEvents} 来自 MemorySystem
+   * @param {object} [promptContext] - {memoryView, retrievedContext, localStateDigest}
    * @returns {Array}
    */
-  _buildMessages(currentMessage, memoryView = null) {
+  _buildMessages(currentMessage, promptContext = null) {
     const messages = [];
+    const memoryView = promptContext?.memoryView || promptContext;
+    const retrievedContext = promptContext?.retrievedContext || '';
+    const localStateDigest = promptContext?.localStateDigest || '';
 
     // 系统提示词（preset 派生，静态缓存）
     messages.push({ role: 'system', content: this._cachedSystemPrompt });
 
-    // 长期记忆注入（World Facts + Key Events）
+    if (localStateDigest) {
+      messages.push({ role: 'system', content: `【本地权威状态】\n${localStateDigest}` });
+    }
+
+    if (retrievedContext) {
+      messages.push({ role: 'system', content: `【当前局面检索】\n${retrievedContext}` });
+    }
+
+    // 有限长期记忆注入（World Facts + Key Events）
     const memorySection = this._formatMemorySection(memoryView);
     if (memorySection) {
       messages.push({ role: 'system', content: memorySection });
@@ -604,6 +634,57 @@ export class AIGMEngine extends GameSystem {
     messages.push({ role: 'user', content: currentMessage });
 
     return messages;
+  }
+
+  _buildLocalStateDigest(actionType, actionData, gameState) {
+    if (!gameState) return '';
+    const lines = [
+      '以下内容由本地系统维护，优先级高于聊天历史；只允许在这些事实范围内叙述。',
+      `阶段:${gameState.currentPhase || 'unknown'} 回合:${gameState.turnNumber || 0}`,
+    ];
+
+    const mapState = gameState.mapState || {};
+    if (mapState.currentSceneId) {
+      const scene = this.preset?.scenes?.find(s => s.id === mapState.currentSceneId);
+      lines.push(`当前场景:${scene ? `${scene.name}(${scene.id})` : mapState.currentSceneId}`);
+      if (scene?.description) lines.push(`场景事实:${scene.description}`);
+      const connections = (scene?.connections || []).map(c => c.to).slice(0, 6);
+      if (connections.length > 0) lines.push(`可达场景:${connections.join(', ')}`);
+    } else if (mapState.playerPosition) {
+      lines.push(`当前位置:(${mapState.playerPosition.x},${mapState.playerPosition.y})`);
+    }
+
+    const variables = Object.entries(gameState.variables || {})
+      .filter(([, value]) => value !== undefined && value !== null && value !== false)
+      .slice(0, 16)
+      .map(([key, value]) => `${key}=${String(value)}`);
+    if (variables.length > 0) lines.push(`关键变量:${variables.join(', ')}`);
+
+    const completed = (gameState.completedEventIds || []).slice(-12);
+    if (completed.length > 0) lines.push(`最近已完成事件:${completed.join(', ')}`);
+
+    const party = (gameState.activeCharacters || []).map(c => {
+      const hp = `${c.stats?.hpCurrent ?? '?'} / ${c.stats?.hp ?? '?'}`.replace(/\s/g, '');
+      const mp = `${c.stats?.mpCurrent ?? '?'} / ${c.stats?.mp ?? '?'}`.replace(/\s/g, '');
+      return `${c.name}(${c.id}) HP:${hp} MP:${mp}`;
+    });
+    if (party.length > 0) lines.push(`队伍状态:${party.join('；')}`);
+
+    if (gameState.activeCombat) {
+      const enemies = (gameState.activeCombat.enemies || [])
+        .filter(e => e.stats?.hpCurrent > 0)
+        .map(e => `${e.name}(${e.id}) HP:${e.stats.hpCurrent}/${e.stats.hp}`)
+        .join('；');
+      if (enemies) lines.push(`当前战斗敌人:${enemies}`);
+    }
+
+    const activeEvent = actionData?.event || gameState.activeEvent;
+    if (activeEvent) {
+      lines.push(`当前事件:${activeEvent.name}(${activeEvent.id})`);
+      if (activeEvent.description) lines.push(`事件事实:${activeEvent.description}`);
+    }
+    lines.push(`当前请求类型:${actionType}`);
+    return lines.join('\n');
   }
 
   /**

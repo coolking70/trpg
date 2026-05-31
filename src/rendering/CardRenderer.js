@@ -4,6 +4,19 @@
  */
 
 export class CardRenderer {
+  static getImageSrc(card, keys = ['image', 'imageUrl', 'portrait', 'thumbnail', 'art']) {
+    for (const key of keys) {
+      const value = card?.[key];
+      if (typeof value === 'string' && value.trim()) return value.trim();
+    }
+    return '';
+  }
+
+  static renderImage(card, className, alt, keys) {
+    const src = this.getImageSrc(card, keys);
+    return src ? `<div class="${className}"><img src="${src}" alt="${alt || card.name || ''}"></div>` : '';
+  }
+
   /**
    * 渲染角色卡迷你卡片
    * @param {object} card - CharacterCard数据
@@ -18,19 +31,17 @@ export class CardRenderer {
     const mpPercent = card.stats.mp > 0 ? (card.stats.mpCurrent / card.stats.mp * 100) : 0;
 
     el.innerHTML = `
-      <div class="card__image">
-        ${card.image ? `<img src="${card.image}" alt="${card.name}">` : '角色图片'}
-      </div>
+      ${this.renderImage(card, 'card__image', card.name, ['portrait', 'image', 'imageUrl', 'thumbnail', 'art'])}
       <div class="card__name">${card.name}</div>
       <div class="card__desc">${card.title || card.description}</div>
-      <div class="stat-bar">
+      <div class="stat-bar stat-bar--hp">
         <span class="stat-bar__label" style="color:var(--color-hp)">HP</span>
         <div class="stat-bar__track">
           <div class="stat-bar__fill" style="width:${hpPercent}%;background:var(--color-hp)"></div>
         </div>
         <span class="stat-bar__value">${card.stats.hpCurrent}/${card.stats.hp}</span>
       </div>
-      <div class="stat-bar">
+      <div class="stat-bar stat-bar--mp">
         <span class="stat-bar__label" style="color:var(--color-mp)">MP</span>
         <div class="stat-bar__track">
           <div class="stat-bar__fill" style="width:${mpPercent}%;background:var(--color-mp)"></div>
@@ -57,9 +68,7 @@ export class CardRenderer {
     const diffColor = difficultyColors[card.difficulty] || '#6b7280';
 
     el.innerHTML = `
-      <div class="card__image">
-        ${card.image ? `<img src="${card.image}" alt="${card.name}">` : '敌人图片'}
-      </div>
+      ${this.renderImage(card, 'card__image', card.name, ['portrait', 'image', 'imageUrl', 'thumbnail', 'art'])}
       <div class="card__name">${card.name} <span style="color:${diffColor};font-size:11px">[${card.difficulty}]</span></div>
       <div class="stat-bar">
         <span class="stat-bar__label" style="color:var(--color-hp)">HP</span>
@@ -89,9 +98,7 @@ export class CardRenderer {
       .join(' ');
 
     el.innerHTML = `
-      <div class="card__image card__image--small">
-        ${card.image ? `<img src="${card.image}" alt="${card.name}">` : '道具'}
-      </div>
+      ${this.renderImage(card, 'card__image card__image--small', card.name, ['thumbnail', 'image', 'imageUrl', 'art'])}
       <div class="card__name">${card.name}</div>
       <div class="card__desc">${card.itemType} ${mods}</div>
     `;
@@ -119,9 +126,7 @@ export class CardRenderer {
     }
 
     el.innerHTML = `
-      <div class="event-card__image">
-        ${card.image ? `<img src="${card.image}" alt="${card.name}">` : '<div class="event-card__image-placeholder">事件图片</div>'}
-      </div>
+      ${this.renderImage(card, 'event-card__image', card.name, ['image', 'imageUrl', 'thumbnail', 'art'])}
       <div class="event-card__type">${card.eventType}</div>
       <div class="event-card__name">${card.name}</div>
       <div class="event-card__desc">${card.description}</div>
@@ -150,9 +155,7 @@ export class CardRenderer {
     el.className = 'card-detail';
 
     let content = `
-      <div class="card-detail__image">
-        ${card.image ? `<img src="${card.image}" alt="${card.name}">` : '暂无图片'}
-      </div>
+      ${this.renderImage(card, 'card-detail__image', card.name)}
       <h2 class="card-detail__name">${card.name}</h2>
       <p class="card-detail__type">${card.type} ${card.title || card.itemType || card.eventType || ''}</p>
       <p class="card-detail__desc">${card.description}</p>

@@ -56,6 +56,7 @@
 - ✅ Phase 24 元进度图鉴
 - ✅ Phase 26B AI Hooks gate (sceneArrival/eventResolve/npcDialogue tier 控制)
 - ✅ Phase 26C 战斗深化（buff/debuff/dot/AOE/phases/escape_combat）
+- ✅ Phase 28 生态位 → 掉落表 → 图像（新敌人可通过 `ecology` 统一地区主题、战利品和配图；旧预设静态 lootTable 保持兼容）
 
 **跨周目元进度按 presetId 隔离**，玩家在不同题材间切换，进度互不干扰。
 

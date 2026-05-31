@@ -20,7 +20,9 @@ export class AIPromptBuilder {
     const parts = [];
 
     // 角色指令
-    parts.push('你是TRPG游戏主持人(GM)。仅用JSON回复。用中文叙述。简洁生动，2-3句。严禁编造地图上不存在的内容，只能引用下方提供的地形和兴趣点信息。');
+    parts.push('你是TRPG游戏主持人(GM)。仅用JSON回复。用中文叙述。简洁生动，2-3句。严禁编造地图上不存在的内容，只能引用下方提供的地形和兴趣点信息。JSON字段名必须完全照抄模板，尤其叙事字段只能叫 narrative，不能写 narr/story/text。');
+    parts.push('本地结构化数据是唯一真相来源：当前场景、事件结果、变量、队伍状态、物品和已完成事件均由系统提供。不要依赖聊天历史推断机制事实；不要编造未提供的地点、NPC、敌人、道具或结果。');
+    parts.push('引用人物、物品、地点和事件时优先使用上下文给出的原名；不要把关键物品改写成相近但不同的名称。');
 
     // 世界观（压缩到2句）
     if (preset.lore) {
@@ -50,6 +52,8 @@ export class AIPromptBuilder {
 {"narrative":"叙事文本(中文2-3句)","actions":[],"diceRequests":[],"stateUpdate":null,"creativeOutcome":null}
 规则：
 - actions仅在有实际伤害/治疗/道具/战斗变化时填写，否则为[]
+- 不要替系统结算常规战斗、物品、变量或事件完成；只有系统明确要求或玩家创意行动需要建议时才返回 actions
+- 事件奖励、获得物品、变量变化和事件完成由系统效果处理；不要自行返回 add_item/remove_item/set_variable。绝对不要使用 item_name 代替 itemId
 - diceRequests仅在玩家明确尝试需要判定成败的行动时才填写（如翻墙/潜行/说服NPC），纯探索叙事时必须为[]
 - stateUpdate仅在阶段转换时填写，否则为null
 - narrative必须是字符串，不能是对象
@@ -116,6 +120,13 @@ export class AIPromptBuilder {
           if (evt.aiPromptHint) parts.push(`叙事提示: ${evt.aiPromptHint}`);
           if (actionData.choiceText) parts.push(`玩家选择: ${actionData.choiceText}`);
           if (actionData.outcomeText) parts.push(`【实际结果】: ${actionData.outcomeText}`);
+          if (Array.isArray(actionData.effectResults) && actionData.effectResults.length > 0) {
+            const ok = actionData.effectResults.filter(r => r && r.ok).map(r => r.message).filter(Boolean);
+            const failed = actionData.effectResults.filter(r => r && !r.ok).map(r => r.message).filter(Boolean);
+            if (ok.length > 0) parts.push(`【系统已执行效果】: ${ok.join('；')}`);
+            if (failed.length > 0) parts.push(`【系统未执行效果】: ${failed.join('；')}`);
+            parts.push('叙事必须以【系统已执行效果/未执行效果】为准；若某效果未执行，不要写成已经成功发生。');
+          }
         }
         if (actionData.outcomeText) {
           // 修复 Obs #1：AI 容易把描述中的元素混入 outcome 叙事，强约束
@@ -218,6 +229,13 @@ export class AIPromptBuilder {
           if (to.description) parts.push(`场景基础描述: ${to.description}`);
           if (to.type) parts.push(`场景类型: ${to.type}`);
           if (to.tags && to.tags.length) parts.push(`标签: ${to.tags.join(' / ')}`);
+        }
+        if (actionData.travelSummary) {
+          const s = actionData.travelSummary;
+          if (Array.isArray(s.path)) parts.push(`快速旅行路线: ${s.path.join(' → ')}`);
+          if (s.hours !== undefined) parts.push(`系统结算耗时: ${s.hours} 小时`);
+          if (s.encounterSummary) parts.push(`路途系统结算: ${s.encounterSummary}`);
+          parts.push('只叙述上述系统结算结果；不要自行增加未结算的遭遇、战斗、损耗或奖励。');
         }
         parts.push(
           '用 3-5 句叙述：',

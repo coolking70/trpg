@@ -5,6 +5,7 @@
 
 import { CombatSystem } from '../../src/systems/CombatSystem.js';
 import { DiceSystem } from '../../src/systems/DiceSystem.js';
+import { resolveLootTable } from '../../src/data/ecology.js';
 
 function makeChar(opts = {}) {
   return {
@@ -33,6 +34,9 @@ function makeEnemy(opts = {}) {
     abilities: opts.abilities || [],
     lootTable: opts.lootTable || [],
     experienceReward: opts.experienceReward || 10,
+    ...(opts.lootMode ? { lootMode: opts.lootMode } : {}),
+    ...(opts.ecology ? { ecology: opts.ecology } : {}),
+    ...(opts.phases ? { phases: opts.phases } : {}),
   };
 }
 
@@ -337,6 +341,73 @@ describe('CombatSystem', () => {
       const r = sys.endCombat(gameState, 'defeat');
       expect(r.totalExp).toBe(0);
       expect(r.loot).toEqual([]);
+    });
+
+    // Phase 28 — 生态位动态掉落
+    // 注意：用 0.3（健康 pivot），避免 Math.random=()=>0 触发 jest source-map quicksort 栈溢出
+    test('lootMode=dynamic 时按 ecology 从掉落池抽取', () => {
+      const sys = makeSystem();
+      const original = Math.random;
+      Math.random = () => 0.3;  // common 材料(0.55)/通用池(0.55)会命中
+      try {
+        const enemy = makeEnemy({
+          experienceReward: 30,
+          lootMode: 'dynamic',
+          ecology: { biome: 'swamp', creatureType: 'beast', tier: 'common' },
+        });
+        enemy.lootTable = undefined;
+        const gameState = {
+          activeCharacters: [makeChar()],
+          activeCombat: { enemies: [enemy], turnOrder: [], log: [] },
+        };
+        const r = sys.endCombat(gameState, 'victory');
+        expect(r.totalExp).toBe(30);
+        expect(r.loot.length).toBeGreaterThan(0);
+        // 掉落应全部来自 swamp 生态池 / 通用池（用 resolveLootTable 的实际候选校验）
+        const allowed = new Set(
+          resolveLootTable({ biome: 'swamp', creatureType: 'beast', tier: 'common' }).map(e => e.itemId));
+        expect(r.loot.every(id => allowed.has(id))).toBe(true);
+      } finally {
+        Math.random = original;
+      }
+    });
+
+    test('有 ecology 但也有静态 lootTable 时，默认优先静态（向后兼容）', () => {
+      const sys = makeSystem();
+      const original = Math.random;
+      Math.random = () => 0.3;
+      try {
+        const enemy = makeEnemy({
+          ecology: { biome: 'swamp', creatureType: 'beast', tier: 'common' },
+          lootTable: [{ itemId: 'fixed_drop', dropRate: 1.0 }],
+        });
+        const gameState = {
+          activeCharacters: [makeChar()],
+          activeCombat: { enemies: [enemy], turnOrder: [], log: [] },
+        };
+        const r = sys.endCombat(gameState, 'victory');
+        expect(r.loot).toEqual(['fixed_drop']);
+      } finally {
+        Math.random = original;
+      }
+    });
+
+    test('有 ecology 但无 lootTable 时自动走动态', () => {
+      const sys = makeSystem();
+      const original = Math.random;
+      Math.random = () => 0.3;
+      try {
+        const enemy = makeEnemy({ ecology: { biome: 'desert', creatureType: 'beast', tier: 'common' } });
+        enemy.lootTable = undefined;
+        const gameState = {
+          activeCharacters: [makeChar()],
+          activeCombat: { enemies: [enemy], turnOrder: [], log: [] },
+        };
+        const r = sys.endCombat(gameState, 'victory');
+        expect(r.loot.length).toBeGreaterThan(0);
+      } finally {
+        Math.random = original;
+      }
     });
   });
 

@@ -138,9 +138,10 @@ describe('WorldGenerator - generateRandomPreset', () => {
 
   test('复用 baseLibrary 的卡牌', () => {
     const p = generateRandomPreset({ baseLibrary });
-    expect(p.characters).toBe(baseLibrary.characters);
-    expect(p.enemies).toBe(baseLibrary.enemies);
-    expect(p.items).toBe(baseLibrary.items);
+    expect(p.characters.map(c => c.id)).toEqual(baseLibrary.characters.map(c => c.id));
+    expect(p.enemies.map(e => e.id)).toEqual(baseLibrary.enemies.map(e => e.id));
+    expect(p.items.map(i => i.id)).toEqual(baseLibrary.items.map(i => i.id));
+    expect(p.characters[0].image).toContain('/assets/library/');
   });
 
   test('自动生成事件含 ch_start / ch_boss', () => {

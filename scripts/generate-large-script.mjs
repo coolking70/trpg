@@ -1359,7 +1359,7 @@ smallEvent(FROST.outpost, '哨兵报告',   '"昨晚听到山里有龙吼。"', 
 // 快速旅行 — 移到 FROST 定义之后，所有 hub 都已存在
 event('ev_fast_travel_astra', '驿马服务（快速旅行）', {
   inScene: [ASTRA.square], tags: ['side', 'fast_travel'], priority: 50,
-  repeatable: true,
+  repeatable: false,   // 只触发一次：首次到广场介绍驿马服务，之后不再每次进 hub 弹出
   description: '广场角落，驿马师傅吆喝："要去哪？只送已经走过的地方。"',
   choices: [
     { text: '前往荆木堡内庭', outcomes: [{ text: '驿马很快。',
@@ -1374,7 +1374,7 @@ event('ev_fast_travel_astra', '驿马服务（快速旅行）', {
 
 event('ev_fast_travel_keep', '荆木堡马厩（快速旅行）', {
   inScene: [KEEP.stable], tags: ['side', 'fast_travel'], priority: 50,
-  repeatable: true,
+  repeatable: false,   // 只触发一次（同上）
   description: '马夫认得你的样子："要回阿斯特拉哈文吗？"',
   choices: [
     { text: '回阿斯特拉哈文广场', outcomes: [{ text: '一路顺风。',

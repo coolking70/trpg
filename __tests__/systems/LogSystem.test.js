@@ -209,6 +209,19 @@ describe('LogSystem - generateMarkdown', () => {
     expect(md).toContain('艾拉');  // 角色名应在 ## 角色 部分
   });
 
+  test('NPC 伙伴缺少 level/experience 时使用默认值', () => {
+    const gs = makeGameState();
+    gs.activeCharacters.push({
+      id: 'npc_vex',
+      name: '维克斯女巫',
+      _isCompanion: true,
+      stats: { hp: 75, hpCurrent: 75, mp: 60, mpCurrent: 60 },
+    });
+    const md = ls.generateMarkdown(gs);
+    expect(md).toContain('**维克斯女巫** (同行) Lv.1 XP:0');
+    expect(md).not.toContain('undefined');
+  });
+
   test('叙事日志按格式渲染', () => {
     const md = ls.generateMarkdown(makeGameState());
     expect(md).toContain('**[GM]** 一段叙事');

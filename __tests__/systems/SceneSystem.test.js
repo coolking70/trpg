@@ -106,6 +106,75 @@ describe('SceneSystem', () => {
     expect(state.mapState.playerPosition).toEqual({ x: 1, y: 0 });
   });
 
+  test('findExploredPath 只沿已探索且可达连接寻路', () => {
+    scenes.performTravel(state, 'scene_b');
+    state.variables.quest_received = true;
+    scenes.performTravel(state, 'scene_c');
+    state.mapState.currentSceneId = 'scene_a';
+
+    expect(scenes.findExploredPath(state, 'scene_c')).toEqual(['scene_a', 'scene_b', 'scene_c']);
+
+    delete state.variables.quest_received;
+    expect(scenes.findExploredPath(state, 'scene_c')).toBeNull();
+  });
+
+  test('canFastTravelTo 要求目标已探索且路径连通', () => {
+    expect(scenes.canFastTravelTo(state, 'scene_b').ok).toBe(false);
+    scenes.performTravel(state, 'scene_b');
+    scenes.performTravel(state, 'scene_a');
+
+    const check = scenes.canFastTravelTo(state, 'scene_b');
+    expect(check.ok).toBe(true);
+    expect(check.path).toEqual(['scene_a', 'scene_b']);
+  });
+
+  test('performFastTravel 更新位置并按路径 cost 计算耗时', () => {
+    const customScenes = new SceneSystem();
+    customScenes.loadFromPreset({
+      scenes: [
+        { id: 'a', name: 'A', coords: { x: 0, y: 0 }, connections: [{ to: 'b', cost: 2 }] },
+        { id: 'b', name: 'B', coords: { x: 1, y: 0 }, travelHours: 3, connections: [{ to: 'c' }] },
+        { id: 'c', name: 'C', coords: { x: 2, y: 0 }, travelHours: 4, connections: [] },
+      ],
+    });
+    const st = new GameState();
+    st.mapState.currentSceneId = 'a';
+    st.mapState.visitedSceneIds = ['a', 'b', 'c'];
+
+    const plan = customScenes.planFastTravel(st, 'c');
+    expect(plan.ok).toBe(true);
+    expect(plan.path).toEqual(['a', 'b', 'c']);
+    expect(plan.travelHours).toBe(6); // a->b cost 2, b->c uses c.travelHours 4
+    expect(st.mapState.currentSceneId).toBe('a');
+
+    const result = customScenes.performFastTravel(st, 'c');
+    expect(result.ok).toBe(true);
+    expect(result.path).toEqual(['a', 'b', 'c']);
+    expect(result.travelHours).toBe(6);
+    expect(st.mapState.currentSceneId).toBe('c');
+    expect(st.mapState.playerPosition).toEqual({ x: 2, y: 0 });
+  });
+
+  test('applyFastTravelPath 可把快速旅行中断在路径中途', () => {
+    const customScenes = new SceneSystem();
+    customScenes.loadFromPreset({
+      scenes: [
+        { id: 'a', name: 'A', coords: { x: 0, y: 0 }, connections: [{ to: 'b' }] },
+        { id: 'b', name: 'B', coords: { x: 1, y: 0 }, connections: [{ to: 'c' }] },
+        { id: 'c', name: 'C', coords: { x: 2, y: 0 }, connections: [] },
+      ],
+    });
+    const st = new GameState();
+    st.mapState.currentSceneId = 'a';
+    st.mapState.visitedSceneIds = ['a', 'b', 'c'];
+
+    const result = customScenes.applyFastTravelPath(st, ['a', 'b']);
+    expect(result.scene.id).toBe('b');
+    expect(result.isFirstVisit).toBe(false);
+    expect(st.mapState.currentSceneId).toBe('b');
+    expect(st.mapState.playerPosition).toEqual({ x: 1, y: 0 });
+  });
+
   test('重访场景：isFirstVisit=false，visitedSceneIds 不重复', () => {
     scenes.performTravel(state, 'scene_b');
     const second = scenes.performTravel(state, 'scene_a');

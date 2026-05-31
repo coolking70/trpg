@@ -19,6 +19,12 @@ describe('AIResponseParser', () => {
       expect(r.actions).toEqual([]);
     });
 
+    test('兼容本地模型把 narrative 写成 narr', () => {
+      const r = parser.parse('{"narr":"护身符微微发热。","actions":[],"diceRequests":[]}');
+      expect(r.narrative).toBe('护身符微微发热。');
+      expect(r.actions).toEqual([]);
+    });
+
     test('Level 2: markdown code block 包裹', () => {
       const r = parser.parse('```json\n{"narrative":"in block"}\n```');
       expect(r.narrative).toBe('in block');

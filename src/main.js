@@ -47,6 +47,7 @@ import { GameUI } from './ui/GameUI.js';
 
 // 数据
 import { DEFAULT_PRESET } from './data/defaultPreset.js';
+import { assignPresetImages } from './data/assetLibrary.js';
 
 // Phase 26E — 项目自带预设清单（Vite 在构建时把 presets/*.json 都打入 bundle）
 // keys 是 '/presets/xxx.json'，value 是原始 JSON 对象
@@ -508,6 +509,12 @@ class TRPGApp {
       this._travelToScene(evt.data.sceneId);
     });
 
+    // 场景图：快速旅行。只允许前往已探索且有当前可通行路径的节点。
+    es.subscribe('scene:fastTravel', (evt) => {
+      if (this._actionLocked) return;
+      this._fastTravelToScene(evt.data.sceneId);
+    });
+
     // ---- 设置变更（接收难度 + 自动存档 + 动态难度开关）----
     es.subscribe('settings:changed', (evt) => {
       const cfg = evt.data || {};
@@ -909,11 +916,12 @@ class TRPGApp {
    * 应用预设到各系统（不重置gameState）
    */
   _applyPreset(presetData) {
-    this.preset = new GamePreset(presetData);
+    const presetWithImages = assignPresetImages(presetData);
+    this.preset = new GamePreset(presetWithImages);
 
     // Phase 23A — 优先用 PresetStorage（IndexedDB），LS 兜底
     // 大于 1MB 的预设无法塞进 localStorage，必须走 IDB
-    presetStorage.saveCurrent(presetData).catch(e => {
+    presetStorage.saveCurrent(presetWithImages).catch(e => {
       console.warn('PresetStorage.saveCurrent 失败：', e.message);
     });
 
@@ -943,6 +951,11 @@ class TRPGApp {
     const npcSystem = this.engine.getSystem('NPCSystem');
     if (npcSystem) {
       npcSystem.loadFromPreset(this.preset);
+    }
+
+    const contextRetriever = this.engine.getSystem('ContextRetriever');
+    if (contextRetriever) {
+      contextRetriever.loadFromPreset(this.preset);
     }
   }
 
@@ -1071,10 +1084,12 @@ class TRPGApp {
       }
     }
 
-    // 应用效果
+    // 应用效果，并把“实际执行结果”传给 GM，避免系统拒绝但叙事写成成功。
+    const effectResults = [];
     if (outcome && outcome.effects) {
       for (const effect of outcome.effects) {
-        this._applyEventEffect(effect);
+        const effectResult = this._applyEventEffect(effect);
+        if (effectResult) effectResults.push(effectResult);
       }
     }
 
@@ -1099,6 +1114,7 @@ class TRPGApp {
       event: eventCard,
       choiceText: choice.text,
       outcomeText: outcome ? outcome.text : '',
+      effectResults,
     }, this.gameState).then((result) => {
       this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
       if (result.diceResults && result.diceResults.length > 0) {
@@ -1123,7 +1139,7 @@ class TRPGApp {
    * @param {object} effect
    */
   _applyEventEffect(effect) {
-    if (!this.gameState) return;
+    if (!this.gameState) return null;
 
     switch (effect.type) {
       case 'add_item': {
@@ -1131,6 +1147,7 @@ class TRPGApp {
         if (char) {
           if (!char.inventory) char.inventory = [];
           char.inventory.push(effect.itemId);
+          return { ok: true, type: effect.type, message: `获得物品 ${effect.itemId}` };
         }
         break;
       }
@@ -1139,7 +1156,7 @@ class TRPGApp {
           const idx = (char.inventory || []).indexOf(effect.itemId);
           if (idx !== -1) {
             char.inventory.splice(idx, 1);
-            break;
+            return { ok: true, type: effect.type, message: `移除物品 ${effect.itemId}` };
           }
         }
         break;
@@ -1157,7 +1174,7 @@ class TRPGApp {
             target.stats.hpCurrent = Math.max(0, target.stats.hpCurrent - value);
           }
         }
-        break;
+        return { ok: true, type: effect.type, message: `造成 ${value} 点伤害` };
       }
       case 'heal': {
         const value = effect.value || 0;
@@ -1172,11 +1189,11 @@ class TRPGApp {
             target.stats.hpCurrent = Math.min(target.stats.hp, target.stats.hpCurrent + value);
           }
         }
-        break;
+        return { ok: true, type: effect.type, message: `恢复 ${value} 点生命` };
       }
       case 'start_combat': {
         this._startCombat(effect.enemyIds || []);
-        break;
+        return { ok: true, type: effect.type, message: `进入战斗` };
       }
       case 'set_variable': {
         // 用于事件分支写状态机
@@ -1184,6 +1201,7 @@ class TRPGApp {
         if (effect.name) {
           this.gameState.variables[effect.name] = effect.value;
           this.eventSystem.publish('game:variableChanged', { name: effect.name, value: effect.value });
+          return { ok: true, type: effect.type, message: `${effect.name} = ${effect.value}` };
         }
         break;
       }
@@ -1197,8 +1215,9 @@ class TRPGApp {
       }
       // Phase 19C — 推进故事时间
       case 'advance_time': {
-        this._advanceStoryTime(effect.hours || 1);
-        break;
+        const hours = effect.hours ?? effect.value ?? 1;
+        this._advanceStoryTime(hours);
+        return { ok: true, type: effect.type, message: `时间推进 ${hours} 小时` };
       }
       // Phase 19B — NPC 互动效果
       case 'change_affection': {
@@ -1251,6 +1270,7 @@ class TRPGApp {
               this.gameState.activeCharacters.push(slot);
             }
             this.gameState.addNarrative('system', `🤝 ${npc.name} 加入了你的队伍。`);
+            return { ok: true, type: effect.type, message: `${npc.name} 加入队伍` };
           }
         }
         break;
@@ -1278,6 +1298,7 @@ class TRPGApp {
             const hint = effect.hint || `🌍 世界状态变化：${effect.name} = ${effect.value}`;
             this.gameState.addNarrative('system', hint);
           }
+          return { ok: true, type: effect.type, message: `${effect.name} = ${effect.value}` };
         }
         break;
       }
@@ -1290,6 +1311,7 @@ class TRPGApp {
             const toScene = ss.getScene(effect.to);
             this.gameState.addNarrative('system',
               `🗺 你发现了一条新路径${toScene ? `（通向 ${toScene.name}）` : ''}。`);
+            return { ok: true, type: effect.type, message: `发现通向 ${toScene ? toScene.name : effect.to} 的新路径` };
           }
         }
         break;
@@ -1300,12 +1322,19 @@ class TRPGApp {
         const sceneId = effect.sceneId;
         if (!ss || !sceneId) break;
         const target = ss.getScene(sceneId);
-        if (!target) break;
+        if (!target) return { ok: false, type: effect.type, message: `目标场景不存在` };
         const visited = this.gameState.mapState?.visitedSceneIds || [];
         const allowUnvisited = effect.allowUnvisited === true;
         if (!allowUnvisited && !visited.includes(sceneId)) {
           this.gameState.addNarrative('system', `（${target.name} 还未去过，不能直接传送）`);
-          break;
+          return { ok: false, type: effect.type, message: `${target.name} 还未去过，传送未发生` };
+        }
+        if (!allowUnvisited) {
+          const check = ss.canFastTravelTo(this.gameState, sceneId);
+          if (!check.ok) {
+            this.gameState.addNarrative('system', `（无法快速旅行至 ${target.name}：${check.reason}）`);
+            return { ok: false, type: effect.type, message: `无法快速旅行至 ${target.name}：${check.reason}` };
+          }
         }
         this.gameState.mapState = this.gameState.mapState || {};
         this.gameState.mapState.currentSceneId = sceneId;
@@ -1316,11 +1345,12 @@ class TRPGApp {
         if (npcSystem) npcSystem.refreshNPCLocations(this.gameState);
         this.gameState.addNarrative('system', `🛤 你来到了 ${target.name}。`);
         this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
-        break;
+        return { ok: true, type: effect.type, message: `抵达 ${target.name}` };
       }
       default:
         break;
     }
+    return { ok: true, type: effect.type || 'unknown', message: `${effect.type || 'unknown'} 已处理` };
   }
 
   /**
@@ -1750,6 +1780,11 @@ class TRPGApp {
       this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
       // 战斗结束扫描可能因击败 boss 或获得物品触发的后续事件
       this._scanEventTriggers(TRIGGER_MOMENTS.COMBAT_END);
+      // 同一场景内常见“boss 战后 loot/后续事件”使用 inScene + requireCompletedEvents，
+      // 需要在战斗结束后重新扫一次 SCENE_ENTER 才能接上。
+      if (!this.gameState.activeEvent && !this.gameState.activeCombat) {
+        this._scanEventTriggers(TRIGGER_MOMENTS.SCENE_ENTER);
+      }
       this._advanceTurnCounter();
       this._autoSave();
       this._unlockActions();
@@ -2535,6 +2570,179 @@ class TRPGApp {
   }
 
   /**
+   * 快速旅行：只到已探索且沿当前可通行路径连通的场景。
+   * 路径、耗时和中途系统影响由代码结算；GM 只负责最终结果叙事。
+   */
+  _fastTravelToScene(sceneId) {
+    if (!this.gameState) return;
+    const sceneSystem = this.engine.getSystem('SceneSystem');
+    if (!sceneSystem) return;
+
+    const plan = sceneSystem.planFastTravel(this.gameState, sceneId);
+    if (!plan.ok) {
+      this.gameState.addNarrative('system', `（无法快速旅行：${plan.reason}）`);
+      this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+      return;
+    }
+
+    this._lockActions();
+    const routeOutcome = this._resolveFastTravelRouteEffects(plan);
+    const appliedPath = routeOutcome.interrupted
+      ? plan.path.slice(0, routeOutcome.pathIndex + 1)
+      : plan.path;
+    const result = sceneSystem.applyFastTravelPath(this.gameState, appliedPath);
+    if (!result) {
+      this.gameState.addNarrative('system', '（无法快速旅行：路线状态更新失败）');
+      this._unlockActions();
+      return;
+    }
+
+    const routeNames = plan.path.map(id => sceneSystem.getScene(id)?.name || id);
+    this._advanceStoryTime(routeOutcome.elapsedHours);
+    this.gameState.addNarrative('player', routeOutcome.interrupted
+      ? `快速旅行：${routeNames[0]} → ${sceneSystem.getScene(routeOutcome.sceneId)?.name || routeOutcome.sceneId}（遭遇中断）`
+      : `快速旅行：${routeNames[0]} → ${routeNames[routeNames.length - 1]}`);
+
+    if (routeOutcome.summary) {
+      this.gameState.addNarrative('system', `（路途结算：${routeOutcome.summary}）`);
+    }
+    this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+
+    if (routeOutcome.interrupted && routeOutcome.enemyIds?.length > 0) {
+      this._startCombat(routeOutcome.enemyIds);
+      return;
+    }
+
+    const aiEngine = this.engine.getSystem('AIGMEngine');
+    aiEngine.processGameAction('narrate_scene_arrival', {
+      fromScene: plan.from ? { id: plan.from.id, name: plan.from.name } : null,
+      toScene: { id: plan.to.id, name: plan.to.name, description: plan.to.description, type: plan.to.type, tags: plan.to.tags || [] },
+      connectionLabel: `快速旅行，经由 ${routeNames.join(' → ')}`,
+      travelSummary: {
+        path: routeNames,
+        hours: routeOutcome.elapsedHours,
+        encounterSummary: routeOutcome.summary,
+      },
+    }, this.gameState).then((aiResult) => {
+      this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+      if (aiResult.diceResults && aiResult.diceResults.length > 0) {
+        for (const dr of aiResult.diceResults) {
+          if (dr && dr.total !== undefined) this.eventSystem.publish('dice:show', dr);
+        }
+      }
+      const sceneView = sceneSystem.getActiveSceneView(plan.to, this.gameState) || plan.to;
+      this._afterSceneEnter(sceneView);
+    }).catch(() => {
+      this.gameState.addNarrative('gm', `你们沿已知路线跋涉 ${routeOutcome.elapsedHours} 小时，抵达 ${plan.to.name}。`);
+      const sceneView = sceneSystem.getActiveSceneView(plan.to, this.gameState) || plan.to;
+      this._afterSceneEnter(sceneView);
+    });
+  }
+
+  _resolveFastTravelRouteEffects(plan) {
+    const sceneSystem = this.engine.getSystem('SceneSystem');
+    const result = {
+      interrupted: false,
+      pathIndex: plan?.path?.length ? plan.path.length - 1 : 0,
+      sceneId: plan?.to?.id,
+      elapsedHours: plan?.travelHours || 0,
+      enemyIds: [],
+      summary: '一路顺利，未遭遇敌袭',
+      incidents: [],
+    };
+    if (!plan || !Array.isArray(plan.path) || plan.path.length <= 1) {
+      result.summary = '未发生路途事件';
+      return result;
+    }
+
+    let elapsed = 0;
+    for (let i = 1; i < plan.path.length; i++) {
+      const prev = sceneSystem.getScene(plan.path[i - 1]);
+      const scene = sceneSystem.getScene(plan.path[i]);
+      if (!scene) continue;
+      const segmentHours = this._getFastTravelSegmentHours(prev, scene, plan.path[i], sceneSystem);
+      elapsed += segmentHours;
+
+      const chance = this._getRouteEncounterChance(scene);
+      if (chance > 0 && Math.random() < chance) {
+        const enemyIds = this._pickRouteEncounterEnemies(scene);
+        if (enemyIds.length > 0) {
+          result.interrupted = true;
+          result.pathIndex = i;
+          result.sceneId = scene.id;
+          result.elapsedHours = elapsed;
+          result.enemyIds = enemyIds;
+          result.summary = `在${scene.name}遭遇敌袭，快速旅行中断`;
+          return result;
+        }
+      }
+
+      const attritionChance = Math.max(0, chance - 0.25);
+      if (attritionChance > 0 && Math.random() < attritionChance) {
+        const damage = Math.max(1, Math.ceil(segmentHours));
+        for (const c of this.gameState.activeCharacters || []) {
+          if (!c.stats) continue;
+          c.stats.hpCurrent = Math.max(1, (c.stats.hpCurrent ?? c.stats.hp) - damage);
+        }
+        result.incidents.push(`${scene.name}路况险恶，队伍各损失 ${damage} 点生命`);
+      }
+    }
+
+    if (result.incidents.length > 0) {
+      result.summary = result.incidents.join('；');
+    } else {
+      const dangerousCount = plan.path
+        .slice(1)
+        .map(id => sceneSystem.getScene(id))
+        .filter(scene => this._getRouteEncounterChance(scene) > 0)
+        .length;
+      result.summary = dangerousCount > 0
+        ? `途经 ${dangerousCount} 处危险地带，但未触发战斗`
+        : '一路顺利，未遭遇敌袭';
+    }
+    return result;
+  }
+
+  _getFastTravelSegmentHours(fromScene, toScene, toSceneId, sceneSystem) {
+    const conn = sceneSystem._getActiveConnections(fromScene, this.gameState).find(c => c.to === toSceneId);
+    return Number(conn?.cost ?? toScene?.travelHours ?? 1) || 1;
+  }
+
+  _getRouteEncounterChance(scene) {
+    if (!scene) return 0;
+    const tags = new Set(scene.tags || []);
+    let chance = 0;
+    if (scene.type === 'combat') chance += 0.45;
+    if (scene.type === 'dungeon') chance += 0.32;
+    if (scene.type === 'wilderness') chance += 0.16;
+    for (const tag of ['dangerous', 'combat', 'dungeon', 'wild', 'wilderness', 'monster', 'random']) {
+      if (tags.has(tag)) chance += 0.08;
+    }
+    if (tags.has('safe') || scene.type === 'settlement' || scene.type === 'shop') chance = 0;
+    return Math.min(0.65, chance);
+  }
+
+  _pickRouteEncounterEnemies(scene) {
+    const cardManager = this.engine.getSystem('CardManager');
+    const enemies = cardManager?.getCardsByType('enemy') || [];
+    if (enemies.length === 0) return [];
+
+    const sceneTags = new Set(scene.tags || []);
+    const matching = enemies.filter(enemy => {
+      const enemyTags = enemy.tags || [];
+      return enemyTags.some(tag => sceneTags.has(tag)) || enemy.difficulty === 'easy' || enemy.difficulty === 'normal';
+    });
+    const pool = matching.length > 0 ? matching : enemies;
+    const count = Math.min(pool.length, Math.random() < 0.25 ? 2 : 1);
+    const picked = [];
+    while (picked.length < count) {
+      const enemy = pool[Math.floor(Math.random() * pool.length)];
+      if (enemy && !picked.includes(enemy.id)) picked.push(enemy.id);
+    }
+    return picked;
+  }
+
+  /**
    * 抵达场景后：扫描挂载事件、自动存档、推进回合、解锁
    */
   _afterSceneEnter(scene) {
@@ -2979,8 +3187,10 @@ class TRPGApp {
     const card = cm ? cm.getCard(justCompletedEventId) : null;
     if (!card) return;
     const tags = card.tags || [];
-    const isEpilogue = tags.includes('epilogue') || tags.includes('ending') || card.id === 'ch10_epilogue';
-    if (!isEpilogue) return;
+    const isEnding = tags.includes('ending') ||
+      card.id === 'ch10_epilogue' ||
+      this.gameState.variables?.game_complete === true;
+    if (!isEnding) return;
     // 已经发过就不重发（防止反复触发）
     if (this._mainQuestCompleteFired) return;
     this._mainQuestCompleteFired = true;

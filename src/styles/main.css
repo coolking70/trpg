@@ -493,6 +493,12 @@ html, body {
   object-fit: cover;
 }
 
+.card__image img[src*="/assets/default-preset/"],
+.event-card__image img[src*="/assets/default-preset/"],
+.card-detail__image img[src*="/assets/default-preset/"] {
+  image-rendering: pixelated;
+}
+
 .card__name {
   font-size: 14px;
   font-weight: 600;

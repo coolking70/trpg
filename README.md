@@ -3,8 +3,8 @@
 > 基于 AI 的 TRPG 浏览器跑团游戏。AI 担任 Game Master，玩家通过卡牌、地图和文本交互推进冒险。
 
 [![CI](https://github.com/USERNAME/REPONAME/actions/workflows/ci.yml/badge.svg)](https://github.com/USERNAME/REPONAME/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-421%2F421-brightgreen)](./__tests__)
-[![MCP](https://img.shields.io/badge/mcp_tests-37%2F37-brightgreen)](./mcp-server)
+[![Tests](https://img.shields.io/badge/tests-470%2F470-brightgreen)](./__tests__)
+[![MCP](https://img.shields.io/badge/mcp_tests-42%2F42-brightgreen)](./mcp-server)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 支持完整的玩法闭环：探索 → 事件触发 → 战斗 → 角色成长 → 商店 → 主线推进，并配备完整的预设创作器，任何用户都能在浏览器中打造自己的故事。
@@ -26,8 +26,12 @@
 - **API 连通性测试** — 设置面板可直接发送极小 `chat/completions` 探测请求，显示成功/错误、模型、耗时和 token 用量
 - **跨周目元进度** — 按 presetId 隔离存档 + 图鉴 + 解锁项；3 个题材并存互不污染
 - **可视化场景编辑器** — 浏览器内编辑节点 / 出边 / 门控 / 事件挂载 / vignettes（无需写 JSON）
-- **MCP 服务器** — 暴露 **60 个工具**让 Claude 等 MCP 客户端批量、精细化生成 TRPG 剧本（参见 [mcp-server/README](mcp-server/README.md)），含小说/设定集 API-only 导入、战略层生成/审稿和 `combat_simulate` Monte Carlo 数值平衡审计
+- **MCP 服务器** — 暴露 **63 个工具**让 Claude 等 MCP 客户端批量、精细化生成 TRPG 剧本（参见 [mcp-server/README](mcp-server/README.md)），含小说/设定集 API-only 导入、战略层生成/审稿、`combat_simulate` Monte Carlo 数值平衡审计和生态位掉落烘焙
 - **AI GM 接地** — 通过结构化地图上下文 + JSON 响应格式 + Action 白名单校验，避免 AI 编造内容
+- **本地权威状态 + 相关性检索** — AI 调用前注入当前场景、变量、队伍、战斗、相关事件/物品/势力摘要；大剧本不依赖把全文塞进上下文
+- **快速旅行** — 只允许前往已探索且当前路径连通的场景；耗时、路途损耗、随机遭遇由代码结算，GM 仅负责结果叙事
+- **生态位掉落系统** — `ecology = { biome, creatureType, tier }` 驱动地区主题、战利品、敌人/物品图像自动一致，支持静态烘焙与运行时动态掉落
+- **像素素材库** — 默认角色/敌人/道具/场景自动配图；无图片资源时 UI 不显示空占位框，后续可继续扩充素材
 - **复合触发器** — 事件可按 scene/tile/POI/变量/前置事件/HP/回合/物品/概率等 **7 维度**组合触发
 - **状态机驱动剧情** — `set_variable` / `set_worldFlag` / `trigger_event` / `reveal_connection` / `teleport_to_scene` 让创作者编排出有起承转合的多章节剧情
 - **AI 长期记忆** — 分层记忆系统（World Facts + Key Events + Recent Context），长时间游玩 AI 不"失忆"
@@ -75,11 +79,11 @@ src/
 ├─ rendering/         # Canvas 渲染（地图、骰子 3D、浮动文字）
 ├─ ui/                # 面板组件（ToolbarPanel、CombatPanel、SaveLoadModal 等）
 │  └─ editor/         # 预设编辑器子模块
-├─ data/              # 默认预设 + AI 提示词模板
+├─ data/              # 默认预设 + AI 提示词模板 + 素材库 + 生态位掉落表
 ├─ utils/             # 工具函数（idGenerator、deepClone 等）
 └─ main.js            # TRPGApp 主入口
 
-__tests__/            # 421 个单元 + 集成测试
+__tests__/            # 470 个单元 + 集成测试
 docs/                 # 创作者手册 + AI 集成手册 + 接手指南
 ```
 
@@ -94,7 +98,7 @@ docs/                 # 创作者手册 + AI 集成手册 + 接手指南
      │      ├─ CardManager        (卡牌 CRUD)
      │      ├─ DiceSystem         (骰子公式 + 优势/劣势)
      │      ├─ MapSystem          (网格地图 — 向后兼容)
-     │      ├─ CombatSystem       (先攻 + 攻击/技能 + 掉落)
+     │      ├─ CombatSystem       (先攻 + 攻击/技能 + 静态/动态掉落)
      │      ├─ TurnManager        (回合状态机)
      │      ├─ EventTriggerEngine (7 维度复合条件触发，含 inScene)
      │      ├─ SceneSystem        (场景图节点 + 连接 + 门控 — 主路径)
@@ -149,10 +153,11 @@ docs/                 # 创作者手册 + AI 集成手册 + 接手指南
 
 ```bash
 npm test
-# 421 tests across 25 suites
+# 470 tests across 28 suites
 
 # MCP 工具端到端烟雾测试
 npm run test:mcp
+# 42 tests
 ```
 
 - Core: EventSystem / GameEngine / StateManager
@@ -173,10 +178,12 @@ npm run test:mcp
 ✅ **Phase 16**：**场景图全量重构**（节点 + 边代替格子）+ 剧本选择库 + 主线结算 modal + 防剧透
 ✅ **真实 AI 端到端验证**（OpenAI 兼容 API，默认本地 Qwen GM 链路已通过 headless playtest）
 ✅ **Phase 27**：MCP API-only 小说/设定集导入、超大型剧本外部 manifest、新游戏规模分组、API 连通性测试、叙事清空/身份连续性/玩家可见提示词清洗
+✅ **Phase 28**：生态位 → 掉落表 → 图像显式结构化、动态掉落、MCP 生态工具、AI 本地权威状态/相关性检索、快速旅行代码结算
 
 🔮 后续可能方向：
 - 编辑器加场景图可视化拖拽（节点 + 连线）
-- 对超大型剧本继续做 MCP/API 质量审稿：身份视角、分支可玩性、场景文本文学化
+- 对超大型剧本继续做 MCP/API 质量审稿：身份视角、分支可玩性、场景文本文学化、生态位/掉落表覆盖率
+- 继续扩展像素素材库：更多地区、建筑状态、职业年龄变体、同类 NPC 多变体
 - 云存档同步（社区预设库）
 - 多语言（英文版预设）
 - 战斗视觉特效与移动端细节打磨

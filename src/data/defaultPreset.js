@@ -1,9 +1,11 @@
+import { assignPresetImages } from './assetLibrary.js';
+
 /**
  * 内置默认预设 - 暗黑森林冒险
  * 包含4个角色、8个敌人、6个事件、12个道具和一张20x15地图
  */
 
-export const DEFAULT_PRESET = {
+export const DEFAULT_PRESET = assignPresetImages({
   version: '1.0.0',
   presetId: 'preset_dark_forest',
   name: '暗黑森林冒险',
@@ -24,7 +26,7 @@ export const DEFAULT_PRESET = {
       id: 'char_001', type: 'character',
       name: '艾拉', title: '圣骑士',
       description: '来自圣光教团的女骑士，誓言净化暗黑森林的诅咒。',
-      image: '',
+      image: '/assets/default-preset/characters/char-001-aila.png',
       stats: { hp: 120, hpCurrent: 120, mp: 40, mpCurrent: 40, attack: 16, defense: 14, magicAttack: 8, magicDefense: 10, speed: 10, luck: 6 },
       abilities: [
         { id: 'ability_001', name: '圣光斩', description: '以圣光灌注武器进行强力一击', type: 'active', cost: { mp: 12 }, effect: { target: 'single_enemy', damage: { formula: 'attack * 1.8', type: 'physical' } }, cooldown: 0 },
@@ -39,7 +41,7 @@ export const DEFAULT_PRESET = {
       id: 'char_002', type: 'character',
       name: '雷恩', title: '游侠',
       description: '精通弓术和野外生存的半精灵游侠。',
-      image: '',
+      image: '/assets/default-preset/characters/char-002-rain.png',
       stats: { hp: 80, hpCurrent: 80, mp: 30, mpCurrent: 30, attack: 14, defense: 8, magicAttack: 6, magicDefense: 8, speed: 16, luck: 8 },
       abilities: [
         { id: 'ability_003', name: '精准射击', description: '瞄准弱点进行精确打击', type: 'active', cost: { mp: 8 }, effect: { target: 'single_enemy', damage: { formula: 'attack * 2', type: 'physical' } }, cooldown: 1 },
@@ -54,7 +56,7 @@ export const DEFAULT_PRESET = {
       id: 'char_003', type: 'character',
       name: '薇拉', title: '元素法师',
       description: '精通火焰和冰霜魔法的年轻法师。',
-      image: '',
+      image: '/assets/default-preset/characters/char-003-vera.png',
       stats: { hp: 60, hpCurrent: 60, mp: 80, mpCurrent: 80, attack: 6, defense: 5, magicAttack: 18, magicDefense: 14, speed: 11, luck: 7 },
       abilities: [
         { id: 'ability_005', name: '火球术', description: '投掷一颗火球造成范围伤害', type: 'active', cost: { mp: 15 }, effect: { target: 'all_enemies', damage: { formula: 'magicAttack * 1.5', type: 'magic' } }, cooldown: 1 },
@@ -69,7 +71,7 @@ export const DEFAULT_PRESET = {
       id: 'char_004', type: 'character',
       name: '戈尔', title: '盗贼',
       description: '街头长大的矮人盗贼，擅长开锁和偷袭。',
-      image: '',
+      image: '/assets/default-preset/characters/char-004-gor.png',
       stats: { hp: 70, hpCurrent: 70, mp: 20, mpCurrent: 20, attack: 13, defense: 7, magicAttack: 3, magicDefense: 6, speed: 18, luck: 12 },
       abilities: [
         { id: 'ability_007', name: '背刺', description: '从背后给予致命一击', type: 'active', cost: { mp: 10 }, effect: { target: 'single_enemy', damage: { formula: 'attack * 2.5', type: 'physical' } }, cooldown: 2 },
@@ -100,7 +102,7 @@ export const DEFAULT_PRESET = {
     {
       id: 'ch1_start', type: 'event', name: '第一章 受命出征',
       description: '冒险者公会的银制徽章在艾拉掌心微微发烫。守门人将一封蜡封信交到你们手中——森林深处的诅咒源头亟待调查。回头看一眼身后的村落，你们的目光转向幽暗的林边小径。',
-      image: '', eventType: 'story',
+      image: '/assets/default-preset/events/ch1-start.png', eventType: 'story',
       trigger: {
         type: 'composite',
         condition: { inScene: ['scene_spawn'], excludeCompletedEvents: ['ch1_start'], probability: 1.0 },
@@ -658,4 +660,4 @@ export const DEFAULT_PRESET = {
     useStructuredOutput: true,
     language: 'zh-CN',
   },
-};
+}, { overwrite: true });

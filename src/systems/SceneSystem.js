@@ -207,9 +207,112 @@ export class SceneSystem extends GameSystem {
   canTravelTo(gameState, sceneId) {
     const current = this.getCurrentScene(gameState);
     if (!current) return { ok: false, reason: '尚未设置当前场景' };
-    const conn = (current.connections || []).find(c => c.to === sceneId);
+    const conn = this._getActiveConnections(current, gameState).find(c => c.to === sceneId);
     if (!conn) return { ok: false, reason: '此场景与当前场景没有直接连接' };
     return this._evaluateGated(conn.gated, gameState);
+  }
+
+  /**
+   * 寻找一条“已探索且当前可达”的场景路径。
+   * 用于快速旅行：只能在已访问过的节点之间、沿着当前可见且 gate 已满足的连接移动。
+   * @returns {string[]|null} 包含起点和终点的 sceneId 路径
+   */
+  findExploredPath(gameState, targetSceneId) {
+    const start = gameState?.mapState?.currentSceneId;
+    if (!start || !targetSceneId) return null;
+    const visited = new Set(gameState.mapState?.visitedSceneIds || []);
+    if (!visited.has(start) || !visited.has(targetSceneId)) return null;
+    if (start === targetSceneId) return [start];
+
+    const seen = new Set([start]);
+    const queue = [{ id: start, path: [start] }];
+    while (queue.length > 0) {
+      const { id, path } = queue.shift();
+      const scene = this.getScene(id);
+      if (!scene) continue;
+      for (const conn of this._getActiveConnections(scene, gameState)) {
+        if (!visited.has(conn.to)) continue;
+        if (!this._isConnectionVisible(conn, id, gameState)) continue;
+        if (!this._evaluateGated(conn.gated, gameState).ok) continue;
+        if (seen.has(conn.to)) continue;
+        const nextPath = [...path, conn.to];
+        if (conn.to === targetSceneId) return nextPath;
+        seen.add(conn.to);
+        queue.push({ id: conn.to, path: nextPath });
+      }
+    }
+    return null;
+  }
+
+  canFastTravelTo(gameState, targetSceneId) {
+    return this.planFastTravel(gameState, targetSceneId);
+  }
+
+  /**
+   * 规划快速旅行，但不改写状态。
+   * 调用方可在应用移动前结算随机遭遇、消耗、时间流逝等路途影响。
+   */
+  planFastTravel(gameState, targetSceneId) {
+    const target = this.getScene(targetSceneId);
+    if (!target) return { ok: false, reason: '目标场景不存在' };
+    const visited = gameState?.mapState?.visitedSceneIds || [];
+    if (!visited.includes(targetSceneId)) return { ok: false, reason: '目标场景尚未探索' };
+    const path = this.findExploredPath(gameState, targetSceneId);
+    if (!path) return { ok: false, reason: '没有已探索且可通行的路径' };
+
+    const from = this.getCurrentScene(gameState);
+    const travelHours = this._calculatePathTravelHours(path, gameState);
+    return { ok: true, from, to: target, target, path, travelHours };
+  }
+
+  _calculatePathTravelHours(path, gameState) {
+    let travelHours = 0;
+    for (let i = 0; i < path.length - 1; i++) {
+      const scene = this.getScene(path[i]);
+      const next = this.getScene(path[i + 1]);
+      const conn = this._getActiveConnections(scene, gameState).find(c => c.to === path[i + 1]);
+      travelHours += Number(conn?.cost ?? next?.travelHours ?? 1) || 1;
+    }
+    return travelHours;
+  }
+
+  /**
+   * 快速旅行：代码一次性移动到已探索目标，并返回路径/耗时摘要。
+   * 不触发 AI；调用方负责时间推进、随机事件、最终叙事和入场事件扫描。
+   */
+  performFastTravel(gameState, targetSceneId) {
+    const check = this.planFastTravel(gameState, targetSceneId);
+    if (!check.ok) return check;
+    const result = this.applyFastTravelPath(gameState, check.path);
+    if (!result) return { ok: false, reason: '快速旅行状态更新失败' };
+    return {
+      ok: true,
+      from: check.from,
+      to: result.scene,
+      path: check.path,
+      travelHours: check.travelHours,
+      isFirstVisit: result.isFirstVisit,
+    };
+  }
+
+  /**
+   * 沿快速旅行路径直接应用最终位置。
+   * path 必须包含起点和终点；不校验寻路规则，调用方应先使用 planFastTravel。
+   */
+  applyFastTravelPath(gameState, path) {
+    if (!gameState?.mapState || !Array.isArray(path) || path.length === 0) return null;
+    const targetSceneId = path[path.length - 1];
+    const scene = this.getScene(targetSceneId);
+    if (!scene) return null;
+
+    const visited = gameState.mapState.visitedSceneIds || [];
+    const isFirstVisit = !visited.includes(targetSceneId);
+    gameState.mapState.currentSceneId = targetSceneId;
+    if (isFirstVisit) visited.push(targetSceneId);
+    gameState.mapState.visitedSceneIds = visited;
+    if (scene.coords) gameState.mapState.playerPosition = { x: scene.coords.x, y: scene.coords.y };
+
+    return { scene, isFirstVisit, path };
   }
 
   /**
@@ -222,7 +325,7 @@ export class SceneSystem extends GameSystem {
     const next = this.getScene(sceneId);
     if (!next) return null;
 
-    const connection = current?.connections?.find(c => c.to === sceneId) || null;
+    const connection = current ? (this._getActiveConnections(current, gameState).find(c => c.to === sceneId) || null) : null;
     const visited = gameState.mapState.visitedSceneIds || [];
     const isFirstVisit = !visited.includes(sceneId);
 

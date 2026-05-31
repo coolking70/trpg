@@ -3,7 +3,7 @@
   "presetId": "eternal_crown_stress",
   "name": "永燃之冠",
   "author": "AI 压力测试",
-  "createdAt": "2026-05-26T15:02:57.622Z",
+  "createdAt": "2026-05-31T04:44:53.306Z",
   "description": "一份用于压测 Phase 19-25 全部基础设施的中世纪奇幻剧本：5 章主线 / 3 城镇 / 多区域 / 4 结局 / 22 NPC 关系网。",
   "lore": {
     "worldName": "艾尔西亚",
@@ -5207,8 +5207,8 @@
           ]
         }
       ],
-      "repeatable": true,
-      "maxOccurrences": 99,
+      "repeatable": false,
+      "maxOccurrences": 1,
       "aiPromptHint": "",
       "tags": [
         "side",
@@ -5291,8 +5291,8 @@
           ]
         }
       ],
-      "repeatable": true,
-      "maxOccurrences": 99,
+      "repeatable": false,
+      "maxOccurrences": 1,
       "aiPromptHint": "",
       "tags": [
         "side",

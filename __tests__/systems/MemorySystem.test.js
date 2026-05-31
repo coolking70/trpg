@@ -115,6 +115,19 @@ describe('MemorySystem', () => {
       expect(view.worldFacts).toEqual([]);
       expect(view.keyEvents).toEqual([]);
     });
+
+    test('默认只返回最近有限条目，避免大型剧本 prompt 随记忆总量增长', () => {
+      const gs = makeGameState();
+      for (let i = 1; i <= 15; i++) mem.addWorldFact(gs, `fact ${i}`);
+      for (let i = 1; i <= 15; i++) mem.addKeyEvent(gs, { summary: `event ${i}` });
+
+      const view = mem.getMemoryView(gs);
+
+      expect(view.worldFacts).toHaveLength(12);
+      expect(view.worldFacts[0]).toBe('fact 4');
+      expect(view.keyEvents).toHaveLength(12);
+      expect(view.keyEvents[0]).toBe('event 4');
+    });
   });
 
   describe('reset', () => {

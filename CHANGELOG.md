@@ -4,6 +4,32 @@
 
 ## [Unreleased]
 
+### Phase 28 — 生态位 → 掉落表 → 图像 显式结构化 🦴
+
+把「怪物生态位」从隐性 tag 提升为一等数据 `ecology = { biome, creatureType, tier }`，让生成大剧本时敌人的**地区主题、战利品、图像三者自动一致**。
+
+**Added — 生态数据层**
+- `src/data/ecology.js`（纯数据 + 纯函数，runtime/MCP 共用）：
+  - 词表 `BIOMES` / `CREATURE_TYPES` / `TIERS` + `difficultyToTier`
+  - `LOOT_POOLS` 按 biome 组织的掉落池，每候选含 `weight / kind / minTier / types` 门槛
+  - `resolveLootTable({biome,creatureType,tier,luck})` → 静态烘焙 `[{itemId,dropRate}]`
+  - `rollDynamicLoot(...)` → 运行时实时抽取，rng 可注入
+  - `inferEcology` / `validateEcology` / `ecologyTags`（marsh→swamp、cave→tunnel 等别名归一）
+- 掉落规则：kind×tier 决定基础掉率，tier 越高条目越多/掉率越高；`minTier` 让 boss-only 战利品只在精英/boss 出现；`types` 让材料只对相应生物类型掉
+
+**Added — 运行时动态掉落**
+- `CombatSystem.endCombat`：`enemy.lootMode==='dynamic'` 或（有 ecology 且无静态 lootTable）时按生态位实时抽取；否则走静态 lootTable（**向后兼容**）
+
+**Added — MCP 工具（3）**
+- `ecology_vocab` — 列出 biome/creatureType/tier 词表
+- `loot_pool_preview` — 预览某生态位的掉落表（不改预设）
+- `enemy_assign_ecology` — 写入 ecology → 烘焙 lootTable（或标记 dynamic）→ **把战利品从 assetLibrary 物料化进 preset.items（含图）** → 给敌人配匹配图
+- `enemy_create` 新增 `ecology` / `lootMode` 字段
+
+**Tests**
+- `__tests__/data/ecology.test.js`（21）+ CombatSystem 动态掉落（+3）+ MCP 生态工具（+5）
+- Jest 446 → **470** ✅ / MCP 37 → **42** ✅
+
 ### Phase 27 — MCP API-only 超大型剧本与运行体验修复 🌐（2026-05-29）
 
 **Added**

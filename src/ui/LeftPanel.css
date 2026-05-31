@@ -5,10 +5,10 @@
 .left-panel__list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .left-panel__empty {
@@ -22,7 +22,53 @@
   padding: 8px;
 }
 
-.left-panel .card__image {
+.left-panel .card--character {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  grid-template-areas:
+    "image name"
+    "image desc"
+    "image hp"
+    "image mp";
+  column-gap: 8px;
+  align-items: center;
+}
+
+.left-panel .card--character .card__image {
+  grid-area: image;
+  width: 56px;
+  height: 56px;
+  aspect-ratio: 1;
+  margin: 0;
+  align-self: center;
+  image-rendering: pixelated;
+}
+
+.left-panel .card--character .card__name {
+  grid-area: name;
+  margin-bottom: 0;
+  line-height: 1.15;
+}
+
+.left-panel .card--character .card__desc {
+  grid-area: desc;
+  -webkit-line-clamp: 1;
+  line-height: 1.2;
+}
+
+.left-panel .card--character .stat-bar {
+  margin: 1px 0;
+}
+
+.left-panel .card--character .stat-bar--hp {
+  grid-area: hp;
+}
+
+.left-panel .card--character .stat-bar--mp {
+  grid-area: mp;
+}
+
+.left-panel .card--enemy .card__image {
   aspect-ratio: 3 / 2;
   margin-bottom: 6px;
 }

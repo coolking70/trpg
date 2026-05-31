@@ -211,3 +211,107 @@ describe('AIGMEngine 空叙事兜底', () => {
     }));
   });
 });
+
+describe('AIGMEngine narrate_* 不重复应用 AI 的状态变更 actions（Phase 28 修复）', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  function mkGameState() {
+    return {
+      mapState: { playerPosition: { x: 0, y: 0 } },
+      activeCharacters: [{ id: 'pc', name: '主角', inventory: ['item_iron_sword'], stats: { hp: 100, hpCurrent: 100 } }],
+      variables: {},
+      addNarrative: jest.fn(),
+    };
+  }
+
+  test('narrate_event：AI 回的 add_item 被忽略（预设 effect 才权威，避免重复加物品）', async () => {
+    const ai = new AIGMEngine();
+    ai.setAPIConfig({ endpoint: 'https://example.test/v1', apiKey: 'ok', model: 'm' });
+    ai._cachedSystemPrompt = 'system';
+    // AI 响应里"好心"回了一个 add_item（呼应 outcomeText 给一枚太阳坠）
+    ai._callAIOnce = jest.fn().mockResolvedValue(JSON.stringify({
+      narrative: '祭司将太阳坠交到你手中。',
+      actions: [{ type: 'add_item', itemId: 'item_pendant_sun' }],
+      diceRequests: [],
+    }));
+    const gs = mkGameState();
+
+    await ai.processGameAction('narrate_event', { event: { id: 'ev_temple', name: '祭司的指引' }, outcomeText: '给你一枚太阳坠' }, gs);
+
+    // narrate_event 不应让 AI 的 add_item 落地（预设 outcome.effects 已经加过了）
+    expect(gs.activeCharacters[0].inventory).toEqual(['item_iron_sword']);
+  });
+
+  test('narrate_scene_arrival / narrate_combat 同样忽略 AI 的状态变更', async () => {
+    const ai = new AIGMEngine();
+    ai.setAPIConfig({ endpoint: 'https://example.test/v1', apiKey: 'ok', model: 'm' });
+    ai._cachedSystemPrompt = 'system';
+    ai._callAIOnce = jest.fn().mockResolvedValue(JSON.stringify({
+      narrative: '你抵达了新场景。',
+      actions: [{ type: 'add_item', itemId: 'item_gold' }, { type: 'set_variable', name: 'cheat', value: true }],
+      diceRequests: [],
+    }));
+    const gs = mkGameState();
+
+    await ai.processGameAction('narrate_scene_arrival', { toScene: { id: 's', name: '场景' } }, gs);
+
+    expect(gs.activeCharacters[0].inventory).toEqual(['item_iron_sword']);
+    expect(gs.variables.cheat).toBeUndefined();
+  });
+
+  test('player_action（自由输入）仍允许 AI 的 actions 落地（AI 担任裁决者）', async () => {
+    const ai = new AIGMEngine();
+    ai.setAPIConfig({ endpoint: 'https://example.test/v1', apiKey: 'ok', model: 'm' });
+    ai._cachedSystemPrompt = 'system';
+    ai._callAIOnce = jest.fn().mockResolvedValue(JSON.stringify({
+      narrative: '你从尸体上搜到一枚金币。',
+      actions: [{ type: 'add_item', itemId: 'item_gold' }],
+      diceRequests: [],
+    }));
+    const gs = mkGameState();
+
+    await ai.processGameAction('player_action', { text: '搜索尸体', moved: false }, gs);
+
+    expect(gs.activeCharacters[0].inventory).toContain('item_gold');
+  });
+});
+
+describe('AIGMEngine prompt context', () => {
+  test('把本地权威状态和检索上下文注入 system 消息，当前 user 消息保持最后', () => {
+    const ai = new AIGMEngine();
+    ai._cachedSystemPrompt = 'system prompt';
+    const messages = ai._buildMessages('玩家行动: 观察石门', {
+      localStateDigest: '当前场景:遗迹之门(scene_ruin_gate)\n关键变量:opened_gate=true',
+      retrievedContext: '【当前场景】遗迹之门: 布满藤蔓的巨大石门',
+      memoryView: {
+        worldFacts: ['世界：艾尔大陆'],
+        keyEvents: ['用护身符开启了遗迹之门'],
+      },
+    });
+
+    expect(messages[0]).toEqual({ role: 'system', content: 'system prompt' });
+    expect(messages.some(m => m.role === 'system' && m.content.includes('【本地权威状态】'))).toBe(true);
+    expect(messages.some(m => m.role === 'system' && m.content.includes('【当前局面检索】'))).toBe(true);
+    expect(messages.some(m => m.role === 'system' && m.content.includes('用护身符开启了遗迹之门'))).toBe(true);
+    expect(messages[messages.length - 1]).toEqual({ role: 'user', content: '玩家行动: 观察石门' });
+  });
+
+  test('上下文压缩后保留的短期历史从 user 开始，兼容本地 chat template', () => {
+    const ai = new AIGMEngine();
+    ai.contextWindow = [
+      { role: 'assistant', content: '{"narrative":"旧叙事1"}' },
+      { role: 'user', content: 'u1' },
+      { role: 'assistant', content: '{"narrative":"a1"}' },
+      { role: 'user', content: 'u2' },
+      { role: 'assistant', content: '{"narrative":"a2"}' },
+      { role: 'user', content: 'u3' },
+      { role: 'assistant', content: '{"narrative":"a3"}' },
+      { role: 'user', content: 'u4' },
+    ];
+
+    ai._compressContext();
+
+    expect(ai.contextWindow[0].role).toBe('user');
+    expect(ai.summarizedHistory).toContain('旧叙事1');
+  });
+});

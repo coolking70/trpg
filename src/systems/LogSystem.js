@@ -125,7 +125,8 @@ export class LogSystem extends GameSystem {
         completedEventIds: gameState.completedEventIds || [],
         variables: gameState.variables || {},
         activeCharacters: (gameState.activeCharacters || []).map(c => ({
-          id: c.id, name: c.name, level: c.level, experience: c.experience,
+          id: c.id, name: c.name, level: c.level || 1, experience: c.experience || 0,
+          isCompanion: !!c._isCompanion,
           stats: c.stats, inventory: c.inventory, equipment: c.equipment,
           statusEffects: c.statusEffects,
         })),
@@ -185,7 +186,8 @@ export class LogSystem extends GameSystem {
 
       lines.push(`### 角色\n`);
       for (const c of r.gameState.activeCharacters) {
-        lines.push(`- **${c.name}** Lv.${c.level} XP:${c.experience} — HP ${c.stats.hpCurrent}/${c.stats.hp} MP ${c.stats.mpCurrent}/${c.stats.mp}`);
+        const companionLabel = c.isCompanion ? ' (同行)' : '';
+        lines.push(`- **${c.name}**${companionLabel} Lv.${c.level} XP:${c.experience} — HP ${c.stats.hpCurrent}/${c.stats.hp} MP ${c.stats.mpCurrent}/${c.stats.mp}`);
       }
       lines.push('');
 

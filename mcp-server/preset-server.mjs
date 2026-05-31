@@ -2756,6 +2756,13 @@ tools.enemy_create = {
     experienceReward: z.number().default(10),
     difficulty: z.enum(['easy', 'normal', 'hard', 'boss']).default('normal'),
     tags: z.array(z.string()).optional(),
+    // Phase 28 — 生态位（biome × creatureType × tier），驱动掉落表 + 图像匹配
+    ecology: z.object({
+      biome: z.string().optional(),
+      creatureType: z.string().optional(),
+      tier: z.enum(['trivial', 'common', 'elite', 'boss']).optional(),
+    }).optional().describe('生态位：填了 biome 后可用 enemy_assign_ecology 自动烘焙掉落表 + 图像'),
+    lootMode: z.enum(['static', 'dynamic']).optional().describe('dynamic=运行时按生态位实时抽掉落；static(默认)=用 lootTable'),
   },
   handler: async (args) => {
     const id = args.id || genId('enemy', preset.enemies);
@@ -2774,6 +2781,8 @@ tools.enemy_create = {
       statusEffects: [],
       tags: args.tags || [],
       notes: '',
+      ...(args.ecology ? { ecology: args.ecology } : {}),
+      ...(args.lootMode ? { lootMode: args.lootMode } : {}),
     });
     dirty = true;
     return ok(`已创建敌人 ${id} (${args.name})`);
@@ -2790,6 +2799,153 @@ tools.enemy_delete = {
     preset.enemies.splice(idx, 1);
     dirty = true;
     return ok(`已删除敌人 ${args.id}`);
+  },
+};
+
+// ============================================================
+// Phase 28 — 生态位 → 掉落表 → 图像 显式结构化
+// ============================================================
+
+/** 从 assetLibrary 构建 itemId → asset 的查找表（懒加载缓存） */
+let _assetItemIndex = null;
+let _assetEnemyIndex = null;
+async function loadAssetIndexes() {
+  if (_assetItemIndex) return;
+  const { PIXEL_ASSET_LIBRARY } = await import('../src/data/assetLibrary.js');
+  _assetItemIndex = new Map((PIXEL_ASSET_LIBRARY.items || []).map(a => [a.id, a]));
+  _assetEnemyIndex = (PIXEL_ASSET_LIBRARY.enemies || []);
+}
+
+/** 把 id 转人类可读名（item_loot_swamp_leech_fang → 沼泽利齿之牙? 不翻译，仅美化英文）*/
+function prettifyItemName(id) {
+  return id.replace(/^item_(loot_)?/, '').replaceAll('_', ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/** 确保一批 loot itemId 都存在于 preset.items；缺失的从 assetLibrary 物料化 */
+async function ensureLootItems(itemIds) {
+  await loadAssetIndexes();
+  const added = [];
+  for (const itemId of itemIds) {
+    if (findById(preset.items, itemId)) continue;
+    const asset = _assetItemIndex.get(itemId);
+    preset.items.push({
+      id: itemId, type: 'item',
+      name: prettifyItemName(itemId),
+      description: '',
+      itemType: asset?.itemType || 'material',
+      equipSlot: null, statModifiers: {}, consumeEffect: null,
+      buyPrice: 0, sellPrice: 0, stackable: true,
+      image: asset?.src || '',
+      tags: asset?.tags || [],
+    });
+    added.push(itemId);
+  }
+  return added;
+}
+
+tools.ecology_vocab = {
+  title: '查看生态位词表（biome / creatureType / tier）',
+  description: '列出所有可用的 biome、creatureType、tier，以及哪些 biome 有掉落池。生成敌人前先查这个以保证用词一致。',
+  schema: {},
+  handler: async () => {
+    const { BIOMES, CREATURE_TYPES, TIERS, LOOT_POOLS } = await import('../src/data/ecology.js');
+    const biomesWithLoot = Object.keys(LOOT_POOLS);
+    const lines = [
+      '╔══ 生态位词表 ══╗', '',
+      `🌍 biome (${BIOMES.length}): ${BIOMES.join(', ')}`,
+      `   └ 有掉落池的: ${biomesWithLoot.join(', ')}`,
+      `🐾 creatureType (${CREATURE_TYPES.length}): ${CREATURE_TYPES.join(', ')}`,
+      `📊 tier: ${TIERS.join(' < ')}（= easy/normal/hard/boss）`,
+      '',
+      '用法：enemy_create 时填 ecology:{biome,creatureType,tier}，再 enemy_assign_ecology 自动烘焙掉落表+配图',
+    ];
+    return ok(lines.join('\n'));
+  },
+};
+
+tools.loot_pool_preview = {
+  title: '预览某生态位的掉落表',
+  description: '给定 biome/creatureType/tier，返回 resolveLootTable 的烘焙结果（itemId + dropRate），并标注哪些战利品已在 preset.items / assetLibrary 中可物料化。不修改预设。',
+  schema: {
+    biome: z.string(),
+    creatureType: z.string().optional(),
+    tier: z.enum(['trivial', 'common', 'elite', 'boss']).default('common'),
+    luck: z.number().default(0),
+  },
+  handler: async (args) => {
+    const { resolveLootTable } = await import('../src/data/ecology.js');
+    await loadAssetIndexes();
+    const table = resolveLootTable(args);
+    if (table.length === 0) return ok(`生态位 ${args.biome}/${args.creatureType || '*'}/${args.tier} 没有可掉落项`);
+    const lines = [`掉落表预览 — ${args.biome} / ${args.creatureType || '任意'} / ${args.tier}（luck=${args.luck}）`, ''];
+    for (const e of table) {
+      const inPreset = !!findById(preset.items, e.itemId);
+      const inAsset = _assetItemIndex.has(e.itemId);
+      const flag = inPreset ? '✓preset' : inAsset ? '○可物料化' : '✗缺图';
+      lines.push(`  ${(e.dropRate * 100).toFixed(0).padStart(3)}%  ${e.itemId}  [${flag}]`);
+    }
+    return ok(lines.join('\n'));
+  },
+};
+
+tools.enemy_assign_ecology = {
+  title: '给敌人指定生态位 → 自动烘焙掉落表 + 配图',
+  description: `把 ecology(biome/creatureType/tier) 写到敌人上，并据此：
+  1. 烘焙 lootTable（mode=static，默认）或标记 lootMode=dynamic（运行时实时抽取）
+  2. 把掉落表引用的战利品从 assetLibrary 物料化进 preset.items（含图）
+  3. 给敌人本身配一张匹配 biome/creatureType 的图（若 assetLibrary 有）
+这样大型剧本生成时，敌人的地区主题、掉落、图像三者自动一致。`,
+  schema: {
+    enemyId: z.string(),
+    biome: z.string(),
+    creatureType: z.string().optional(),
+    tier: z.enum(['trivial', 'common', 'elite', 'boss']).optional().describe('省略则按敌人 difficulty 推断'),
+    mode: z.enum(['static', 'dynamic']).default('static'),
+    luck: z.number().default(0),
+  },
+  handler: async (args) => {
+    const enemy = findById(preset.enemies, args.enemyId);
+    if (!enemy) return err(`敌人不存在: ${args.enemyId}`);
+    const ecoMod = await import('../src/data/ecology.js');
+    const { resolveLootTable, difficultyToTier, validateEcology, ecologyTags } = ecoMod;
+
+    const tier = args.tier || difficultyToTier(enemy.difficulty);
+    const ecology = { biome: args.biome, creatureType: args.creatureType, tier };
+    const v = validateEcology(ecology);
+    if (!v.ok) return err(`生态位非法：${v.errors.join('；')}`);
+
+    enemy.ecology = ecology;
+
+    let lootMsg;
+    if (args.mode === 'dynamic') {
+      enemy.lootMode = 'dynamic';
+      enemy.lootTable = [];   // 运行时抽，不存静态表
+      lootMsg = '运行时动态抽取（lootMode=dynamic）';
+    } else {
+      enemy.lootMode = 'static';
+      const table = resolveLootTable({ ...ecology, luck: args.luck });
+      enemy.lootTable = table;
+      const added = await ensureLootItems(table.map(e => e.itemId));
+      lootMsg = `静态烘焙 ${table.length} 项掉落${added.length ? `（新增 ${added.length} 个物品到 preset.items）` : ''}`;
+    }
+
+    // 给敌人配图（按 ecology 标签在 assetLibrary.enemies 里找最匹配的）
+    await loadAssetIndexes();
+    let imgMsg = '';
+    if (!enemy.image) {
+      const wantTags = new Set([...ecologyTags(ecology), ...(enemy.tags || [])].map(t => String(t).toLowerCase()));
+      let best = null, bestScore = 0;
+      for (const a of _assetEnemyIndex) {
+        const score = (a.tags || []).filter(t => wantTags.has(String(t).toLowerCase())).length
+          + (a.biome === args.biome ? 2 : 0);
+        if (score > bestScore) { bestScore = score; best = a; }
+      }
+      if (best && bestScore > 0) { enemy.image = best.src; imgMsg = `；配图 ${best.id}`; }
+    }
+
+    dirty = true;
+    return ok(`已为 ${enemy.name} 设定生态位 ${args.biome}/${args.creatureType || '任意'}/${tier} → ${lootMsg}${imgMsg}`);
   },
 };
 
