@@ -31,7 +31,8 @@ npm run test:mcp  # 42 MCP smoke tests
 # 数值平衡审计（5 秒，无 AI 调用）
 node scripts/combat-balance-check.mjs --preset presets/eternal-crown-stress-test.json --party-by-chapter
 
-# 端到端 AI vs AI 完整玩测（headless；默认走本地 http://127.0.0.1:1234/v1）
+# 端到端玩测（headless；玩家=脚本/人，GM 叙述默认走本地 http://127.0.0.1:1234/v1）
+# --player scripted（默认, 确定性启发式） / interactive（人/MCP 出招） / manual（固定路线）
 node scripts/playtest-large-script.mjs --max-iter 200
 ```
 
@@ -276,7 +277,7 @@ AI 容易在 `narrate_combat` 开场（roundResults 为空）时编造"艾拉挥
 
 - 每个节点 = 一段戏 = 一次 AI 抵达叙事
 - 默认主线从 300 格压成 12 节点
-- 一局完整通关 AI 调用从 60+ 降到 ~30 次（详见 `scripts/playtest-ai-vs-ai-scene.mjs` 真实数据）
+- 一局完整通关 GM 叙述调用从 60+ 降到 ~30 次（详见 `scripts/playtest-large-script.mjs` 真实数据）
 
 `preset.displayMode === 'scene-graph'` 时主路径走场景图；`'grid'` 时回退旧渲染（向后兼容）。`preset.scenes[].length > 0` 时 `GamePreset` 构造函数会自动把 displayMode 设为 scene-graph。
 
@@ -465,9 +466,14 @@ __tests__/
 ```
 scripts/
 ├─ playtest-v2.mjs               纯后端手动驱动玩测（场景前的版本）
-├─ playtest-ai-vs-ai.mjs         Pro AI 玩测（grid 版，旧）
-├─ playtest-ai-vs-ai-scene.mjs   Pro AI 玩测（默认场景图主线）
-└─ playtest-large-script.mjs     大型/超大型剧本 AI vs AI 玩测（支持 API timeout 配置）
+├─ playtest-large-script.mjs     大型/超大型剧本玩测（玩家=脚本/人/MCP，GM 叙述可选接模型）
+├─ mcp-llm-agent.mjs             LLM-as-MCP-client：本地模型经 MCP 工具生成剧本（创作期）
+├─ combat-balance-check.mjs      战斗数值平衡 Monte Carlo 模拟（纯计算，不接 AI）
+└─ generate-*.mjs                各预设生成脚本
+
+# 运行期 MCP 对局服务（给 AI 占位玩家 / 自动化测试）：
+#   mcp-server/game-session-server.mjs  — session_start / session_state / session_act
+# 注：玩家不再由 LLM 扮演；仅人/MCP（interactive）或确定性脚本（scripted）。
 ```
 
 **给接手者**：新增功能要先想"怎么测"。系统级的测试比 UI 测试容易写（不需要 DOM mock）。

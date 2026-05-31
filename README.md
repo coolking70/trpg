@@ -132,7 +132,7 @@ docs/                 # 创作者手册 + AI 集成手册 + 接手指南
                                                    🌅黎明草地 [ch10]
 ```
 
-每个节点至少含：抵达描述（AI 素材）、出边（含 gated 门控）、挂载事件、重访 vignette。一局完整通关约 24 个 Pro AI 决策 / 120k tokens（headless `playtest-ai-vs-ai-scene.mjs` 验证通过 9/10 章）。
+每个节点至少含：抵达描述（AI 素材）、出边（含 gated 门控）、挂载事件、重访 vignette。一局完整通关约 24 个玩家决策（headless `playtest-large-script.mjs` 验证通过 9/10 章；玩家由人/MCP 手动或确定性脚本扮演，GM 叙述可选接入模型）。
 
 ## 文档
 

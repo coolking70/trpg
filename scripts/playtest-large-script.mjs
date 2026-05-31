@@ -1,16 +1,20 @@
 /**
- * AI vs AI 大型剧本压力测试
+ * 大型剧本端到端玩测（headless）
  *
- * 基于 playtest-ai-vs-ai-scene.mjs。改造点：
- *   - --preset <path>   传任意预设 JSON 路径（默认 presets/eternal-crown-stress-test.json）
+ * 玩家由人/脚本扮演（无 LLM 玩家）：
+ *   --player scripted（默认, 确定性启发式）/ interactive（人或 MCP 出招）/ manual（固定路线）
+ * GM 叙述可选接入模型（OPENAI_* 环境变量；不配置则走 localFallback）。
+ *
+ * 其它参数：
+ *   - --preset <path>   任意预设 JSON 路径（默认 presets/eternal-crown-stress-test.json）
  *   - --max-iter N      最大决策回合数（默认 200）
  *   - 玩家选择 starting choices（race/origin/background/faith）— 复刻 main.js 的角色创建
  *   - 终止条件兼容多 ending 事件（tag 含 'ending' 或 'epilogue' 都算主线完成）
- *   - 详细的压测指标输出（覆盖率/平均时延/token 分布）
+ *   - 覆盖率/时延/GM token 等指标输出
  *
  * 用法：
  *   node scripts/playtest-large-script.mjs
- *   node scripts/playtest-large-script.mjs --preset presets/foo.json --max-iter 250
+ *   node scripts/playtest-large-script.mjs --preset presets/foo.json --player interactive --max-iter 250
  */
 
 import { GameEngine } from '../src/core/GameEngine.js';
