@@ -376,12 +376,21 @@ export class AIGMEngine extends GameSystem {
         ? contextRetriever.buildContextDigest(gameState, { sceneLimit: 5, npcLimit: 5 })
         : '';
       const localStateDigest = this._buildLocalStateDigest(actionType, actionData, gameState);
+      // 复读缓解：仅对纯叙事类调用注入（player_action 等裁决类不需要）
+      const NARRATE_ACTIONS = new Set([
+        'narrate_event', 'narrate_scene_arrival', 'narrate_combat',
+        'narrate_npc_dialogue', 'narrate_vignette', 'narrate_world_ripple',
+      ]);
+      const antiRepetition = NARRATE_ACTIONS.has(actionType)
+        ? this._buildAntiRepetitionHint(gameState)
+        : null;
 
       // 构建消息列表
       const messages = this._buildMessages(userMessage, {
         memoryView,
         retrievedContext,
         localStateDigest,
+        antiRepetition,
       });
 
       // 调用AI API
@@ -602,6 +611,7 @@ export class AIGMEngine extends GameSystem {
     const memoryView = promptContext?.memoryView || promptContext;
     const retrievedContext = promptContext?.retrievedContext || '';
     const localStateDigest = promptContext?.localStateDigest || '';
+    const antiRepetition = promptContext?.antiRepetition || '';
 
     // 系统提示词（preset 派生，静态缓存）
     messages.push({ role: 'system', content: this._cachedSystemPrompt });
@@ -628,6 +638,11 @@ export class AIGMEngine extends GameSystem {
     // 上下文窗口
     for (const msg of this.contextWindow) {
       messages.push(msg);
+    }
+
+    // 复读缓解约束（紧贴当前消息之前，权重更高）
+    if (antiRepetition) {
+      messages.push({ role: 'system', content: antiRepetition });
     }
 
     // 当前消息
@@ -758,6 +773,50 @@ export class AIGMEngine extends GameSystem {
       parts.push('【已发生的关键事件】\n' + memoryView.keyEvents.map((e, i) => `${i + 1}. ${e}`).join('\n'));
     }
     return parts.length > 0 ? parts.join('\n\n') : null;
+  }
+
+  /**
+   * 复读缓解（Phase 29）：把最近若干条 GM 叙述喂回模型，要求"换一种说法"。
+   * 本地中小模型（如非思考 qwen）跨回合缺乏措辞去重记忆，常把伙伴台词与
+   * 句尾套话（"你点头，握紧剑柄……"/"小心点，这地方不太对劲"）反复复读。
+   * 这里抽取最近 GM 叙述 + 高频复读短语，作为一条 system 约束注入。
+   * @param {object} gameState
+   * @returns {string|null}
+   */
+  _buildAntiRepetitionHint(gameState) {
+    const log = gameState?.narrativeLog;
+    if (!Array.isArray(log) || log.length === 0) return null;
+    const gmLines = log.filter(n => n && n.speaker === 'gm' && typeof n.text === 'string')
+      .slice(-5).map(n => n.text.trim()).filter(Boolean);
+    if (gmLines.length === 0) return null;
+
+    // 统计高频复读短语（4~12 字的连续片段，跨多条叙述重复出现）
+    const freq = new Map();
+    for (const line of gmLines) {
+      const seen = new Set();
+      for (let len = 5; len <= 10; len++) {
+        for (let i = 0; i + len <= line.length; i++) {
+          const frag = line.slice(i, i + len);
+          if (/[，。！？、：；""''…]/.test(frag)) continue; // 跨标点的片段跳过
+          if (seen.has(frag)) continue;
+          seen.add(frag);
+          freq.set(frag, (freq.get(frag) || 0) + 1);
+        }
+      }
+    }
+    const repeated = [...freq.entries()]
+      .filter(([, c]) => c >= 2)
+      .sort((a, b) => b[0].length - a[0].length || b[1] - a[1])
+      .slice(0, 6)
+      .map(([frag]) => frag);
+
+    const parts = ['【避免复读】最近的叙述如下，请勿照搬其句式、措辞或伙伴台词，换一种全新的说法与角度：'];
+    gmLines.slice(-3).forEach((l, i) => parts.push(`${i + 1}. ${l.slice(0, 120)}`));
+    if (repeated.length > 0) {
+      parts.push(`已被反复使用、本回合禁止再用的措辞：${repeated.map(s => `「${s}」`).join('、')}`);
+    }
+    parts.push('伙伴的反应/台词需要轮换，不要每次都用相同的警示或动作。');
+    return parts.join('\n');
   }
 
   /**

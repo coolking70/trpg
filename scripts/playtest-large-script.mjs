@@ -1295,6 +1295,120 @@ class CodexManualPlayer extends PlayerAI {
 }
 
 // ============================================================
+// InteractivePlayer — 真·人工玩家：把 GM 叙述+选项写文件，阻塞等命令
+//   命令文件 (--cmd-file, 默认 /tmp/play_cmd.txt):
+//     choose <n|id>   选事件选项（n 为 1 起序号）
+//     go <n|id>       前往邻接场景（n 为 1 起序号）
+//     rest            手动休整
+//     item <itemId>   使用消耗品
+//     end             结束
+//   快照文件 (--out-file, 默认 /tmp/play_out.json): 每回合刷新
+// ============================================================
+class InteractivePlayer extends PlayerAI {
+  constructor(cmdFile, outFile) {
+    super('', '', 'interactive-player');
+    this.cmdFile = cmdFile;
+    this.outFile = outFile;
+    this.turn = 0;
+  }
+
+  _writeSnapshot(context, app) {
+    this.turn++;
+    const gs = app.gameState;
+    const narrative = gs.narrativeLog.slice(-8).map(n => {
+      const lbl = { gm: 'GM', player: '我', system: '系统' }[n.speaker] || n.speaker;
+      return `[${lbl}] ${n.text}`;
+    });
+    let options = [];
+    if (context.situation === 'event' && context.detail) {
+      options = (context.detail.choices || []).map((c, i) => ({ n: i + 1, id: c.id, text: c.text }));
+    } else if (context.detail) {
+      options = (context.detail.neighbors || [])
+        .filter(nb => nb.reachable)
+        .map((nb, i) => ({ n: i + 1, id: nb.sceneId, text: `${nb.label} → ${nb.sceneName}${nb.visited ? '(去过)' : ''}` }));
+    }
+    const snap = {
+      turn: this.turn,
+      situation: context.situation,
+      scene: context.detail?.currentScene || null,
+      event: context.situation === 'event' ? { name: context.detail.eventName, desc: context.detail.description } : null,
+      party: context.chars.map(c => `${c.name} ${c.hp}(${c.hpPct}%)`),
+      lowestHpPct: context.lowestHpPct,
+      usableItems: context.usableItems,
+      nextObjective: context.nextObjective || null,
+      narrative,
+      options,
+      completedCount: (context.completed || []).length,
+    };
+    fs.writeFileSync(this.outFile, JSON.stringify(snap, null, 2), 'utf-8');
+    fs.writeFileSync(this.outFile + '.ready', String(this.turn), 'utf-8');
+  }
+
+  _readCommand() {
+    // 阻塞轮询命令文件，要求其首行 token = 当前 turn（避免吃旧命令）
+    const deadline = Date.now() + 30 * 60 * 1000;
+    while (Date.now() < deadline) {
+      try {
+        if (fs.existsSync(this.cmdFile)) {
+          const raw = fs.readFileSync(this.cmdFile, 'utf-8').trim();
+          if (raw) {
+            const [tok, ...rest] = raw.split(/\s+/);
+            if (parseInt(tok, 10) === this.turn) {
+              fs.unlinkSync(this.cmdFile);
+              return rest.join(' ').trim();
+            }
+          }
+        }
+      } catch { /* retry */ }
+      // 同步阻塞 500ms（真睡眠，不烧 CPU）
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500);
+    }
+    return 'end';
+  }
+
+  async decide(context) {
+    this._writeSnapshot(context, this.app);
+    const cmd = this._readCommand();
+    const [verb, arg] = cmd.split(/\s+/);
+    const byNorId = (list, getId) => {
+      const n = parseInt(arg, 10);
+      if (!isNaN(n) && n >= 1 && n <= list.length) return getId(list[n - 1]);
+      return arg;
+    };
+    if (verb === 'choose' && context.situation === 'event') {
+      const choices = context.detail.choices || [];
+      const id = byNorId(choices, c => c.id);
+      return { reasoning: `[人工] choose ${arg}`, action: { type: 'choose', choiceId: id } };
+    }
+    if (verb === 'go') {
+      const nbs = (context.detail?.neighbors || []).filter(n => n.reachable);
+      const id = byNorId(nbs, n => n.sceneId);
+      return { reasoning: `[人工] go ${arg}`, action: { type: 'travel', sceneId: id } };
+    }
+    if (verb === 'rest') return { reasoning: '[人工] rest', action: { type: 'manual_rest' } };
+    if (verb === 'item') return { reasoning: `[人工] item ${arg}`, action: { type: 'use_item', itemId: arg } };
+    if (verb === 'end') return { reasoning: '[人工] end', action: { type: 'end' } };
+    // 兜底：当作 choose/go 的第一项
+    if (context.situation === 'event') return { reasoning: '[人工] 默认首选', action: { type: 'choose', choiceId: (context.detail.choices || [])[0]?.id } };
+    const nbs = (context.detail?.neighbors || []).filter(n => n.reachable);
+    return { reasoning: '[人工] 默认前进', action: { type: 'travel', sceneId: nbs[0]?.sceneId } };
+  }
+
+  // 战斗交给自动策略（评估重点是 GM 叙述，不是战棋手操）
+  async decideCombat(context) {
+    const enemies = [...context.enemies].sort((a, b) => a.hp - b.hp);
+    const target = enemies[0];
+    if (!target) return { reasoning: '无敌人', action: { actionType: 'attack', targetId: '' } };
+    const mpCurrent = parseInt(String(context.yourTurn.mp).split('/')[0], 10) || 0;
+    const usable = (context.yourTurn.abilities || [])
+      .map(raw => String(raw).match(/^([^:]+):(.+)\(mp(\d+)\)$/)).filter(Boolean)
+      .map(m => ({ id: m[1], mp: parseInt(m[3], 10) || 0 })).filter(a => a.mp > 0 && a.mp <= mpCurrent);
+    if (usable[0]) return { reasoning: '自动技能', action: { actionType: 'ability', abilityId: usable[0].id, targetId: target.id } };
+    return { reasoning: '自动普攻', action: { actionType: 'attack', targetId: target.id } };
+  }
+}
+
+// ============================================================
 // 主循环
 // ============================================================
 async function gameLoop(app, playerAI, maxIter = 60) {
@@ -1407,11 +1521,14 @@ async function main() {
   await app.kickoff();
 
   const startMs = Date.now();
-  const playerAI = PLAYER_MODE === 'manual'
-    ? new CodexManualPlayer()
-    : (PLAYER_MODE === 'scripted'
-      ? new ScriptedPlayer()
-      : new PlayerAI(ENDPOINT, KEY, PLAYER_MODEL));
+  const playerAI = PLAYER_MODE === 'interactive'
+    ? new InteractivePlayer(argVal('--cmd-file', '/tmp/play_cmd.txt'), argVal('--out-file', '/tmp/play_out.json'))
+    : (PLAYER_MODE === 'manual'
+      ? new CodexManualPlayer()
+      : (PLAYER_MODE === 'scripted'
+        ? new ScriptedPlayer()
+        : new PlayerAI(ENDPOINT, KEY, PLAYER_MODEL)));
+  playerAI.app = app;
   const status = await gameLoop(app, playerAI, MAX_ITER);
   const elapsedMs = Date.now() - startMs;
   console.log(`\n=== 终止状态: ${status} (${(elapsedMs / 1000).toFixed(1)}s) ===`);

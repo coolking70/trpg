@@ -2001,6 +2001,12 @@ tools.preset_info = {
       factions: preset.factions?.length || 0,
       strategicFactions: preset.strategicLayer?.factions ? Object.keys(preset.strategicLayer.factions).length : 0,
     },
+    // 各实体真实 id 列表（便于 MCP 客户端引用时用对 id，避免猜错）
+    sceneIds: preset.scenes.map(s => s.id),
+    eventIds: preset.events.map(e => e.id),
+    characterIds: preset.characters.map(ch => ch.id),
+    enemyIds: preset.enemies.map(e => e.id),
+    itemIds: preset.items.map(i => i.id),
     lore: preset.lore,
   }, null, 2)),
 };
@@ -2906,7 +2912,11 @@ tools.enemy_assign_ecology = {
   },
   handler: async (args) => {
     const enemy = findById(preset.enemies, args.enemyId);
-    if (!enemy) return err(`敌人不存在: ${args.enemyId}`);
+    if (!enemy) {
+      // 错误信息列出可用 id，方便 MCP 客户端（含本地模型）自我纠正，而不是反复猜错 id
+      const ids = preset.enemies.map(e => e.id);
+      return err(`敌人不存在: ${args.enemyId}。当前可用敌人 id: ${ids.length ? ids.join(', ') : '（无，请先 enemy_create）'}`);
+    }
     const ecoMod = await import('../src/data/ecology.js');
     const { resolveLootTable, difficultyToTier, validateEcology, ecologyTags } = ecoMod;
 

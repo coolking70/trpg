@@ -326,4 +326,50 @@ describe('EventTriggerEngine', () => {
       expect(engine.scan(peace, { moment: 'scene_enter' })).not.toContain('e_war');
     });
   });
+
+  // Phase 29 — 随机遭遇每次进入场景只触发一次（修复战斗后补扫 SCENE_ENTER 背靠背重复触发）
+  describe('Phase 29 — 概率随机遭遇的单次访问冷却', () => {
+    function encEngine() {
+      // probability < 1.0 → 真随机遭遇，参与单次访问冷却
+      return makeEngine([
+        { id: 'e_enc', type: 'event', repeatable: true, trigger: { type: 'composite', condition: { inScene: ['s1'], probability: 0.5 } } },
+      ]);
+    }
+    function gsInScene(sceneId = 's1') {
+      return { ...makeGameState(), mapState: { currentSceneId: sceneId } };
+    }
+
+    let origRandom;
+    beforeEach(() => { origRandom = Math.random; Math.random = () => 0.1; }); // 0.1 < 0.5 → 命中
+    afterEach(() => { Math.random = origRandom; });
+
+    test('同一次进入场景内，第二次 SCENE_ENTER 扫描不再触发', () => {
+      const engine = encEngine();
+      const gs = gsInScene();
+      // 首扫触发并打上冷却标记
+      expect(engine.scan(gs, { moment: 'scene_enter' })).toContain('e_enc');
+      expect(gs.mapState._encounterFiredSceneId).toBe('s1');
+      // 战斗后补扫 SCENE_ENTER（未移动）→ 不再触发
+      expect(engine.scan(gs, { moment: 'scene_enter' })).not.toContain('e_enc');
+    });
+
+    test('清空标记（模拟重新进入场景）后可再次触发', () => {
+      const engine = encEngine();
+      const gs = gsInScene();
+      expect(engine.scan(gs, { moment: 'scene_enter' })).toContain('e_enc');
+      // performTravel 会把该标记清空
+      gs.mapState._encounterFiredSceneId = null;
+      expect(engine.scan(gs, { moment: 'scene_enter' })).toContain('e_enc');
+    });
+
+    test('确定性 inScene 后续事件（无 probability）不受冷却影响，仍可在战斗后补扫触发', () => {
+      const engine = makeEngine([
+        { id: 'e_followup', type: 'event', trigger: { type: 'composite', condition: { inScene: ['s1'] } } },
+      ]);
+      const gs = gsInScene();
+      gs.mapState._encounterFiredSceneId = 's1'; // 即使本场景已触发过随机遭遇
+      expect(engine.scan(gs, { moment: 'scene_enter' })).toContain('e_followup');
+      expect(engine.scan(gs, { moment: 'scene_enter' })).toContain('e_followup');
+    });
+  });
 });

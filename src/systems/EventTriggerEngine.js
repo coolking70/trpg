@@ -225,7 +225,26 @@ export class EventTriggerEngine extends GameSystem {
       }
     }
 
-    // 概率
+    // 概率（随机遭遇）
+    // 每次进入场景只允许触发一次"随机遭遇"：避免战斗结束后补扫 SCENE_ENTER 时，
+    // 同场景的概率遭遇被再次掷中，导致背靠背连续战斗（生产 + 玩测均复现的 bug）。
+    // 关键区分：只有 probability < 1.0 的"真随机遭遇"才参与单次访问冷却；
+    //   probability === 1.0 或缺省的是"确定性事件"（如同场景的多结局/剧情后续），
+    //   它们不参与冷却、也不设置冷却标记——否则会误杀同场景内更高优先级的确定性事件。
+    if (condition.probability !== undefined && condition.probability < 1.0) {
+      const ms = gameState.mapState;
+      const sceneId = ms?.currentSceneId;
+      if (ms && sceneId && ms._encounterFiredSceneId === sceneId) {
+        return false; // 本次进入该场景已触发过随机遭遇
+      }
+      if (Math.random() < condition.probability) {
+        if (ms && sceneId) ms._encounterFiredSceneId = sceneId;
+        return true;
+      }
+      return false;
+    }
+
+    // 确定性事件：probability 1.0（或缺省）
     const prob = condition.probability !== undefined ? condition.probability : 1.0;
     return Math.random() < prob;
   }

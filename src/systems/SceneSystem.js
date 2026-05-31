@@ -333,6 +333,9 @@ export class SceneSystem extends GameSystem {
     if (isFirstVisit) {
       gameState.mapState.visitedSceneIds = [...visited, sceneId];
     }
+    // 进入（或重新进入）场景时清空"本次访问已触发随机遭遇"标记，
+    // 使重新进入同一场景能再次掷随机遭遇，但战斗后补扫 SCENE_ENTER 不会背靠背重复触发。
+    gameState.mapState._encounterFiredSceneId = null;
     // 同步 playerPosition（让旧的地形卡/UI 能继续工作）
     if (next.coords) {
       gameState.mapState.playerPosition = { x: next.coords.x, y: next.coords.y };

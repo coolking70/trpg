@@ -315,3 +315,45 @@ describe('AIGMEngine prompt context', () => {
     expect(ai.summarizedHistory).toContain('旧叙事1');
   });
 });
+
+describe('AIGMEngine 复读缓解 _buildAntiRepetitionHint（Phase 29）', () => {
+  test('无叙事历史时返回 null', () => {
+    const ai = new AIGMEngine();
+    expect(ai._buildAntiRepetitionHint({ narrativeLog: [] })).toBeNull();
+    expect(ai._buildAntiRepetitionHint({})).toBeNull();
+    expect(ai._buildAntiRepetitionHint(null)).toBeNull();
+  });
+
+  test('提取最近 GM 叙述并要求换说法', () => {
+    const ai = new AIGMEngine();
+    const gs = { narrativeLog: [
+      { speaker: 'player', text: '走向北门' },
+      { speaker: 'gm', text: '你点头，握紧剑柄，目光投向深处的密林。' },
+    ] };
+    const hint = ai._buildAntiRepetitionHint(gs);
+    expect(hint).toContain('避免复读');
+    expect(hint).toContain('握紧剑柄');
+    expect(hint).toContain('伙伴');
+  });
+
+  test('检出跨多条叙述的高频复读短语', () => {
+    const ai = new AIGMEngine();
+    const gs = { narrativeLog: [
+      { speaker: 'gm', text: '芬恩低声说这地方安静得有些诡异要小心' },
+      { speaker: 'gm', text: '穿过矿道芬恩又说这地方安静得有些诡异要小心' },
+      { speaker: 'gm', text: '深入之后这地方安静得有些诡异的感觉更重了' },
+    ] };
+    const hint = ai._buildAntiRepetitionHint(gs);
+    expect(hint).toContain('禁止再用');
+    expect(hint).toContain('这地方安静');
+  });
+
+  test('只统计 GM 说话方，忽略 player/system', () => {
+    const ai = new AIGMEngine();
+    const gs = { narrativeLog: [
+      { speaker: 'player', text: '重复台词重复台词重复台词' },
+      { speaker: 'system', text: '重复台词重复台词重复台词' },
+    ] };
+    expect(ai._buildAntiRepetitionHint(gs)).toBeNull();
+  });
+});
