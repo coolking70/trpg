@@ -53,7 +53,8 @@ function argVal(flag, def) {
 const PRESET_PATH = path.resolve(__dirname, '..', argVal('--preset', 'presets/eternal-crown-stress-test.json'));
 const MAX_ITER = parseInt(argVal('--max-iter', '200'), 10);
 const API_TIMEOUT_MS = parseInt(process.env.OPENAI_TIMEOUT_MS || argVal('--timeout-ms', '60000'), 10);
-const PLAYER_MODE = argVal('--player', 'ai');
+// 玩家扮演模式（不再支持 LLM 玩家）：scripted（默认, 确定性启发式）/ manual（固定路线）/ interactive（人/MCP）
+const PLAYER_MODE = argVal('--player', 'scripted');
 
 // ---------- 环境补丁 ----------
 globalThis.requestAnimationFrame ||= (cb) => setTimeout(() => cb(Date.now()), 16);
@@ -73,7 +74,6 @@ globalThis.localStorage = (() => {
 const KEY = process.env.OPENAI_API_KEY || '';
 const ENDPOINT = process.env.OPENAI_BASE_URL || 'http://127.0.0.1:1234/v1';
 const GM_MODEL = process.env.OPENAI_GM_MODEL || process.env.OPENAI_MODEL || 'qwen/qwen3.6-35b-a3b';
-const PLAYER_MODEL = process.env.OPENAI_PLAYER_MODEL || process.env.OPENAI_MODEL || GM_MODEL;
 
 // ============================================================
 // HeadlessApp — 场景图版
@@ -524,7 +524,7 @@ class HeadlessApp {
     // 当选择 outcome 中含 start_combat 时被调用 — 这里不行动，留给主循环调 runCombatTurns
   }
 
-  /** 使用消耗品（药水/食物等）— 给 PlayerAI 的 use_item action 用 */
+  /** 使用消耗品（药水/食物等）— 给玩家的 use_item action 用 */
   useItem(itemId, ownerCharId = null, targetCharId = null) {
     const progression = this.engine.getSystem('ProgressionSystem');
     if (!progression) return { success: false, reason: 'ProgressionSystem 未注册' };
@@ -732,9 +732,14 @@ class HeadlessApp {
 }
 
 // ============================================================
-// PlayerAI — Pro 模型扮演决策者
+// BasePlayer — 玩家侧"上下文/目标推断"共享基类（不含任何 LLM 决策）
+//
+// 设计结论：不再用本地模型 / API 扮演玩家。玩家只由 (a) 人类手动 /
+//   MCP 客户端，或 (b) 确定性脚本启发式来扮演。本类只提供 buildContext /
+//   buildCombatContext / 主线目标推断等纯函数工具，decide()/decideCombat()
+//   由子类（Scripted / CodexManual / Interactive）各自实现，均无 LLM 调用。
 // ============================================================
-class PlayerAI {
+class BasePlayer {
   constructor(endpoint, apiKey, model) {
     this.endpoint = endpoint;
     this.apiKey = apiKey;
@@ -929,192 +934,12 @@ class PlayerAI {
     };
   }
 
-  async decide(context) {
-    const sys = `你是一支冒险小队的玩家/指挥官，正在玩桌游跑团 TRPG。
-任务：完成主线（最终完成带 epilogue/ending 标签的事件）。
-
-游戏机制：
-- 地图是"场景节点图"，每个节点是一段戏，邻居之间可点击跳转
-- 看到 reachable=false 的节点表示有门控，需要更多线索（去找其他场景探索）
-- 当 situation=event 时，必须选事件给的选项之一
-- 当 situation=travel 时，从邻居中挑选 reachable=true 的某个去
-
-资源管理（重要！）：
-- 当队伍 HP 低于 40% 时，**优先**用 use_item 喝药水
-- **itemId 必须 100% 复制自上方"可用消耗品"列表里的 id（如 item_potion_minor），不要自己造（不要写 potion_healing / potion_small 这种）；列表为空就别用 use_item**
-- 仍 HP 低又没药水时，**优先**回到 nearest_inn 提供的场景休息（inn 场景的 rest 事件会回满 HP）
-- **boss_room 场景一旦开战就无回头路**——进入 boss_room 标签的场景前，先确保队伍满状态。HP 不够就 travel 退回邻居场景休整
-- 不要在 HP 低于 30% 时还冲战斗节点（type=combat/dungeon）或 boss_room
-
-只输出一个 JSON：
-{ "reasoning": "<30字内推理>", "action": <action> }
-
-<action> 仅可为：
-- 事件选择: {"type":"choose","choiceId":"..."}
-- 旅行到邻居: {"type":"travel","sceneId":"..."}
-- 使用消耗品: {"type":"use_item","itemId":"...","targetId":"角色id（可省略=持有者自用）"}
-- 自由发言: {"type":"say","text":"..."}
-- 结束游戏: {"type":"end","reason":"..."}（只在主线完成后才可用）`;
-
-    const recentBlock = context.recent.join('\n');
-    const charsBlock = context.chars.map(c =>
-      `  ${c.name}(${c.id}) HP${c.hp}(${c.hpPct}%) MP${c.mp}${c.alive ? '' : ' [倒下]'}`
-    ).join('\n');
-
-    let stateBlock = `情境: ${context.situation}\n`;
-    stateBlock += `队伍最低 HP: ${context.lowestHpPct}%\n`;
-    stateBlock += `已完成: ${context.completed.join(', ') || '无'}\n`;
-    stateBlock += `变量: ${JSON.stringify(context.variables)}\n`;
-    stateBlock += `worldFlags: ${JSON.stringify(context.worldFlags)}\n`;
-    stateBlock += `同行伙伴: ${context.companions.join(', ') || '无'}\n`;
-    stateBlock += `队伍:\n${charsBlock}\n`;
-
-    if (context.usableItems.length > 0) {
-      stateBlock += `\n可用消耗品:\n${context.usableItems.map(u => `  ${u.itemId}: ${u.name} (${u.effect}) [${u.owner} 持有]`).join('\n')}\n`;
-    }
-
-    if (context.nearestInn) {
-      stateBlock += `\n⚠ HP 偏低！最近的休息点: ${context.nearestInn.name} (${context.nearestInn.sceneId})，距离 ${context.nearestInn.distance} 步\n`;
-    }
-
-    if (context.nextObjective) {
-      stateBlock += `\n📌 下一个主线目标: ${context.nextObjective.hint}\n`;
-      stateBlock += `（**如果当前场景不在目标场景列表里，应该 travel 到目标场景；当前已"卡住"循环时尤其要明确换方向**）\n`;
-    } else {
-      stateBlock += `\n📌 主线目标: （所有可触发的主线事件都已完成，请检查 endings 或寻找新分支）\n`;
-    }
-
-    if (context.situation === 'event' && context.detail) {
-      stateBlock += `\n当前事件: ${context.detail.eventName} [${context.detail.eventType}]\n描述: ${context.detail.description}\n`;
-      stateBlock += `可选:\n${context.detail.choices.map(c => `  ${c.id}: ${c.text}`).join('\n')}\n`;
-    } else if (context.detail) {
-      const tagStr = context.detail.currentScene.tags?.length ? ` tags=[${context.detail.currentScene.tags.join(',')}]` : '';
-      stateBlock += `\n当前场景: ${context.detail.currentScene.name} [${context.detail.currentScene.type}]${tagStr}\n描述: ${context.detail.currentScene.description}\n`;
-      stateBlock += `邻居节点:\n`;
-      for (const n of context.detail.neighbors) {
-        const flag = n.reachable ? '✓' : '🔒';
-        const v = n.visited ? '(去过)' : '';
-        stateBlock += `  ${flag} ${n.sceneId}: ${n.sceneName} — ${n.label}${v}${n.lockedReason ? ' [' + n.lockedReason + ']' : ''}\n`;
-      }
-    }
-
-    stateBlock += `\n最近叙事:\n${recentBlock}\n\n请给出下一步决策（JSON）：`;
-
-    return await this._call(sys, stateBlock);
-  }
-
-  async decideCombat(context) {
-    const sys = `你正在指挥战斗中的某个角色行动。
-只输出 JSON：
-{ "reasoning": "<30字内推理>", "action": <action> }
-<action>:
-- 普攻: {"actionType":"attack","targetId":"敌人id"}
-- 技能: {"actionType":"ability","abilityId":"...","targetId":"敌人id"}
-战术规则：
-- MP 够时优先用技能（伤害更高）
-- 目标选当前 HP 最低的敌人优先击杀`;
-
-    const user = `当前战斗:
-轮次: ${context.round}
-你的角色: ${context.yourTurn.name} (id=${context.yourTurn.id}) HP${context.yourTurn.hp} MP${context.yourTurn.mp}
-你的技能: ${context.yourTurn.abilities.join(' | ') || '无'}
-活着的敌人: ${context.enemies.map(e => `${e.id}(${e.name},HP${e.hp})`).join(', ')}
-队友: ${context.allies.map(a => `${a.name} HP${a.hp}`).join(', ')}
-
-请给出本回合该角色的行动（JSON）：`;
-
-    return await this._call(sys, user);
-  }
-
-  async _call(sys, user) {
-    const body = {
-      model: this.model,
-      messages: [
-        { role: 'system', content: sys },
-        { role: 'user', content: user },
-      ],
-      temperature: 0.4,
-      max_tokens: 400,
-      response_format: { type: 'json_object' },
-    };
-    if (/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])/.test(this.endpoint)) {
-      delete body.response_format;
-      body.reasoning_effort = 'none';
-    }
-    // 指数退避重试：网络抖动 / 429 / 5xx 自动重试 3 次
-    const MAX_RETRIES = 3;
-    let lastErr = null;
-    let resp = null;
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-      try {
-        resp = await fetch(`${this.endpoint}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
-          },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        });
-        if (resp.ok) { lastErr = null; break; }
-        // 4xx (非 429) 不重试，直接抛
-        if (resp.status >= 400 && resp.status < 500 && resp.status !== 429) {
-          const t = await resp.text();
-          throw new Error(`Player AI HTTP ${resp.status}: ${t.slice(0, 200)}`);
-        }
-        // 5xx 或 429 → 重试
-        const t = await resp.text();
-        lastErr = new Error(`Player AI HTTP ${resp.status}: ${t.slice(0, 200)}`);
-      } catch (e) {
-        // fetch failed / 网络断开
-        lastErr = e.name === 'AbortError'
-          ? new Error(`Player AI 请求超时（${Math.floor(API_TIMEOUT_MS / 1000)}秒）`)
-          : e;
-      } finally {
-        clearTimeout(timeoutId);
-      }
-      if (attempt < MAX_RETRIES - 1) {
-        const backoffMs = 1000 * Math.pow(2, attempt) + Math.floor(Math.random() * 500);
-        await new Promise(r => setTimeout(r, backoffMs));
-      }
-    }
-    if (lastErr) throw lastErr;
-    if (!resp || !resp.ok) {
-      const t = resp ? await resp.text() : '';
-      throw new Error(`Player AI HTTP ${resp?.status}: ${t.slice(0, 200)}`);
-    }
-    const data = await resp.json();
-    this.callCount++;
-    if (data.usage) {
-      this.totalTokens += data.usage.total_tokens || 0;
-      this.totalPrompt += data.usage.prompt_tokens || 0;
-      this.totalCompletion += data.usage.completion_tokens || 0;
-    }
-    const content = data.choices?.[0]?.message?.content || '';
-    // 尝试多种解析路径：原文 → 中文引号→英文 → 提取 {...} → 提取 {...} 后再 normalize 引号
-    const normalizeQuotes = (s) => s.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
-    const attempts = [
-      content,
-      normalizeQuotes(content),
-    ];
-    const m = content.match(/\{[\s\S]*\}/);
-    if (m) {
-      attempts.push(m[0]);
-      attempts.push(normalizeQuotes(m[0]));
-    }
-    for (const txt of attempts) {
-      try { return JSON.parse(txt); } catch { /* try next */ }
-    }
-    throw new Error('Player AI 返回无效 JSON: ' + content.slice(0, 120));
-  }
 }
 
 // ============================================================
 // ScriptedPlayer — 不调用玩家侧 AI，由脚本扮演玩家
 // ============================================================
-class ScriptedPlayer extends PlayerAI {
+class ScriptedPlayer extends BasePlayer {
   constructor() {
     super('', '', 'scripted-codex-player');
   }
@@ -1203,7 +1028,7 @@ class ScriptedPlayer extends PlayerAI {
 // ============================================================
 // CodexManualPlayer — 手动指定路线，不做玩家侧推理
 // ============================================================
-class CodexManualPlayer extends PlayerAI {
+class CodexManualPlayer extends BasePlayer {
   constructor() {
     super('', '', 'codex-manual-player');
   }
@@ -1304,7 +1129,7 @@ class CodexManualPlayer extends PlayerAI {
 //     end             结束
 //   快照文件 (--out-file, 默认 /tmp/play_out.json): 每回合刷新
 // ============================================================
-class InteractivePlayer extends PlayerAI {
+class InteractivePlayer extends BasePlayer {
   constructor(cmdFile, outFile) {
     super('', '', 'interactive-player');
     this.cmdFile = cmdFile;
@@ -1472,10 +1297,12 @@ async function gameLoop(app, playerAI, maxIter = 60) {
 // Main
 // ============================================================
 async function main() {
-  console.log('=== TRPG AI vs AI 大型剧本压力测试 ===');
-  const playerLabel = PLAYER_MODE === 'manual'
-    ? 'Codex Manual Player'
-    : (PLAYER_MODE === 'scripted' ? 'Scripted Codex Player' : PLAYER_MODEL);
+  console.log('=== TRPG 大型剧本玩测（GM=AI 叙述者 / 玩家=人或脚本，无 LLM 玩家）===');
+  const playerLabel = {
+    manual: 'CodexManual (固定路线)',
+    interactive: 'Interactive (人/MCP)',
+    scripted: 'Scripted (确定性启发式)',
+  }[PLAYER_MODE] || 'Scripted (确定性启发式)';
   console.log(`Player: ${playerLabel}  GM: ${GM_MODEL}`);
   console.log(`Endpoint: ${ENDPOINT}`);
   console.log(`Preset: ${PRESET_PATH}`);
@@ -1521,13 +1348,13 @@ async function main() {
   await app.kickoff();
 
   const startMs = Date.now();
+  // 玩家由人/脚本扮演（不再有 LLM 玩家）：
+  //   interactive = 人类手动 / MCP 出招；manual = 固定路线；scripted（默认）= 确定性启发式
   const playerAI = PLAYER_MODE === 'interactive'
     ? new InteractivePlayer(argVal('--cmd-file', '/tmp/play_cmd.txt'), argVal('--out-file', '/tmp/play_out.json'))
     : (PLAYER_MODE === 'manual'
       ? new CodexManualPlayer()
-      : (PLAYER_MODE === 'scripted'
-        ? new ScriptedPlayer()
-        : new PlayerAI(ENDPOINT, KEY, PLAYER_MODEL)));
+      : new ScriptedPlayer());
   playerAI.app = app;
   const status = await gameLoop(app, playerAI, MAX_ITER);
   const elapsedMs = Date.now() - startMs;
@@ -1571,7 +1398,7 @@ async function main() {
     stressMetrics: { sceneCoverage, eventCoverage, knownNPCs, npcsTotal, totalTokens, totalCalls, elapsedMs, status },
   }, null, 2);
   const ts = new Date().toISOString().substring(0, 19).replace(/[:T]/g, '-');
-  const playerStats = `\n## Pro Player AI 用量\n\n- 模型: ${PLAYER_MODEL}\n- 调用: ${playerAI.callCount} 次\n- Token: ${playerAI.totalTokens} (prompt ${playerAI.totalPrompt} / completion ${playerAI.totalCompletion})\n`;
+  const playerStats = `\n## 玩家侧\n\n- 模式: ${PLAYER_MODE}（无 LLM 玩家）\n`;
 
   const outDir = path.join(__dirname, '..', 'logs');
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
