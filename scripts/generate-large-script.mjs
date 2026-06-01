@@ -721,6 +721,7 @@ const SPIRE = {
   archmage:  'scene_spire_archmage',
   lift:      'scene_spire_lift',
   void_chamber:'scene_spire_void',
+  altar:     'scene_spire_altar',
   pinnacle:  'scene_spire_pinnacle',
 };
 scene(SPIRE.entry,     '黑曜塔基',     'dungeon',   { icon: '🗼', x: 17, y: -4, tags: ['spire', 'main'] });
@@ -733,6 +734,10 @@ scene(SPIRE.archmage,  '大法师起居',   'vignette',  { icon: '🛏', x: 19, 
 scene(SPIRE.lift,      '法力升降台',   'vignette',  { icon: '⬆', x: 20, y: -4, tags: ['spire'] });
 scene(SPIRE.void_chamber, '虚空之厅', 'combat',     { icon: '🌀', x: 21, y: -4, tags: ['spire', 'main', 'boss_room'],
   description: '塔顶的天空被撕开一条裂缝，黑色的光从那里渗下来。大法师西拉斯漂浮在房间中央，背后是虚空触手——这是终局之战，不带满状态进来基本等于赴死。' });
+// 献冠祭坛：虚空之厅与塔顶最终决战之间的安全休整点（避免两个 boss 背靠背、无回血暴毙）
+scene(SPIRE.altar,     '献冠祭坛',     'vignette',  { icon: '🕯', x: 21, y: -3, tags: ['spire', 'main', 'safe', 'rest'],
+  description: '虚空裂隙暂被祭坛的微光挡在门外。三片冠静静浮在石台上空，等待合一。这里安全——在踏上塔顶决战之前，最后一次整理状态吧。',
+  vignettes: ['烛火在祭坛四周静静燃烧，给你片刻喘息。'] });
 scene(SPIRE.pinnacle,  '塔顶',         'ending',    { icon: '👑', x: 22, y: -4, tags: ['spire', 'main', 'ending_room'] });
 
 connect(RANGE.dragon_lair, SPIRE.entry, '从龙巢深处的传送门进入巫师塔', { gated: { requireItems: ['item_crown_piece_c'] } });
@@ -746,7 +751,8 @@ connect(SPIRE.observatory, SPIRE.lift, '搭乘升降台');
 connect(SPIRE.conjuring,   SPIRE.lift, '走向升降台');
 connect(SPIRE.archmage,    SPIRE.lift, '走向升降台');
 connect(SPIRE.lift,        SPIRE.void_chamber, '升到虚空之厅');
-connect(SPIRE.void_chamber, SPIRE.pinnacle, '走向塔顶（最终对决）',
+connect(SPIRE.void_chamber, SPIRE.altar, '退入献冠祭坛喘息');
+connect(SPIRE.altar, SPIRE.pinnacle, '走向塔顶（最终对决）',
   { gated: { hint: '冠的三片在这里合为一体', requireItems: ['item_crown_piece_a', 'item_crown_piece_b', 'item_crown_piece_c'] } });
 
 // ============================================================

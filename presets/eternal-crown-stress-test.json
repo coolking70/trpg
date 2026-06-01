@@ -3,7 +3,7 @@
   "presetId": "eternal_crown_stress",
   "name": "永燃之冠",
   "author": "AI 压力测试",
-  "createdAt": "2026-06-01T03:35:17.072Z",
+  "createdAt": "2026-06-01T03:57:25.029Z",
   "description": "一份用于压测 Phase 19-25 全部基础设施的中世纪奇幻剧本：5 章主线 / 3 城镇 / 多区域 / 4 结局 / 22 NPC 关系网。",
   "lore": {
     "worldName": "艾尔西亚",
@@ -8305,6 +8305,36 @@
           "label": "返回 法力升降台"
         },
         {
+          "to": "scene_spire_altar",
+          "label": "退入献冠祭坛喘息"
+        }
+      ],
+      "events": [
+        "ev_spire_void"
+      ],
+      "vignettes": [],
+      "tags": [
+        "spire",
+        "main",
+        "boss_room"
+      ]
+    },
+    {
+      "id": "scene_spire_altar",
+      "name": "献冠祭坛",
+      "type": "vignette",
+      "icon": "🕯",
+      "description": "虚空裂隙暂被祭坛的微光挡在门外。三片冠静静浮在石台上空，等待合一。这里安全——在踏上塔顶决战之前，最后一次整理状态吧。",
+      "coords": {
+        "x": 21,
+        "y": -3
+      },
+      "connections": [
+        {
+          "to": "scene_spire_void",
+          "label": "返回 虚空之厅"
+        },
+        {
           "to": "scene_spire_pinnacle",
           "label": "走向塔顶（最终对决）",
           "gated": {
@@ -8317,14 +8347,15 @@
           }
         }
       ],
-      "events": [
-        "ev_spire_void"
+      "events": [],
+      "vignettes": [
+        "烛火在祭坛四周静静燃烧，给你片刻喘息。"
       ],
-      "vignettes": [],
       "tags": [
         "spire",
         "main",
-        "boss_room"
+        "safe",
+        "rest"
       ]
     },
     {
@@ -8339,8 +8370,8 @@
       },
       "connections": [
         {
-          "to": "scene_spire_void",
-          "label": "返回 虚空之厅"
+          "to": "scene_spire_altar",
+          "label": "返回 献冠祭坛"
         },
         {
           "to": "scene_ending_light",
