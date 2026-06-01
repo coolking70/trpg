@@ -19,5 +19,8 @@ coverage/
 logs/
 /generated/
 
+# MCP preset-server 默认工作草稿（不带路径参数启动时落盘）
+/preset-draft.json
+
 # Claude 工具的本机设置（保留 launch.json 共享）
 .claude/settings.local.json

@@ -221,7 +221,10 @@ function startMockChatCompletionsServer() {
           chapters: [{
             id: 'ch1', title: '序章：星门初启',
             mainEvent: { title: '钟声响起', summary: '学院察觉星门异动。' },
-            combatPlan: [{ enemyConcept: '帝国斥候', ecology: { biome: 'tunnel', creatureType: 'humanoid', tier: 'common' }, count: 2 }],
+            combatPlan: [
+              { enemyConcept: '帝国斥候', ecology: { biome: 'tunnel', creatureType: 'humanoid', tier: 'common' }, count: 2 },
+              { enemyConcept: '无战斗，纯叙事场景', ecology: { biome: 'tunnel', creatureType: 'humanoid', tier: 'common' }, count: 1 },
+            ],
             branchPoints: [{ prompt: '是否上报学院', options: [{ label: '上报', effectHint: 'rep_academy+' }, { label: '隐瞒', effectHint: 'flag secret' }] }],
             sideContent: [{ type: 'shop', name: '学院杂货', summary: '补给点' }],
           }],
@@ -994,6 +997,10 @@ async function main() {
       const exported = JSON.parse(await client.call('preset_export'));
       assert(exported.events.some(e => (e.tags || []).includes('ending')), '应含结局事件');
       assert(exported.startingSceneId, '应有 startingSceneId（presetNormalize 补全）');
+      // 占位/无战斗 combatPlan 条目应被过滤：不生成"无战斗，纯叙事场景"敌人或对应战斗事件
+      assert(!exported.enemies.some(e => /无战斗|纯叙事/.test(e.name || '')), '占位 combatPlan 条目不应生成敌人');
+      assert(!exported.events.some(e => /无战斗|纯叙事/.test(e.name || '')), '占位 combatPlan 条目不应生成战斗事件');
+      assert(exported.enemies.some(e => /斥候/.test(e.name || '')), '真实 combatPlan 条目仍应生成敌人');
 
       fs.unlinkSync(digestPath); fs.unlinkSync(bpPath);
     } finally { await mock.close(); }

@@ -4,6 +4,45 @@
 
 ## [Unreleased]
 
+### Phase 30 — 小说 → 预设 三段确定性管线 📖→🎲
+
+废弃旧的「读全文自由发挥」式超大型剧本生成（效果不可控），改为 **概括 → 设计 → 确定性构建** 三段管线：把 LLM 的「自由发挥」风险隔离在前两段（产物可人工确认），第三段完全确定性、由成熟工具校验。
+
+**Removed**
+- 删除 `buildMegaPresetFromNovel`（~256 行）及 `novel_build_mega_preset` 工具——读全文 + LLM 分批抽取直接吐超大剧本的旧路径
+
+**Added — MCP 工具（段①②③）**
+- `novel_digest`（段①·概括汇总）：本地分析正文 → LLM 概括为 `NovelDigest`（logline/themes/world/characters/locations/plotBeats）；`plotBeats` 只记叙事节拍，**不含游戏结构**（无 choices/sceneType）
+- `blueprint_draft` + `blueprint_validate`（段②·设计蓝图）：LLM 据 digest 起草 `PresetBlueprint`（章节脊柱 + 战斗/支线/分支/结局拓展计划），按 `sizeClass`（small/medium/large）给出场景/章节/敌人/结局规模区间并 clamp；蓝图为**人工可确认**的中间产物
+- `preset_build_from_blueprint`（段③·确定性构建）：**不调 LLM**，把蓝图编译成预设——线性章节 hub + 支线分叉、主事件（分支→choices）、战斗事件（combatPlan→ecology 敌人 + 掉落）、终章多选结局；复用 `presetNormalize` / `resolveLootTable` / `assignPresetImages` / `validatePreset`
+
+**Added — Responses-API 适配**
+- `callOpenAICompatible`（MCP）与 `AIGMEngine`（runtime）新增 `/responses` 风格支持：`apiStyle:'responses'` 或 `OPENAI_API_STYLE=responses` 或端点以 `/responses` 结尾时，自动改用 `{instructions,input}` 并解析 `output[].content[].text`；兼容 hy3-preview 等只走 Responses 接口的模型
+
+**平衡纪律**
+- 段③按 tier 限制同场敌人数（trivial/common≤3、elite≤2、boss≤1），避免蓝图写「3 个 boss 同屏」造成不可通关
+- 段③过滤 combatPlan 里的占位/无战斗条目（`enemyConcept` 命中 `无战斗|纯叙事|none` 等或为空时跳过），不再生成空敌人和空战斗事件
+
+**验证**
+- 真实 5MB 小说《魔弹之王与冻涟的雪姬》跑通全管线：digest（8 势力/40 角色/18 节拍）→ blueprint（medium）→ 确定性构建 **0 必修 / 全可达 / 无不可胜 boss**
+- 生成的《苍冰星传说：十四岁的约定》以 hy3-preview 作 GM 手动玩测通过：开场/恋爱分支/支线小景/真实战斗/链式 boss 战叙述均忠于原著
+- 战略层工具测试改用「管线产物形态」的 faction 型 fixture（替代已删的 mega setup），MCP 套件 **44/44**
+
+### Phase 29 — AI 参与度阶梯（L0–L4 权限模型）🎚️
+
+把「AI GM 管多宽」做成玩家可调的滑杆：从「只渲染氛围、不动数值」到「可改写剧情/结局」，五档递进。新游戏可选，游戏中可随时拖动调整。
+
+**Added — 权限核心**
+- `src/systems/AIAuthority.js`：L0–L4 五档 + `ACTION_AUTHORITY` 动作授权表 + `filterActionsByAuthority`（按档位过滤 AI 返回的 actions）+ `narrationCanMutate`（≥L3 才允许 narrate_* 期间改状态）+ `authorityPromptSection`（每次调用注入对应档位的边界说明）
+- 档位语义：**L0** 纯氛围描述、拒绝越权请求；**L1–L2** 渐次放开数值/判定；**L3** 编剧动作（spawn_event/scale_difficulty/招募/好感）；**L4** 创世动作（世界改写），带校验 + 快照 + 可撤销（`undoLastRewrite`）+ 审计护栏，**自动应用无需逐次确认**
+
+**Added — 实装与 UI**
+- `GameState.aiAuthority`（默认 2，clamp 0–4）+ 序列化
+- `AIGMEngine`：`filterActionsByAuthority` 取代旧 `NARRATION_ONLY`；`_applyEngineActions`（L3）/ `_applyWorldsmithActions`（L4，含 `_reachableSet` 可达性保护）
+- `DifficultyTracker.manualBias` + `setManualBias`：参与度档位影响难度基线
+- `SettingsModal` / `EndgameModal` 权限滑杆；`main.js` `settings:authorityLive` 实时生效 + loadPreset 应用持久化档位
+- 多人：`gameWsServer` / `game-ws-server.mjs` 的 `set_authority` 仅房主可调，改动广播全席位
+
 ### Phase 28 — 生态位 → 掉落表 → 图像 显式结构化 🦴
 
 把「怪物生态位」从隐性 tag 提升为一等数据 `ecology = { biome, creatureType, tier }`，让生成大剧本时敌人的**地区主题、战利品、图像三者自动一致**。

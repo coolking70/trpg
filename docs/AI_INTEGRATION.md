@@ -29,6 +29,16 @@
 
 > 注意：模型名通常**大小写敏感**。如果 API 报 `Not supported model`，先 GET `/v1/models` 看准确拼写。本地模型服务通常需要端点包含 `/v1`；只填 `http://127.0.0.1:1234` 时代码会自动补齐。
 
+### Responses-API 风格（hy3 等）
+
+除 `/chat/completions` 外，也支持 OpenAI **Responses 风格** `/responses` 接口（如 hy3-preview）。`AIGMEngine`（runtime）与 `callOpenAICompatible`（MCP）都会在以下任一条件成立时自动切换：
+
+- 配置里 `apiStyle: 'responses'`
+- 环境变量 `OPENAI_API_STYLE=responses`（MCP 脚本场景）
+- baseUrl 以 `/responses` 结尾
+
+切换后请求体改用 `{ model, instructions, input }`（而非 `messages`），响应从 `output_text` 或 `output[].content[].text` 解析。两种风格共用同一套提示词构建与 Action 校验逻辑。
+
 ### 推荐配置
 
 | 模型 | 适合场景 | 备注 |
@@ -157,6 +167,19 @@
 AI 返回 `{ type: 'damage', value: 9999 }` → 拒绝并记录 "damage value 超出合理范围 [0,100]"
 
 AI 返回 `{ type: 'add_item', value: 'item_fake_legendary' }` → 拒绝并记录 "item item_fake_legendary 不存在"
+
+### AI 参与度阶梯（L0–L4 权限模型）
+
+白名单校验之上还有一层**玩家可调的权限闸**（`src/systems/AIAuthority.js`）。玩家在新游戏可选、游戏中可随时拖滑杆调整 `GameState.aiAuthority`（默认 2，0–4）；多人对局中仅房主可调（WS `set_authority`）。
+
+| 档位 | AI 能做什么 | 实现 |
+|---|---|---|
+| **L0** | 纯氛围描述，不动任何数值/判定，越权请求直接拒绝 | `filterActionsByAuthority` 丢弃所有 mutating action |
+| **L1–L2** | 渐次放开基础数值/判定（damage/heal/物品/战斗等） | 按 `ACTION_AUTHORITY` 表逐档放开 |
+| **L3** | 编剧动作：`spawn_event` / `scale_difficulty` / 招募 / 调好感 | `_applyEngineActions`；`narrationCanMutate` 允许 narrate_* 期间改状态 |
+| **L4** | 创世动作：改写剧情/结局/世界 | `_applyWorldsmithActions`，带校验 + 快照 + `undoLastRewrite` + `_reachableSet` 可达性保护，**自动应用无需逐次确认** |
+
+每次调用时 `authorityPromptSection` 会把当前档位的边界说明注入提示词，让 AI 知道自己这一档能做什么、不能做什么。`DifficultyTracker.manualBias` 让档位同时影响难度基线。
 
 ---
 

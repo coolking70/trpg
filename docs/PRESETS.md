@@ -1,6 +1,6 @@
 # 预设清单
 
-本项目目前提供 4 个 bundled 完整预设，另有一个通过 MCP + API 从长篇小说/设定集生成的外部超大型剧本。bundled 预设会被 Vite 打进前端包；超大型剧本通过 `public/generated-presets.json` manifest 在新游戏界面加载，避免把 1MB+ JSON 直接塞进 `presets/` bundle。
+本项目目前提供 4 个 bundled 完整预设；另可用 **小说 → 预设三段确定性管线**（见下文）从长篇小说生成新剧本。bundled 预设会被 Vite 打进前端包；体积较大的生成剧本通过 `public/generated-presets.json` manifest 在新游戏界面加载，避免把大 JSON 直接塞进 `presets/` bundle。
 
 ## 题材对比
 
@@ -10,7 +10,9 @@
 | **最后的避难所** (`last-shelter-survival.json`) | 末日生存 | 39 | 42 | 12 (2 招募) | 10 | 3 | 90% / 0% 半血（3 人队） | 104 KB |
 | **青锋录** (`qingfeng-wuxia.json`) | 武侠 | 26 | 37 | 11 (2 招募) | 9 | 3 | 100% / 86% 半血（3 人队） | 86 KB |
 | **赛博朋克霓虹反叛** (`cyberpunk-neon-rebellion.json`) | 赛博朋克 | (已有，未审计) | - | - | - | - | - | 79 KB |
-| **MiMo 全文 API-only 超大剧本** (`public/generated/mimo-full-api-only-preset.json`) | 小说改编 / 多势力战争 | 298 | 305 | 87 | 0 | 21 | 非战斗主导 | 约 1.4 MB |
+| **苍冰星传说：十四岁的约定**（管线产物示例） | 小说改编（《魔弹之王与冻涟的雪姬》） | 17 | 17 | 5 | 20 | 多结局 | 0 必修 / 全可达 | — |
+
+> **关于旧的「超大型剧本」**：早期的 `novel_build_mega_preset`（读全文 + LLM 自由发挥直接吐 298 场景剧本）已废弃删除——分支与文本质量不可控。改用下文的三段确定性管线替代。
 
 ## 设计风格对比
 
@@ -35,13 +37,21 @@
 - **多周目价值**：3 个结局（青锋归位复仇 / 佛门一念放过 / 入魔同途）— 道德三选一
 - **特色机制**：秘籍道具系统（《九阳真经》《太极心诀》《独孤九剑》）；门派起源决定起始场景
 
-### MiMo 全文 API-only 超大剧本（外部 generated）
-- **基调**：长篇小说改编的多势力战争与人物群像，围绕布琉努、墨吉涅、吉斯塔特等势力展开
-- **规模**：298 场景 / 305 事件 / 87 NPC / 7 势力 / 21 结局
-- **生成方式**：MCP `novel_build_mega_preset` 读取全文并调用 OpenAI-compatible API 分批抽取，不再用本地启发式分析正文
-- **多起点**：角色创建 origin 决定所属势力和起点；hub 中其他势力起点已加门锁，避免身份串线
-- **战略层**：7 个势力均有 `strategicLayer`，包含城市/村庄/矿产/特产/人口/生产效率/内政外交和情报可见性，并通过战略汇报事件呈现
-- **质量修正**：已清理玩家可见文本中的 `AI/GM/API/改编节拍/提示词` 痕迹；当前仍建议继续用 MCP/API 做剧情视角与分支可玩性审稿
+## 小说 → 预设 三段确定性管线（推荐的小说改编方式）
+
+把「LLM 自由发挥」的风险**隔离在前两段**（产物可人工确认），第三段完全确定性、由成熟工具校验：
+
+| 段 | MCP 工具 | 用 LLM？ | 产物 | 说明 |
+|---|---|---|---|---|
+| **① 概括汇总** | `novel_digest` | 是 | `NovelDigest` | 本地分析正文 → LLM 概括出 logline/themes/world/characters/locations/plotBeats。`plotBeats` 只记叙事节拍，**不含游戏结构** |
+| **② 设计蓝图** | `blueprint_draft` + `blueprint_validate` | 是 | `PresetBlueprint` | LLM 据 digest 设计章节脊柱 + 战斗/支线/分支/结局拓展计划；按 `sizeClass`（small/medium/large）给出规模区间并 clamp。**人工可确认的中间产物** |
+| **③ 确定性构建** | `preset_build_from_blueprint` | **否** | 完整预设 | 把蓝图编译成预设：章节 hub + 支线分叉、主事件（分支→choices）、战斗事件（combatPlan→ecology 敌人 + 掉落）、终章多选结局。复用 `presetNormalize`/`resolveLootTable`/`assignPresetImages`/`validatePreset` |
+
+**第三段的平衡纪律**：按 tier 限制同场敌人数（trivial/common≤3、elite≤2、boss≤1）避免不可通关；过滤蓝图里的占位/无战斗 combatPlan 条目（`enemyConcept` 命中 `无战斗|纯叙事|none` 或为空时跳过）。
+
+**Responses-API**：`novel_digest`/`blueprint_draft` 可接 hy3 等只走 `/responses` 的模型——设 `apiStyle:'responses'` 或环境变量 `OPENAI_API_STYLE=responses`，或 baseUrl 以 `/responses` 结尾即自动切换。
+
+> 示例产物《苍冰星传说：十四岁的约定》由真实 5MB 小说《魔弹之王与冻涟的雪姬》跑通全管线生成，体检 0 必修、全节点可达、无不可胜 boss，并以 hy3-preview 作 GM 手动玩测通过。
 
 ## 跨题材机制复用验证
 
@@ -73,7 +83,7 @@
 ## 如何生成
 
 ```bash
-# 生成 + 验证（推荐流程）
+# bundled 预设：生成 + 验证（推荐流程）
 node scripts/generate-large-script.mjs --validate          # 永燃之冠
 node scripts/generate-survival-preset.mjs --validate       # 末日避难所
 node scripts/generate-wuxia-preset.mjs --validate          # 青锋录
@@ -82,6 +92,8 @@ node scripts/generate-wuxia-preset.mjs --validate          # 青锋录
 node scripts/combat-balance-check.mjs --preset presets/last-shelter-survival.json --include-companions
 ```
 
+小说改编则用三段管线的 MCP 工具（`novel_digest` → `blueprint_draft` → `preset_build_from_blueprint`），段③不调 LLM、可随时用既有 digest/blueprint 重新确定性构建。
+
 ## 玩家选择起始预设
 
 工具栏 **🔄 新游戏** 会按剧本规模分组显示：
@@ -89,6 +101,6 @@ node scripts/combat-balance-check.mjs --preset presets/last-shelter-survival.jso
 - 短篇剧本：默认主线、霓虹叛潮、随机主题等
 - 中型剧本：青锋录、最后的避难所
 - 大型剧本：永燃之冠
-- 超大型剧本：MiMo 全文 API-only 超大剧本
+- 小说改编：用三段管线生成的剧本（如《苍冰星传说》），可通过"📥 导入"加载
 
 也可以通过"📥 导入"按钮选择外部 JSON，或在编辑器内继续精修。**每个预设的存档和元进度按 presetId 隔离**，互不污染。

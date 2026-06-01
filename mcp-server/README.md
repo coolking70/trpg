@@ -34,7 +34,7 @@ npm run test:mcp
 }
 ```
 
-接入后 Claude 会看到 63 个工具，可以让它"写一份太空船难主题的剧本"，也可以读取本地长篇小说/设定集，生成多势力、分支结局的超大剧本骨架，并为敌人自动烘焙生态位掉落表。
+接入后 Claude 会看到 67 个工具，可以让它"写一份太空船难主题的剧本"，也可以通过**小说→预设三段管线**（概括 → 设计蓝图 → 确定性构建）把一部长篇小说改编成可玩剧本，并为敌人自动烘焙生态位掉落表。
 
 ## 暴露的工具一览
 
@@ -72,38 +72,38 @@ npm run test:mcp
 ### 批量原子（1）
 - `preset_batch_apply` — 一次执行多个操作。**全部成功才提交，任何一步失败自动回滚**。AI 写整套剧本的首选入口。
 
-### 小说 / 设定集导入（6）
+### 小说 / 设定集导入（9）
 - `novel_source_inspect` — 读取本地 `.txt/.md` 长文本，只统计体量、章节/片段和正文过滤结果；不会本地猜测人物、势力或剧情，也不会把原文写入预设。
-- `novel_build_mega_preset` — 从整部小说/设定集生成超大剧本骨架：多势力起点、章节节拍场景、分支事件、结局种子、NPC 候选和 `sourceMaterial` 元数据。该工具必须接入 OpenAI-compatible `/chat/completions` API；本地逻辑只负责读取、切章、过滤和装配 MCP 预设，不再用正则/关键词自动分析正文内容。
+- **小说→预设三段管线**（替代已删的 `novel_build_mega_preset`，把 LLM 自由发挥风险隔离在前两段）：
+  - `novel_digest`（段①·概括汇总）— 本地分析正文 + LLM 概括出 `NovelDigest`（logline/themes/world/characters/locations/plotBeats）。plotBeats 只记叙事节拍，**不含游戏结构**。
+  - `blueprint_draft` + `blueprint_validate`（段②·设计蓝图）— LLM 据 digest 设计 `PresetBlueprint`（章节脊柱 + 战斗/支线/分支/结局拓展计划），按 `sizeClass`（small/medium/large）给出规模区间并 clamp。蓝图是**人工可确认的中间产物**。
+  - `preset_build_from_blueprint`（段③·确定性构建）— **不调 LLM**，把蓝图编译成完整预设；复用 `presetNormalize`/`resolveLootTable`/`assignPresetImages`/`validatePreset`，并按 tier 限同场敌人数、过滤占位 combatPlan。
 - `preset_canonicalize_entities_api` — 对当前预设再调用一次 API，归一化跨批生成造成的势力 id/name 漂移，并修正 factions / origins / NPC tags / 声望变量 / 起点规则。
 - `preset_expand_routes_api` — 对当前预设调用 API，为不同势力起点补写专属支线场景、事件、NPC 和可选结局尾声，增强多起点玩法差异。
 - `preset_generate_strategic_layer_api` — 对当前预设调用 API，补充势力城市、村庄、矿产、特产、人口、生产效率、内政外交和情报可见性。小说改编模式会基于剧情反推并标注 `explicit/inferred`，原创模式会更主动补齐设定；生成内容通过 TRPG 的汇报、询问和有限命令事件呈现，不提供策略游戏式全局操作。
 - `preset_review_strategic_layer_api` — 对 `preset.strategicLayer` 调用 API 审稿/校正，检查误造或过度确定的地名、人口、产能、外交和职务权限；可只返回审稿报告，也可写回校正后的战略层并刷新起点战略汇报事件。
 
-示例：
+三段管线示例（依次调用，段③不调 LLM）：
 
-```json
-{
-  "sourcePath": "/Users/me/Downloads/novel.txt",
-  "title": "北境群像",
-  "inspectSections": 500,
-  "beatsPerSection": 3,
-  "factionLimit": 8,
-  "npcLimit": 60,
-  "mainSectionCount": 36,
-  "endingSectionCount": 10,
-  "confirm": true,
-  "useApi": true,
-  "baseUrl": "http://127.0.0.1:1234/v1",
-  "model": "qwen/qwen3.6-35b-a3b",
-  "maxApiSections": 6,
-  "canonicalizeEntities": true
-}
+```jsonc
+// 段① 概括汇总 → 产出 NovelDigest
+{ "tool": "novel_digest", "sourcePath": "/Users/me/Downloads/novel.txt",
+  "title": "北境群像", "baseUrl": "http://127.0.0.1:1234/v1",
+  "model": "qwen/qwen3.6-35b-a3b", "outPath": "/tmp/digest.json" }
+
+// 段② 设计蓝图 → 产出 PresetBlueprint（人工可确认后再进段③）
+{ "tool": "blueprint_draft", "digestPath": "/tmp/digest.json",
+  "sizeClass": "medium", "baseUrl": "http://127.0.0.1:1234/v1",
+  "model": "qwen/qwen3.6-35b-a3b", "outPath": "/tmp/blueprint.json" }
+
+// 段③ 确定性构建 → 当前预设即生成结果（可反复重建，无需重调 LLM）
+{ "tool": "preset_build_from_blueprint", "blueprintPath": "/tmp/blueprint.json",
+  "digestPath": "/tmp/digest.json", "assignImages": true, "confirm": true }
 ```
 
 API key 不会写入预设；可通过工具参数 `apiKey` 临时传入，或设置 `OPENAI_API_KEY` 环境变量。本地 127.0.0.1/localhost 端点可留空。
-`maxApiSections` 表示单批 API 分析窗口；工具会循环处理 `maxSections` 覆盖的全部正文片段。
-`canonicalizeEntities` 会在分批抽取完成后再调用一次 API，把跨批势力 id/name 漂移归一化。
+段①② 的 LLM 调用支持 `/chat/completions` 与 `/responses` 两种风格（设 `apiStyle:"responses"` 或环境变量 `OPENAI_API_STYLE=responses`，或 baseUrl 以 `/responses` 结尾即自动切换；hy3 等模型用此风格）。
+改进段③构建逻辑时，**先改 builder 再用既有 digest/blueprint 重新构建即可**，不必重调 LLM。
 
 战略设定补强示例：
 

@@ -920,7 +920,11 @@ async function buildPresetFromBlueprint(blueprint, digest) {
     hub.events.push(mainEvId);
 
     // 战斗计划 → 敌人(+ecology 掉落) + 战斗事件（主事件后触发）
+    // 过滤"占位/无战斗"条目：蓝图阶段 LLM 有时会在 combatPlan 里填"本章无战斗"之类的
+    // 语义占位文本，确定性 builder 不应据此生成空战斗（否则会出现敌人名为"无战斗，纯叙事场景"）。
     (ch.combatPlan || []).forEach((cp, cpi) => {
+      const concept = String(cp?.enemyConcept || '').trim();
+      if (!concept || /无战斗|无敌人|纯叙事|无战|不战斗|none|n\/?a/i.test(concept)) return;
       const tier = (cp.ecology?.tier && TIER_STATS[cp.ecology.tier]) ? cp.ecology.tier : 'common';
       const st = TIER_STATS[tier];
       // 平衡纪律：按 tier 限制同场敌人数，避免"多个 boss/精英同屏"造成不可通关

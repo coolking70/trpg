@@ -3,8 +3,8 @@
 > 基于 AI 的 TRPG 浏览器跑团游戏。AI 担任 Game Master，玩家通过卡牌、地图和文本交互推进冒险。
 
 [![CI](https://github.com/USERNAME/REPONAME/actions/workflows/ci.yml/badge.svg)](https://github.com/USERNAME/REPONAME/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-470%2F470-brightgreen)](./__tests__)
-[![MCP](https://img.shields.io/badge/mcp_tests-42%2F42-brightgreen)](./mcp-server)
+[![Tests](https://img.shields.io/badge/tests-545%2F545-brightgreen)](./__tests__)
+[![MCP](https://img.shields.io/badge/mcp_tests-44%2F44-brightgreen)](./mcp-server)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 支持完整的玩法闭环：探索 → 事件触发 → 战斗 → 角色成长 → 商店 → 主线推进，并配备完整的预设创作器，任何用户都能在浏览器中打造自己的故事。
@@ -22,11 +22,12 @@
 - **角色创建 4 轴** — race × origin × background × faith，玩家身份决定起始场景 + statBonus + AI 上下文
 - **NPC 系统** — schedule（按 storyTime 切换场景）/ affection / giftPreferences / 关系图（一级传播 + 死亡冲击）
 - **战斗深化** — buff/debuff/dot 持续状态 / AOE 多目标 / **Boss 阶段战 (phases)** / escape_combat 道具
+- **AI 参与度阶梯** — L0–L4 权限滑杆控制 AI GM 管多宽（L0 纯氛围 → L4 可改写剧情/结局），新游戏可选、游戏中可调、多人仅房主可调
 - **AI 叙事丰度可调** — 4 档 aiTier（none/light/standard/advanced）× preset.aiHooks 三态控制（always/never/optional）
-- **API 连通性测试** — 设置面板可直接发送极小 `chat/completions` 探测请求，显示成功/错误、模型、耗时和 token 用量
+- **API 连通性测试** — 设置面板可直接发送极小探测请求（支持 `/chat/completions` 与 `/responses` 两种风格），显示成功/错误、模型、耗时和 token 用量
 - **跨周目元进度** — 按 presetId 隔离存档 + 图鉴 + 解锁项；3 个题材并存互不污染
 - **可视化场景编辑器** — 浏览器内编辑节点 / 出边 / 门控 / 事件挂载 / vignettes（无需写 JSON）
-- **MCP 服务器** — 暴露 **63 个工具**让 Claude 等 MCP 客户端批量、精细化生成 TRPG 剧本（参见 [mcp-server/README](mcp-server/README.md)），含小说/设定集 API-only 导入、战略层生成/审稿、`combat_simulate` Monte Carlo 数值平衡审计和生态位掉落烘焙
+- **MCP 服务器** — 暴露 **67 个工具**让 Claude 等 MCP 客户端批量、精细化生成 TRPG 剧本（参见 [mcp-server/README](mcp-server/README.md)），含**小说→预设三段确定性管线**（`novel_digest`→`blueprint_draft`→`preset_build_from_blueprint`）、战略层生成/审稿、`combat_simulate` Monte Carlo 数值平衡审计和生态位掉落烘焙
 - **AI GM 接地** — 通过结构化地图上下文 + JSON 响应格式 + Action 白名单校验，避免 AI 编造内容
 - **本地权威状态 + 相关性检索** — AI 调用前注入当前场景、变量、队伍、战斗、相关事件/物品/势力摘要；大剧本不依赖把全文塞进上下文
 - **快速旅行** — 只允许前往已探索且当前路径连通的场景；耗时、路途损耗、随机遭遇由代码结算，GM 仅负责结果叙事
@@ -37,8 +38,8 @@
 - **AI 长期记忆** — 分层记忆系统（World Facts + Key Events + Recent Context），长时间游玩 AI 不"失忆"
 - **IndexedDB 大预设存储** — 100+ 节点剧本 (200+ KB JSON) 自动落 IDB，跨刷新无损
 - **门控与防剧透** — 锁定节点显示 🔒 ??? 而非真名，gated reason 永不暴露内部变量名 / 事件 ID
-- **剧本选择库** — 新游戏对话框按短篇/中型/大型/超大型分组，支持 bundled 题材、随机主题、本地保存剧本和外部生成剧本 manifest
-- **超大型剧本模式** — 已验证 298 场景 / 305 事件 / 87 NPC / 7 势力的小说改编剧本，含多势力起点、战略汇报、分支路线和 21 个结局
+- **剧本选择库** — 新游戏对话框按短篇/中型/大型分组，支持 bundled 题材、随机主题、本地保存剧本和外部生成剧本 manifest
+- **小说→预设三段管线** — 概括（`novel_digest`）→ 设计（`blueprint_draft`，人工可确认）→ 确定性构建（`preset_build_from_blueprint`，不调 LLM），把 LLM 自由发挥风险隔离在前两段；已用真实小说生成并通过真 GM 手动玩测
 - **结算流程** — 主线完成自动弹结算 modal（含统计 + 再来一局 / 继续探索 / 清空存档）
 - **可视化预设编辑器** — 浏览器内编辑世界/角色/敌人/物品/事件，导入导出 JSON
 - **多槽位存档** — 4 槽 + 自动存档 + 元数据预览（章节/HP/金币/回合）
@@ -83,7 +84,7 @@ src/
 ├─ utils/             # 工具函数（idGenerator、deepClone 等）
 └─ main.js            # TRPGApp 主入口
 
-__tests__/            # 470 个单元 + 集成测试
+__tests__/            # 545 个单元 + 集成测试
 docs/                 # 创作者手册 + AI 集成手册 + 接手指南
 ```
 
@@ -146,18 +147,18 @@ docs/                 # 创作者手册 + AI 集成手册 + 接手指南
 - 原生 ES Modules + [Vite](https://vitejs.dev/)
 - [Three.js](https://threejs.org/) (3D 骰子)
 - Canvas2D (场景图 + 浮动文字)
-- OpenAI 兼容 chat/completions API
+- OpenAI 兼容 API（`/chat/completions` 与 `/responses` 两种风格）
 - 无 React/Vue/框架依赖
 
 ## 测试
 
 ```bash
 npm test
-# 470 tests across 28 suites
+# 545 tests across 35 suites
 
 # MCP 工具端到端烟雾测试
 npm run test:mcp
-# 42 tests
+# 44 tests
 ```
 
 - Core: EventSystem / GameEngine / StateManager
@@ -177,12 +178,14 @@ npm run test:mcp
 ✅ **Phase 15**：覆盖率提升 + 诊断日志导出 + 玩家叙事全程留痕 + JSON 解析健壮性
 ✅ **Phase 16**：**场景图全量重构**（节点 + 边代替格子）+ 剧本选择库 + 主线结算 modal + 防剧透
 ✅ **真实 AI 端到端验证**（OpenAI 兼容 API，默认本地 Qwen GM 链路已通过 headless playtest）
-✅ **Phase 27**：MCP API-only 小说/设定集导入、超大型剧本外部 manifest、新游戏规模分组、API 连通性测试、叙事清空/身份连续性/玩家可见提示词清洗
+✅ **Phase 27**：MCP API-only 小说/设定集导入、外部 manifest、新游戏规模分组、API 连通性测试、叙事清空/身份连续性/玩家可见提示词清洗
 ✅ **Phase 28**：生态位 → 掉落表 → 图像显式结构化、动态掉落、MCP 生态工具、AI 本地权威状态/相关性检索、快速旅行代码结算
+✅ **Phase 29**：AI 参与度阶梯（L0–L4 权限模型）、L3 编剧 / L4 创世动作（校验+快照+可撤销）、设置/结算滑杆、多人房主独占调档
+✅ **Phase 30**：小说→预设三段确定性管线（`novel_digest`→`blueprint_draft`→`preset_build_from_blueprint`，废弃旧 mega-emit）、Responses-API 支持
 
 🔮 后续可能方向：
 - 编辑器加场景图可视化拖拽（节点 + 连线）
-- 对超大型剧本继续做 MCP/API 质量审稿：身份视角、分支可玩性、场景文本文学化、生态位/掉落表覆盖率
+- 三段管线在更多小说题材上验证、扩充蓝图设计与构建规则
 - 继续扩展像素素材库：更多地区、建筑状态、职业年龄变体、同类 NPC 多变体
 - 云存档同步（社区预设库）
 - 多语言（英文版预设）

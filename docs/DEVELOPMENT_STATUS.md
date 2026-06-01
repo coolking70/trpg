@@ -10,12 +10,12 @@
 
 - **是什么**：浏览器端 AI GM TRPG，AI 担任游戏主持人，玩家通过卡牌/**场景节点图**/文本推进冒险
 - **技术**：原生 ES Modules + Vite + Three.js (3D 骰子) + Canvas2D，无前端框架
-- **AI 接口**：OpenAI 兼容 `/chat/completions`，默认本地 `qwen/qwen3.6-35b-a3b @ http://127.0.0.1:1234/v1`
-- **当前状态**：Phase 16-28 完成、**Jest 470 / MCP 42 全过**、场景图作为主架构、生产就绪
-- **已验证规模**：bundled 最大 **101 节点 / 87 事件 / 22 NPC**；外部生成超大型剧本 **298 场景 / 305 事件 / 87 NPC / 7 势力 / 21 结局**
-- **核心能力栈**：场景图 + 快速旅行 + 角色创建 4 轴 + NPC schedule/关系图 + 故事时间 + 营地交互 + worldFlags AI 注入 + 隐藏路径 + IndexedDB + 跨周目元进度 + AI 本地权威状态/相关性检索 + AI Hooks gate(4 tier) + 战斗 buff/AOE/phases + escape_combat + 生态位动态掉落 + 数值 Monte Carlo 模拟器
-- **MCP 服务器**：63 个工具（小说/设定集 API-only 导入、路线扩写、战略层生成/审稿、preset_apply_template / scene_chain_create / combat_simulate / enemy_assign_ecology 等）
-- **下一步候选**：超大型剧本文本与分支质量继续审稿 / 编辑器加场景图可视化编辑 / 部署+真人玩测反馈 / 多语言 / 社区预设上传
+- **AI 接口**：OpenAI 兼容 `/chat/completions` **及 `/responses`**（hy3 等），默认本地 `qwen/qwen3.6-35b-a3b @ http://127.0.0.1:1234/v1`
+- **当前状态**：Phase 16-30 完成、**Jest 545 / MCP 44 全过**、场景图作为主架构、生产就绪
+- **已验证规模**：bundled 最大 **101 节点 / 87 事件 / 22 NPC**；小说→预设三段管线从真实 5MB 小说生成 **17 场景 / 17 事件 / 20 敌人 / 5 NPC（0 必修、全可达）**，已用真 GM 手动玩测通过
+- **核心能力栈**：场景图 + 快速旅行 + 角色创建 4 轴 + NPC schedule/关系图 + 故事时间 + 营地交互 + worldFlags AI 注入 + 隐藏路径 + IndexedDB + 跨周目元进度 + AI 本地权威状态/相关性检索 + AI Hooks gate(4 tier) + **AI 参与度阶梯(L0–L4 权限模型)** + 战斗 buff/AOE/phases + escape_combat + 生态位动态掉落 + 数值 Monte Carlo 模拟器 + **小说→预设三段确定性管线**
+- **MCP 服务器**：67 个工具（小说→预设三段管线 `novel_digest`/`blueprint_draft`/`blueprint_validate`/`preset_build_from_blueprint`、战略层生成/审稿、preset_apply_template / scene_chain_create / combat_simulate / enemy_assign_ecology 等）
+- **下一步候选**：编辑器加场景图可视化编辑 / 部署+真人玩测反馈 / 三段管线在更多小说题材上验证 / 多语言 / 社区预设上传
 
 ---
 
@@ -23,10 +23,10 @@
 
 ```bash
 npm install
-npm test          # 470 tests in 28 suites
+npm test          # 545 tests in 35 suites
 npm run dev       # localhost:3000
 npm run build     # 生产构建到 dist/
-npm run test:mcp  # 42 MCP smoke tests
+npm run test:mcp  # 44 MCP smoke tests
 
 # 数值平衡审计（5 秒，无 AI 调用）
 node scripts/combat-balance-check.mjs --preset presets/eternal-crown-stress-test.json --party-by-chapter
@@ -84,6 +84,8 @@ git show <commit> --stat
 | `d3a1f42` | **Phase 26E 新游戏流程 🧹** | 修 4 bug：清空存档不彻底/presets 不在选项/跳默认/误报恢复；用 import.meta.glob 自动列出 bundled 预设 |
 | _(unreleased)_ | **Phase 27 超大型剧本与 API 体验** | MCP API-only 小说/设定集导入 + 本地 Qwen 验证；外部 generated manifest；新游戏按规模分组；API 连通性测试按钮；修新游戏叙事残留、身份串线、AI 空叙事无反馈；清洗超大型剧本玩家可见提示词痕迹 |
 | _(unreleased)_ | **Phase 28 生态位/掉落/上下文** | `src/data/ecology.js` 生态位词表 + 掉落池；CombatSystem 动态掉落；MCP 生态工具；AIGMEngine 注入本地权威状态 + ContextRetriever 相关事件/物品/势力；SceneSystem 快速旅行 |
+| _(unreleased)_ | **Phase 29 AI 参与度阶梯 🎚️** | `src/systems/AIAuthority.js` L0–L4 权限模型 + `filterActionsByAuthority`/`narrationCanMutate`/`authorityPromptSection`；L3 编剧动作 / L4 创世动作（校验+快照+`undoLastRewrite`）；`GameState.aiAuthority`；SettingsModal/EndgameModal 滑杆；WS `set_authority` 仅房主可调 |
+| _(unreleased)_ | **Phase 30 小说→预设三段管线 📖→🎲** | 删 `novel_build_mega_preset`；新增 `novel_digest`（概括）→ `blueprint_draft`/`blueprint_validate`（设计，人工可确认）→ `preset_build_from_blueprint`（确定性构建，复用 normalize/ecology/validate）；`callOpenAICompatible`+`AIGMEngine` 支持 `/responses` 风格；tier 限敌人数 + 过滤占位 combatPlan |
 
 详细 bug 见第 5 章。
 
@@ -350,6 +352,28 @@ ecology = { biome: 'swamp', creatureType: 'beast', tier: 'elite' }
 - MCP 侧用 `enemy_assign_ecology` 写 ecology、烘焙掉落、把缺失物品从 `assetLibrary` 物料化进 `preset.items`，并给敌人配图
 
 以后扩展新地区时，先补 `LOOT_POOLS` 和素材库，再让生成器使用同一套 `biome / creatureType / tier` 词表。
+
+### 4.14 AI 参与度阶梯（Phase 29）
+
+`src/systems/AIAuthority.js` 是「AI GM 能管多宽」的单一权限源，与 Action 白名单互补：
+
+- `GameState.aiAuthority`（0–4，默认 2）是玩家可调的档位，新游戏可选、游戏中拖滑杆改、多人仅房主可调
+- `filterActionsByAuthority(actions, level)` 在 `_validateAction` 之后再按档位过滤；`ACTION_AUTHORITY` 表声明每个 action 需要的最低档
+- L3 编剧动作走 `AIGMEngine._applyEngineActions`，L4 创世动作走 `_applyWorldsmithActions`（校验 + 快照 + `undoLastRewrite` + `_reachableSet` 保护可达性）
+- `narrationCanMutate(level)`：仅 ≥L3 允许 narrate_* 期间改状态
+- `authorityPromptSection(level)` 每次调用注入档位边界说明；`DifficultyTracker.manualBias` 让档位影响难度基线
+
+新增需要 AI 改状态的能力时，**务必在 `ACTION_AUTHORITY` 表登记最低档位**，否则会被低档位玩家的过滤闸丢弃。
+
+### 4.15 小说 → 预设 三段确定性管线（Phase 30）
+
+废弃旧 `novel_build_mega_preset`（读全文 LLM 自由发挥，质量不可控）。新管线把 LLM 风险隔离在前两段（产物可人工确认），第三段确定性：
+
+1. **`novel_digest`（段①）** — 本地分析 + LLM 概括 → `NovelDigest`（只记叙事节拍，无游戏结构）
+2. **`blueprint_draft` / `blueprint_validate`（段②）** — LLM 据 digest 设计 `PresetBlueprint`，按 `sizeClass` clamp 规模；人工可确认
+3. **`preset_build_from_blueprint`（段③）** — **不调 LLM**，编译成预设，复用 `presetNormalize`/`resolveLootTable`/`assignPresetImages`/`validatePreset`
+
+段③纪律：按 tier 限同场敌人数（trivial/common≤3、elite≤2、boss≤1）、过滤占位/无战斗 combatPlan（`enemyConcept` 命中 `无战斗|纯叙事|none` 或为空时跳过）。改进段③时**先改 builder 再用既有 digest/blueprint 重新确定性构建即可**，不必重调 LLM。LLM 调用支持 `/chat/completions` 与 `/responses` 两种风格（见 AI_INTEGRATION 二）。
 
 ---
 
