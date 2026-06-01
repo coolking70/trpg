@@ -70,6 +70,32 @@ describe('GameSession 权威对局核心', () => {
     expect(p.alive).toBe(true);
   });
 
+  test('交互式战斗：暂停在我方回合、getState 给出战斗选项、逐回合提交直至结束', async () => {
+    Math.random = () => 0.3;
+    const isess = new GameSession({ combatMode: 'interactive' });
+    isess.loadPreset(DEFAULT_PRESET);
+    await isess.kickoff();
+    isess._startCombat(['enemy_001']);
+    await isess._enterCombat(); // 交互模式 → 推进到我方回合后暂停
+
+    let s = isess.getState();
+    expect(s.situation).toBe('combat');
+    expect(s.combat).toBeTruthy();
+    expect(s.combat.awaitingInput).toBe(true);
+    expect(s.combat.currentActor).toBeTruthy();
+    // 战斗选项应含至少一个 attack
+    expect(s.options.some(o => o.type === 'combat' && o.actionType === 'attack')).toBe(true);
+
+    // 逐回合普攻直到战斗结束（安全上限）
+    let guard = 0;
+    while (isess.gameState.activeCombat && guard++ < 40) {
+      const enemy = isess.gameState.activeCombat.enemies.find(e => e.stats.hpCurrent > 0);
+      s = await isess.applyAction({ type: 'combat', actionType: 'attack', targetId: enemy?.id });
+    }
+    expect(isess.gameState.activeCombat).toBeFalsy(); // 战斗已结束，未死循环
+    isess.destroy();
+  }, 30000);
+
   test('战斗自动结算：start_combat 后 _autoResolveCombat 清空 activeCombat 且不挂起', async () => {
     Math.random = () => 0.3; // 非退化值（避免 DiceSystem 快排在全 0 下退化）
     // 起一场对弱敌的战斗（主角满血 vs 低血敌人）

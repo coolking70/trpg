@@ -70,15 +70,26 @@ function renderState(state) {
   if (gm.length) lines.push('\n— 最近叙述 —\n' + gm.map(n => n.text).join('\n'));
   if (state.event) lines.push(`\n— 事件: ${state.event.name} —`);
 
+  if (state.situation === 'combat' && state.combat) {
+    const cb = state.combat;
+    lines.push(`\n⚔ 战斗 第${cb.round}回合 | 敌人: ${cb.enemies.map(e => `${e.name}(${e.hp}/${e.hpMax})`).join(', ') || '（无）'}`);
+    if (cb.awaitingInput && cb.currentActor) {
+      lines.push(`轮到 ${cb.currentActor.name}（HP${cb.currentActor.hp} MP${cb.currentActor.mp}）行动：`);
+    } else {
+      lines.push('（自动结算中）');
+    }
+  }
+
   lines.push('\n— 可选动作 —');
-  if (state.situation === 'combat') {
-    lines.push('（战斗进行中，由核心自动结算；下次状态会是战斗结果）');
+  if (state.situation === 'combat' && (!state.combat?.awaitingInput || state.options.length === 0)) {
+    lines.push('（战斗自动结算中，下次状态会推进）');
   } else if (state.options.length === 0) {
     lines.push('（无）');
   } else {
     for (const o of state.options) {
       if (o.type === 'choose') lines.push(`  [${o.n}] 选择: ${o.text}  → session_act {type:"choose", n:${o.n}}`);
       else if (o.type === 'travel') lines.push(`  [${o.n}] 前往: ${o.text} → ${o.sceneName}${o.visited ? '(去过)' : ''}  → session_act {type:"travel", n:${o.n}}`);
+      else if (o.type === 'combat') lines.push(`  [${o.n}] ${o.text}  → session_act {n:${o.n}}`);
     }
   }
   if (state.usableItems.length) {
@@ -92,16 +103,18 @@ function renderState(state) {
 /** 解析 session_act 入参为 GameSession action（支持用序号 n 选项）*/
 function resolveAction(args) {
   const state = session.getState();
-  // 用序号 n 选项时，从当前 options 解析
-  if (args.n !== undefined && (!args.type || args.type === 'choose' || args.type === 'travel')) {
+  // 用序号 n 选项时，从当前 options 解析（choose/travel/combat 通用）
+  if (args.n !== undefined && !args.type) {
     const opt = (state.options || []).find(o => o.n === args.n);
     if (!opt) throw new Error(`序号 ${args.n} 不在当前可选动作内`);
     if (opt.type === 'choose') return { type: 'choose', choiceId: opt.choiceId };
     if (opt.type === 'travel') return { type: 'travel', sceneId: opt.sceneId };
+    if (opt.type === 'combat') return { type: 'combat', actionType: opt.actionType, targetId: opt.targetId, abilityId: opt.abilityId };
   }
   if (args.type === 'choose') return { type: 'choose', choiceId: args.choiceId };
   if (args.type === 'travel') return { type: 'travel', sceneId: args.sceneId };
   if (args.type === 'use_item') return { type: 'use_item', itemId: args.itemId, ownerId: args.ownerId, targetId: args.targetId };
+  if (args.type === 'combat') return { type: 'combat', actionType: args.actionType || 'attack', targetId: args.targetId, abilityId: args.abilityId };
   if (args.type === 'say') return { type: 'say', text: args.text };
   throw new Error('无法解析动作：请提供 {type 与对应字段} 或 {n}');
 }
@@ -132,6 +145,7 @@ const tools = {
         endpoint: z.string().optional(), apiKey: z.string().optional(), model: z.string().optional(),
         apiStyle: z.enum(['chat', 'responses']).optional().describe('chat=/chat/completions(默认); responses=/responses(如 hy3-preview)'),
       }).optional().describe('AI GM 接入；省略则用环境变量，再省略则走 localFallback'),
+      combatMode: z.enum(['auto', 'interactive']).default('interactive').describe('interactive=逐回合下战斗指令(默认,适合席位/AI); auto=启发式自动结算'),
     },
     handler: async (args) => {
       let presetData = DEFAULT_PRESET;
@@ -143,7 +157,7 @@ const tools = {
         label = path.basename(resolved);
       }
       if (session) { try { session.destroy(); } catch { /* */ } }
-      session = new GameSession();
+      session = new GameSession({ combatMode: args.combatMode || 'interactive' });
       // AI 配置：显式 > 环境变量 > 不配置
       const endpoint = args.ai?.endpoint || process.env.OPENAI_BASE_URL;
       const model = args.ai?.model || process.env.OPENAI_MODEL;

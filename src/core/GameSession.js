@@ -59,6 +59,9 @@ export class GameSession {
    */
   constructor(opts = {}) {
     this.decideCombat = opts.decideCombat || defaultDecideCombat;
+    // 战斗模式：'auto'（默认，启发式自动结算，给脚本/纯测试）
+    //          'interactive'（轮到我方角色时暂停，由 getState/applyAction 逐回合下指令，给真人/AI 席）
+    this.combatMode = opts.combatMode || 'auto';
     this.engine = new GameEngine();
     this.eventSystem = new EventSystem();
     this.gameState = null;
@@ -259,7 +262,7 @@ export class GameSession {
     } catch { /* */ }
 
     this._checkMainQuestComplete(card);
-    if (this.gameState.activeCombat) await this._autoResolveCombat();
+    if (this.gameState.activeCombat) await this._enterCombat();
     await this._scanAfter(TRIGGER_MOMENTS.EVENT_COMPLETE);
     return { ok: true, outcome };
   }
@@ -402,7 +405,7 @@ export class GameSession {
     if (!this.gameState.activeEvent && !this.gameState.activeCombat) {
       await this._scanAfter(TRIGGER_MOMENTS.SCENE_ENTER);
     }
-    if (this.gameState.activeCombat) await this._autoResolveCombat();
+    if (this.gameState.activeCombat) await this._enterCombat();
     return { ok: true };
   }
 
@@ -424,6 +427,27 @@ export class GameSession {
     combat.startCombat(this.gameState, enemies);
   }
 
+  /** 战斗启动后的处理：按 combatMode 分派 */
+  async _enterCombat() {
+    if (this.combatMode === 'interactive') return this._advanceCombatToActor();
+    return this._autoResolveCombat();
+  }
+
+  /** 敌人回合：攻击第一个存活我方。返回 nextTurn 结果 */
+  _runEnemyTurn(slot, actor) {
+    const combat = this.sys('CombatSystem');
+    const target = this.gameState.activeCharacters.find(ch => ch.stats.hpCurrent > 0);
+    if (target) {
+      const r = combat.performAttack(this.gameState, slot.id, target.id);
+      if (r && r.success) {
+        const dmg = r.finalDamage ?? r.damage;
+        this.gameState.addNarrative('system', `${actor.name} 攻击 ${target.name}，造成 ${dmg} 点伤害${r.targetDefeated ? '，倒下！' : '。'}`);
+      }
+    }
+    return combat.nextTurn(this.gameState);
+  }
+
+  /** 自动结算（auto 模式 / 脚本测试）：我方用 decideCombat 启发式 */
   async _autoResolveCombat() {
     const combat = this.sys('CombatSystem');
     let safety = 0;
@@ -439,23 +463,66 @@ export class GameSession {
         continue;
       }
 
+      let r;
       if (slot.type === 'enemy') {
-        const target = this.gameState.activeCharacters.find(ch => ch.stats.hpCurrent > 0);
-        if (target) {
-          const r = combat.performAttack(this.gameState, slot.id, target.id);
-          if (r && r.success) {
-            const dmg = r.finalDamage ?? r.damage;
-            this.gameState.addNarrative('system', `${actor.name} 攻击 ${target.name}，造成 ${dmg} 点伤害${r.targetDefeated ? '，倒下！' : '。'}`);
-          }
-        }
+        r = this._runEnemyTurn(slot, actor);
       } else {
         const decision = this.decideCombat(actor, c.enemies) || { actionType: 'attack', targetId: (c.enemies.find(e => e.stats.hpCurrent > 0) || {}).id };
         this._applyCombatAction(actor, decision);
+        r = combat.nextTurn(this.gameState);
       }
-
-      const r = combat.nextTurn(this.gameState);
       if (r.combatEnd) { await this._endCombat(r); return; }
     }
+  }
+
+  /**
+   * 交互模式：自动跑敌人/死亡跳过，直到轮到一名存活我方角色（暂停等指令），或战斗结束。
+   * 返回时若 activeCombat 仍在，则 turnOrder[currentActorIndex] 必是一名存活我方角色。
+   */
+  async _advanceCombatToActor() {
+    const combat = this.sys('CombatSystem');
+    let safety = 0;
+    while (this.gameState.activeCombat && safety++ < 100) {
+      const c = this.gameState.activeCombat;
+      const slot = c.turnOrder[c.currentActorIndex];
+      if (!slot) break;
+      const actor = combat.findCombatant(this.gameState, slot.id);
+
+      if (!actor || actor.stats.hpCurrent <= 0) {
+        const r = combat.nextTurn(this.gameState);
+        if (r.combatEnd) { await this._endCombat(r); return; }
+        continue;
+      }
+      if (slot.type === 'enemy') {
+        const r = this._runEnemyTurn(slot, actor);
+        if (r.combatEnd) { await this._endCombat(r); return; }
+        continue;
+      }
+      // 轮到存活我方角色 → 暂停，等 applyAction 下指令
+      return;
+    }
+  }
+
+  /** 交互模式：当前应行动的我方角色（无则 null） */
+  _currentCombatActor() {
+    const c = this.gameState.activeCombat;
+    if (!c) return null;
+    const slot = c.turnOrder[c.currentActorIndex];
+    if (!slot || slot.type !== 'character') return null;
+    const actor = this.sys('CombatSystem').findCombatant(this.gameState, slot.id);
+    return (actor && actor.stats.hpCurrent > 0) ? actor : null;
+  }
+
+  /** 交互模式：提交一名我方角色的战斗指令，然后推进到下一个我方回合或战斗结束 */
+  async submitCombatAction(action) {
+    if (!this.gameState.activeCombat) return { ok: false, reason: '当前不在战斗中' };
+    const actor = this._currentCombatActor();
+    if (!actor) return { ok: false, reason: '当前不是我方角色的回合' };
+    this._applyCombatAction(actor, action || { actionType: 'attack' });
+    const r = this.sys('CombatSystem').nextTurn(this.gameState);
+    if (r.combatEnd) { await this._endCombat(r); return { ok: true, combatEnd: true }; }
+    await this._advanceCombatToActor();
+    return { ok: true, combatEnd: !this.gameState.activeCombat };
   }
 
   _applyCombatAction(actor, action) {
@@ -541,6 +608,14 @@ export class GameSession {
       case 'use_item':
         this.useItem(action.itemId, action.ownerId || null, action.targetId || null);
         break;
+      case 'combat':
+        // 交互式战斗：提交当前我方角色的指令（attack/ability），推进到下一我方回合或战斗结束
+        await this.submitCombatAction({
+          actionType: action.actionType || 'attack',
+          targetId: action.targetId,
+          abilityId: action.abilityId,
+        });
+        break;
       case 'say':
         if (action.text) this.gameState.addNarrative('player', action.text);
         break;
@@ -583,8 +658,33 @@ export class GameSession {
     let situation = 'travel';
     let event = null;
     let options = [];
+    let combat = null;
     if (gs.activeCombat) {
       situation = 'combat';
+      const c = gs.activeCombat;
+      const livingEnemies = (c.enemies || []).filter(e => e.stats.hpCurrent > 0)
+        .map(e => ({ id: e.id, name: e.name, hp: e.stats.hpCurrent, hpMax: e.stats.hp }));
+      const actor = this._currentCombatActor();
+      combat = {
+        round: c.round,
+        enemies: livingEnemies,
+        currentActor: actor ? { id: actor.id, name: actor.name, hp: actor.stats.hpCurrent, mp: actor.stats.mpCurrent ?? 0 } : null,
+        awaitingInput: !!actor, // 交互模式下轮到我方角色 → 等指令
+      };
+      // 仅交互模式 + 轮到我方角色时给出可选战斗动作
+      if (actor && this.combatMode === 'interactive') {
+        let n = 0;
+        const mp = actor.stats.mpCurrent ?? 0;
+        for (const en of livingEnemies) {
+          options.push({ n: ++n, type: 'combat', actionType: 'attack', targetId: en.id, text: `攻击 ${en.name}` });
+        }
+        const target = livingEnemies[0];
+        for (const ab of (actor.abilities || [])) {
+          const cost = ab.cost?.mp ?? ab.mpCost ?? 0;
+          if (ab.type === 'passive' || cost > mp) continue;
+          options.push({ n: ++n, type: 'combat', actionType: 'ability', abilityId: ab.id, targetId: target?.id, text: `技能「${ab.name || ab.id}」(mp${cost})${target ? ` → ${target.name}` : ''}` });
+        }
+      }
     } else if (gs.activeEvent) {
       situation = 'event';
       event = {
@@ -616,7 +716,8 @@ export class GameSession {
       partyWiped: gs.activeCharacters.every(c => c.stats.hpCurrent <= 0),
       scene: current ? { id: current.id, name: current.name, type: current.type, tags: current.tags || [] } : null,
       event,
-      options: situation === 'combat' ? [] : options.filter(o => o.type !== 'travel' || o.reachable),
+      combat,
+      options: situation === 'combat' ? options : options.filter(o => o.type !== 'travel' || o.reachable),
       party,
       usableItems,
       narrative,
