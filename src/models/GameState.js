@@ -41,9 +41,14 @@ export class GameState {
     // Phase 19A — 玩家创建时选定的标签（race/origin/background/faith + 自定义）
     this.playerTags = [...(data.playerTags || [])];
 
-    // Phase 26B — AI tier 控制叙事丰度
+    // Phase 26B — AI tier 控制叙事丰度（频率轴）
     //   'none'/'light'/'standard'/'advanced'；与 preset.aiHooks 协同决定何时调 AI
     this.aiTier = data.aiTier || 'standard';
+    // AI 参与度/主导度（权限轴，0–4）：控制 AI 操作的 GM 能改动什么。见 systems/AIAuthority.js
+    //   0 旁白 / 1 主持 / 2 裁决(默认) / 3 编剧 / 4 创世；可新游戏选择、游戏中实时调整、随存档持久化
+    this.aiAuthority = (data.aiAuthority !== undefined && data.aiAuthority !== null)
+      ? Math.max(0, Math.min(4, Math.round(Number(data.aiAuthority)) || 0))
+      : 2;
 
     // Phase 19C — 故事时间（与游戏回合 turnNumber 独立）
     this.storyTime = {
@@ -260,6 +265,7 @@ export class GameState {
       discoveredConnections: this.discoveredConnections,
       // Phase 26B
       aiTier: this.aiTier,
+      aiAuthority: this.aiAuthority,
     });
   }
 

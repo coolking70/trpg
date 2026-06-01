@@ -536,6 +536,11 @@ class TRPGApp {
         this.gameState.aiTier = cfg.aiTier;
         es.publish('game:stateChanged', { gameState: this.gameState });
       }
+      // AI 参与度（权限）滑条实时同步到 gameState —— 改后下次 AI 调用即生效，无需重启
+      if (cfg.aiAuthority !== undefined && cfg.aiAuthority !== null && this.gameState) {
+        this.gameState.aiAuthority = Math.max(0, Math.min(4, Math.round(Number(cfg.aiAuthority)) || 0));
+        es.publish('game:stateChanged', { gameState: this.gameState });
+      }
     });
 
     // ---- Token 统计请求/重置（SettingsModal 解耦用） ----
@@ -808,6 +813,10 @@ class TRPGApp {
         // Phase 26B — AI tier
         if (config.aiTier && this.gameState) {
           this.gameState.aiTier = config.aiTier;
+        }
+        // AI 参与度（权限）
+        if (config.aiAuthority !== undefined && config.aiAuthority !== null && this.gameState) {
+          this.gameState.aiAuthority = Math.max(0, Math.min(4, Math.round(Number(config.aiAuthority)) || 0));
         }
       } catch (e) {
         // 忽略

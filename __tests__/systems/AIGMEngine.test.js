@@ -276,6 +276,74 @@ describe('AIGMEngine narrate_* 不重复应用 AI 的状态变更 actions（Phas
   });
 });
 
+describe('AIGMEngine AI 参与度（权限）门', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  function mkAI(actions) {
+    const ai = new AIGMEngine();
+    ai.setAPIConfig({ endpoint: 'https://example.test/v1', apiKey: 'ok', model: 'm' });
+    ai._cachedSystemPrompt = 'system';
+    ai._callAIOnce = jest.fn().mockResolvedValue(JSON.stringify({ narrative: '裁决。', actions, diceRequests: [] }));
+    return ai;
+  }
+  function gsAt(level) {
+    return {
+      aiAuthority: level,
+      mapState: { playerPosition: { x: 0, y: 0 } },
+      activeCharacters: [{ id: 'pc', name: '主角', inventory: ['item_iron_sword'], stats: { hp: 100, hpCurrent: 100 } }],
+      variables: {},
+      addNarrative: jest.fn(),
+    };
+  }
+
+  test('L0 旁白：player_action 自由输入的 add_item 被拦（婉拒，不落地）', async () => {
+    const ai = mkAI([{ type: 'add_item', itemId: 'item_gold' }]);
+    const gs = gsAt(0);
+    await ai.processGameAction('player_action', { text: '凭空变出金币' }, gs);
+    expect(gs.activeCharacters[0].inventory).toEqual(['item_iron_sword']);
+  });
+
+  test('L2 裁决：add_item 放行，但 start_combat（需 L3）被拦', async () => {
+    const ai = mkAI([{ type: 'add_item', itemId: 'item_gold' }, { type: 'start_combat', enemyIds: ['e1'] }]);
+    const gs = gsAt(2);
+    await ai.processGameAction('player_action', { text: '搜索并挑衅' }, gs);
+    expect(gs.activeCharacters[0].inventory).toContain('item_gold'); // L2 放行
+    // start_combat 需 L3，被拦 → 不应进入战斗（无 activeCombat 字段被设）
+    expect(gs.activeCombat).toBeUndefined();
+  });
+
+  test('L3 编剧：start_combat 放行', async () => {
+    const ai = mkAI([{ type: 'start_combat', enemyIds: ['e1'] }]);
+    const gs = gsAt(3);
+    const spy = jest.spyOn(ai.responseParser, 'applyActions');
+    await ai.processGameAction('player_action', { text: '挑衅守卫' }, gs);
+    // applyActions 收到了 start_combat（放行）
+    const passed = spy.mock.calls.flatMap(c => c[0]).map(a => a.type);
+    expect(passed).toContain('start_combat');
+  });
+
+  test('L3 编剧：narrate_event 里 AI 注入的 set_variable 现在会落地（叙述也可改状态）', async () => {
+    const ai = mkAI([{ type: 'set_variable', target: 'omen_seen', value: true }]);
+    const gs = gsAt(3);
+    await ai.processGameAction('narrate_event', { event: { id: 'ev', name: '异象' } }, gs);
+    expect(gs.variables.omen_seen).toBe(true);
+  });
+
+  test('L2 默认档：narrate_event 里 AI 的 set_variable 仍不落地（保留重复落地修复）', async () => {
+    const ai = mkAI([{ type: 'set_variable', target: 'cheat', value: true }]);
+    const gs = gsAt(2);
+    await ai.processGameAction('narrate_event', { event: { id: 'ev', name: '事件' } }, gs);
+    expect(gs.variables.cheat).toBeUndefined();
+  });
+
+  test('权限说明被注入 system 消息', () => {
+    const ai = new AIGMEngine();
+    ai._cachedSystemPrompt = 'sys';
+    const msgs = ai._buildMessages('当前消息', { authorityHint: '【你的 GM 权限】当前：L0 旁白。' });
+    expect(msgs.some(m => m.role === 'system' && m.content.includes('L0 旁白'))).toBe(true);
+  });
+});
+
 describe('AIGMEngine prompt context', () => {
   test('把本地权威状态和检索上下文注入 system 消息，当前 user 消息保持最后', () => {
     const ai = new AIGMEngine();

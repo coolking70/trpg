@@ -8,6 +8,9 @@ import { GameSystem } from '../core/GameEngine.js';
 import { AIPromptBuilder } from './AIPromptBuilder.js';
 import { AIResponseParser } from './AIResponseParser.js';
 import { estimateTokens } from '../utils/tokenEstimator.js';
+import {
+  clampAuthority, filterActionsByAuthority, narrationCanMutate, authorityPromptSection,
+} from './AIAuthority.js';
 
 export class AIGMEngine extends GameSystem {
   constructor() {
@@ -384,6 +387,8 @@ export class AIGMEngine extends GameSystem {
       const antiRepetition = NARRATE_ACTIONS.has(actionType)
         ? this._buildAntiRepetitionHint(gameState)
         : null;
+      // AI 参与度（权限）说明：每次实时读 gameState.aiAuthority（滑条可中途调整），让 AI 自我约束
+      const authorityHint = authorityPromptSection(clampAuthority(gameState?.aiAuthority));
 
       // 构建消息列表
       const messages = this._buildMessages(userMessage, {
@@ -391,6 +396,7 @@ export class AIGMEngine extends GameSystem {
         retrievedContext,
         localStateDigest,
         antiRepetition,
+        authorityHint,
       });
 
       // 调用AI API
@@ -403,13 +409,30 @@ export class AIGMEngine extends GameSystem {
       // Phase 28 修复：narrate_* 是「纯叙事」调用 —— 状态由预设 outcome.effects / 引擎权威应用过，
       //   此处不能再让 AI 的响应 actions 改状态，否则会重复加物品/改变量（如祭司给的太阳坠被加两次）。
       //   只有 player_action（玩家自由输入，AI 担任裁决者）才允许 AI 的 actions 真正落地。
+      // —— AI 参与度（权限）门：按 gameState.aiAuthority 决定 AI 返回的动作能否落地 ——
+      // narrate_* 是脚本化叙述流（预设/引擎已是权威）：仅 ≥L3 编剧才允许 AI 在其中注入改状态动作，
+      //   否则一律不落地（保留"祭司太阳坠被加两次"那类重复落地 bug 的修复）。
+      // 其余流（如 player_action 自由输入裁决）：按权限表过滤后落地（L0/L1 → 全拦=婉拒，L2 有界，…）。
       const NARRATION_ONLY = new Set([
         'narrate_event', 'narrate_scene_arrival', 'narrate_combat',
         'narrate_npc_dialogue', 'narrate_vignette', 'narrate_world_ripple',
       ]);
-      if (parsed.actions.length > 0 && !NARRATION_ONLY.has(actionType)) {
-        const cardManager = this.gameEngine ? this.gameEngine.getSystem('CardManager') : null;
-        this.responseParser.applyActions(parsed.actions, gameState, this.eventSystem, cardManager);
+      const authLevel = clampAuthority(gameState?.aiAuthority);
+      const isScriptedNarration = NARRATION_ONLY.has(actionType);
+      const mayMutateHere = isScriptedNarration ? narrationCanMutate(authLevel) : true;
+      if (parsed.actions.length > 0 && mayMutateHere) {
+        const { allowed, blocked } = filterActionsByAuthority(parsed.actions, authLevel);
+        if (blocked.length > 0 && this.eventSystem) {
+          this.eventSystem.publish('ai:authority_blocked', { level: authLevel, blocked: blocked.map(a => a.type) });
+        }
+        if (allowed.length > 0) {
+          const cardManager = this.gameEngine ? this.gameEngine.getSystem('CardManager') : null;
+          this.responseParser.applyActions(allowed, gameState, this.eventSystem, cardManager);
+        }
+      } else if (parsed.actions.length > 0 && this.eventSystem) {
+        this.eventSystem.publish('ai:authority_blocked', {
+          level: authLevel, blocked: parsed.actions.map(a => a.type), reason: 'narration-only-at-level',
+        });
       }
 
       // 处理骰子请求
@@ -666,9 +689,15 @@ export class AIGMEngine extends GameSystem {
     const retrievedContext = promptContext?.retrievedContext || '';
     const localStateDigest = promptContext?.localStateDigest || '';
     const antiRepetition = promptContext?.antiRepetition || '';
+    const authorityHint = promptContext?.authorityHint || '';
 
     // 系统提示词（preset 派生，静态缓存）
     messages.push({ role: 'system', content: this._cachedSystemPrompt });
+
+    // AI 参与度（权限）说明：非缓存，随 gameState.aiAuthority 实时变化
+    if (authorityHint) {
+      messages.push({ role: 'system', content: authorityHint });
+    }
 
     if (localStateDigest) {
       messages.push({ role: 'system', content: `【本地权威状态】\n${localStateDigest}` });
