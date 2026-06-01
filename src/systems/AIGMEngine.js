@@ -494,22 +494,35 @@ export class AIGMEngine extends GameSystem {
 
   async _callAIOnce(messages) {
     const endpoint = this._normalizeEndpoint(this.apiConfig.endpoint);
-    const url = `${endpoint}/chat/completions`;
-
-    const body = {
-      model: this.apiConfig.model,
-      messages,
-      max_tokens: this.apiConfig.maxTokens,
-      temperature: this.apiConfig.temperature,
-    };
-
     const isLocalEndpoint = this._isLocalEndpoint(endpoint);
-    if (isLocalEndpoint) {
-      body.reasoning_effort = 'none';
-    }
+    const useResponses = this._useResponsesApi(endpoint);
+    const base = endpoint.replace(/\/(responses|chat\/completions)$/, '');
+    const url = useResponses ? `${base}/responses` : `${base}/chat/completions`;
 
-    if (this.apiConfig.useStructuredOutput && !isLocalEndpoint) {
-      body.response_format = { type: 'json_object' };
+    let body;
+    if (useResponses) {
+      // OpenAI Responses API（如 hy3-preview）：system → instructions，其余对话 → input 文本
+      const { instructions, input } = this._messagesToResponsesInput(messages);
+      body = {
+        model: this.apiConfig.model,
+        instructions,
+        input,
+        stream: false,
+        max_output_tokens: this.apiConfig.maxTokens,
+      };
+    } else {
+      body = {
+        model: this.apiConfig.model,
+        messages,
+        max_tokens: this.apiConfig.maxTokens,
+        temperature: this.apiConfig.temperature,
+      };
+      if (isLocalEndpoint) {
+        body.reasoning_effort = 'none';
+      }
+      if (this.apiConfig.useStructuredOutput && !isLocalEndpoint) {
+        body.response_format = { type: 'json_object' };
+      }
     }
 
     const controller = new AbortController();
@@ -540,17 +553,58 @@ export class AIGMEngine extends GameSystem {
 
     const data = await response.json();
 
-    if (data.choices && data.choices[0]) {
-      const content = data.choices[0].message.content;
+    const content = useResponses
+      ? this._extractResponsesText(data)
+      : data.choices?.[0]?.message?.content;
+
+    if (content != null && content !== '') {
       // Token 用量：优先使用 API 返回的 usage（精确），否则本地估算
-      const usage = data.usage;
-      const promptTokens = usage?.prompt_tokens ?? estimateTokens(messages.map(m => m.content || '').join('\n'));
-      const completionTokens = usage?.completion_tokens ?? estimateTokens(content);
+      // Chat 用 prompt/completion_tokens；Responses 用 input/output_tokens
+      const usage = data.usage || {};
+      const promptTokens = usage.prompt_tokens ?? usage.input_tokens
+        ?? estimateTokens(messages.map(m => m.content || '').join('\n'));
+      const completionTokens = usage.completion_tokens ?? usage.output_tokens
+        ?? estimateTokens(content);
       this._recordTokenUsage(promptTokens, completionTokens);
       return content;
     }
 
     throw new Error('无法解析API响应');
+  }
+
+  /** 是否走 OpenAI Responses API（/responses + instructions/input），否则用 Chat Completions */
+  _useResponsesApi(endpoint) {
+    const style = this.apiConfig.apiStyle;
+    if (style === 'responses') return true;
+    if (style === 'chat') return false;
+    return /\/responses\/?$/.test(String(endpoint || '')); // 自动探测：endpoint 直指 /responses
+  }
+
+  /** messages[] → Responses API 的 {instructions(系统), input(对话文本)} */
+  _messagesToResponsesInput(messages) {
+    const sys = messages.filter(m => m.role === 'system').map(m => m.content).filter(Boolean);
+    const rest = messages.filter(m => m.role !== 'system');
+    const instructions = sys.join('\n\n');
+    const input = rest.length === 1
+      ? rest[0].content
+      : rest.map(m => `${m.role === 'assistant' ? 'GM' : '玩家'}: ${m.content}`).join('\n\n');
+    return { instructions, input: input || '(开始)' };
+  }
+
+  /** 从 Responses API 返回里抽取文本（output_text / output[].content[].text / 兼容 chat） */
+  _extractResponsesText(data) {
+    if (typeof data.output_text === 'string' && data.output_text) return data.output_text;
+    if (Array.isArray(data.output)) {
+      const parts = [];
+      for (const item of data.output) {
+        for (const c of (item.content || [])) {
+          if (typeof c.text === 'string') parts.push(c.text);
+        }
+      }
+      if (parts.length) return parts.join('');
+    }
+    if (data.choices?.[0]?.message?.content) return data.choices[0].message.content;
+    return '';
   }
 
   /**

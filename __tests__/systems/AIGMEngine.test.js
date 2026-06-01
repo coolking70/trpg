@@ -357,3 +357,54 @@ describe('AIGMEngine 复读缓解 _buildAntiRepetitionHint（Phase 29）', () =>
     expect(ai._buildAntiRepetitionHint(gs)).toBeNull();
   });
 });
+
+describe('AIGMEngine Responses-API 适配（hy3-preview 等 /responses 端点）', () => {
+  test('_useResponsesApi: 显式 apiStyle 优先，否则按 endpoint 探测', () => {
+    const ai = new AIGMEngine();
+    ai.apiConfig.apiStyle = 'responses';
+    expect(ai._useResponsesApi('https://x/v1')).toBe(true);
+    ai.apiConfig.apiStyle = 'chat';
+    expect(ai._useResponsesApi('https://x/v1/responses')).toBe(false);
+    ai.apiConfig.apiStyle = undefined;
+    expect(ai._useResponsesApi('https://x/v1/responses')).toBe(true);
+    expect(ai._useResponsesApi('https://x/v1')).toBe(false);
+  });
+
+  test('_messagesToResponsesInput: system→instructions，单条 user→input 原文', () => {
+    const ai = new AIGMEngine();
+    const r = ai._messagesToResponsesInput([
+      { role: 'system', content: '你是GM' },
+      { role: 'system', content: '本地权威状态：HP100' },
+      { role: 'user', content: '玩家推门' },
+    ]);
+    expect(r.instructions).toContain('你是GM');
+    expect(r.instructions).toContain('本地权威状态');
+    expect(r.input).toBe('玩家推门');
+  });
+
+  test('_messagesToResponsesInput: 多轮对话→转录文本', () => {
+    const ai = new AIGMEngine();
+    const r = ai._messagesToResponsesInput([
+      { role: 'system', content: 'sys' },
+      { role: 'user', content: 'u1' },
+      { role: 'assistant', content: 'a1' },
+      { role: 'user', content: 'u2' },
+    ]);
+    expect(r.input).toContain('玩家: u1');
+    expect(r.input).toContain('GM: a1');
+    expect(r.input).toContain('玩家: u2');
+  });
+
+  test('_extractResponsesText: 解析 output[].content[].text（hy3 实际结构）', () => {
+    const ai = new AIGMEngine();
+    const data = { output: [{ type: 'message', content: [{ type: 'output_text', text: '厚重的石门缓缓开启。' }] }] };
+    expect(ai._extractResponsesText(data)).toBe('厚重的石门缓缓开启。');
+  });
+
+  test('_extractResponsesText: 优先 output_text，兜底兼容 chat 结构', () => {
+    const ai = new AIGMEngine();
+    expect(ai._extractResponsesText({ output_text: '直接文本' })).toBe('直接文本');
+    expect(ai._extractResponsesText({ choices: [{ message: { content: 'chat兜底' } }] })).toBe('chat兜底');
+    expect(ai._extractResponsesText({})).toBe('');
+  });
+});

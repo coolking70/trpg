@@ -130,6 +130,7 @@ const tools = {
       }).optional().describe('角色创建选择（仅当预设含 startingOptions 时生效）'),
       ai: z.object({
         endpoint: z.string().optional(), apiKey: z.string().optional(), model: z.string().optional(),
+        apiStyle: z.enum(['chat', 'responses']).optional().describe('chat=/chat/completions(默认); responses=/responses(如 hy3-preview)'),
       }).optional().describe('AI GM 接入；省略则用环境变量，再省略则走 localFallback'),
     },
     handler: async (args) => {
@@ -152,6 +153,9 @@ const tools = {
           apiKey: args.ai?.apiKey || process.env.OPENAI_API_KEY || '',
           maxTokens: 3200, temperature: 0.7,
           timeoutMs: parseInt(process.env.OPENAI_TIMEOUT_MS || '60000', 10),
+          // responses 风格端点(如 hy3-preview)：ai.apiStyle 或 OPENAI_API_STYLE=responses
+          ...((args.ai?.apiStyle || process.env.OPENAI_API_STYLE)
+            ? { apiStyle: args.ai?.apiStyle || process.env.OPENAI_API_STYLE } : {}),
         });
       }
       try {

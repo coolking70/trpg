@@ -477,12 +477,20 @@ class ScriptedPlayer extends BasePlayer {
       };
     }
 
+    // 低血先用药
     if (context.lowestHpPct < 40 && context.usableItems.length > 0) {
       const item = context.usableItems[0];
       return {
         reasoning: '低血量用药',
         action: { type: 'use_item', itemId: item.itemId, targetId: item.owner },
       };
+    }
+
+    // 没药又低血、或有队员倒地 → 休整回满（避免直扑高阶目标被团灭）。
+    // 这是上轮 deepseek 玩测的发现：scripted 一路莽冲、主角倒地仍硬推 → party-wiped。
+    const someoneDown = (context.chars || []).some(c => c.alive === false);
+    if ((context.lowestHpPct < 50 && context.usableItems.length === 0) || someoneDown) {
+      return { reasoning: someoneDown ? '有人倒地，休整' : '低血无药，休整', action: { type: 'manual_rest' } };
     }
 
     if (context.nextObjective?.inScene?.length) {
@@ -838,6 +846,8 @@ async function main() {
     maxTokens: 3200,
     temperature: 0.7,
     timeoutMs: API_TIMEOUT_MS,
+    // OPENAI_API_STYLE=responses → 走 /responses(如 hy3-preview)；省略=自动(/chat/completions 或按 endpoint 探测)
+    ...(process.env.OPENAI_API_STYLE ? { apiStyle: process.env.OPENAI_API_STYLE } : {}),
   });
 
   // 加载自定义预设
