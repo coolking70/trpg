@@ -8,9 +8,12 @@
  * CLI 入口在 mcp-server/game-ws-server.mjs（薄包装，负责命令行与 Node 全局 shim）。
  *
  * 协议（JSON over WS）：
- *   服务器→客户端：{type:'welcome',seatId,state} / {type:'state',state,by?} / {type:'error',message}
- *   客户端→服务器：{type:'action',action} / {type:'sync'}
- * 席位模型（v1）：共享控制（hot-seat），任一席位都可行动；席位→角色绑定留待后续。
+ *   服务器→客户端：{type:'welcome',seatId,isHost,state} / {type:'state',state,by?}
+ *                  / {type:'authority',level,by} / {type:'host',isHost,seatId} / {type:'error',message}
+ *   客户端→服务器：{type:'action',action} / {type:'sync'} / {type:'set_authority',level}
+ * 席位模型（v1）：共享控制（hot-seat），任一席位都可行动；
+ *   房主席位（首个连接者）独占"调 AI 参与度"权限（set_authority），离线则提升下一席位。
+ *   席位→角色绑定留待后续。
  */
 
 import { WebSocketServer } from 'ws';
@@ -74,14 +77,43 @@ export async function startGameWsServer(opts = {}) {
     }
   }
 
+  // 房主席位：首个连接者；只有房主能调 AI 参与度。房主断线则提升下一个在线席位。
+  let hostSeatId = null;
+  const clamp4 = (v) => Math.max(0, Math.min(4, Math.round(Number(v)) || 0));
+
   wss.on('connection', (ws) => {
     const seatId = `seat_${++seatSeq}`;
-    send(ws, { type: 'welcome', seatId, state: session.getState() });
+    ws._seatId = seatId;
+    if (!hostSeatId) hostSeatId = seatId;
+    send(ws, { type: 'welcome', seatId, isHost: seatId === hostSeatId, state: session.getState() });
+
     ws.on('message', (raw) => {
       let msg;
       try { msg = JSON.parse(raw.toString()); } catch { return send(ws, { type: 'error', message: '非法 JSON' }); }
-      if (msg.type === 'action') handleAction(seatId, msg.action || {});
-      else if (msg.type === 'sync') send(ws, { type: 'state', state: session.getState() });
+      if (msg.type === 'action') {
+        handleAction(seatId, msg.action || {});
+      } else if (msg.type === 'sync') {
+        send(ws, { type: 'state', state: session.getState() });
+      } else if (msg.type === 'set_authority') {
+        // 席位权限校验：仅房主可调参与度
+        if (seatId !== hostSeatId) {
+          return send(ws, { type: 'error', message: '只有房主可以调整 AI 参与度' });
+        }
+        const lv = clamp4(msg.level);
+        session.gameState.aiAuthority = lv;
+        broadcast({ type: 'authority', level: lv, by: seatId });
+        broadcast({ type: 'state', state: session.getState(), by: seatId });
+      }
+    });
+
+    ws.on('close', () => {
+      // 房主离开 → 提升下一个在线席位为房主并通知
+      if (ws._seatId === hostSeatId) {
+        hostSeatId = null;
+        for (const c of wss.clients) {
+          if (c.readyState === c.OPEN && c._seatId) { hostSeatId = c._seatId; send(c, { type: 'host', isHost: true, seatId: c._seatId }); break; }
+        }
+      }
     });
   });
 

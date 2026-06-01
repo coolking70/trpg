@@ -77,6 +77,52 @@ describe('WebSocket 实时多人对局服务器', () => {
     a.close(); b.close();
   }, 30000);
 
+  // 房主相关用例需要干净的服务器（hostSeatId 是服务器级状态），各自独立起一个
+  test('首个连接者是房主，后续席位非房主', async () => {
+    const s = await startGameWsServer({ port: 0 });
+    try {
+      const a = await connect(s.port);
+      expect((await nextMessage(a, m => m.type === 'welcome')).isHost).toBe(true);
+      const b = await connect(s.port);
+      expect((await nextMessage(b, m => m.type === 'welcome')).isHost).toBe(false);
+      a.close(); b.close();
+    } finally { await s.close(); }
+  }, 30000);
+
+  test('房主 set_authority → gameState.aiAuthority 改变并广播给所有席位', async () => {
+    const s = await startGameWsServer({ port: 0 });
+    try {
+      const a = await connect(s.port); // 房主
+      await nextMessage(a, m => m.type === 'welcome');
+      const b = await connect(s.port);
+      await nextMessage(b, m => m.type === 'welcome');
+      const aAuth = nextMessage(a, m => m.type === 'authority');
+      const bAuth = nextMessage(b, m => m.type === 'authority');
+      a.send(JSON.stringify({ type: 'set_authority', level: 4 }));
+      const [ma, mb] = await Promise.all([aAuth, bAuth]);
+      expect(ma.level).toBe(4);
+      expect(mb.level).toBe(4); // 非房主也收到广播
+      expect(s.session.gameState.aiAuthority).toBe(4);
+      a.close(); b.close();
+    } finally { await s.close(); }
+  }, 30000);
+
+  test('非房主 set_authority → 被拒，参与度不变', async () => {
+    const s = await startGameWsServer({ port: 0 });
+    try {
+      const a = await connect(s.port); // 房主
+      await nextMessage(a, m => m.type === 'welcome');
+      const b = await connect(s.port); // 非房主
+      await nextMessage(b, m => m.type === 'welcome');
+      s.session.gameState.aiAuthority = 2;
+      const bErr = nextMessage(b, m => m.type === 'error');
+      b.send(JSON.stringify({ type: 'set_authority', level: 4 }));
+      expect((await bErr).message).toContain('房主');
+      expect(s.session.gameState.aiAuthority).toBe(2); // 未改
+      a.close(); b.close();
+    } finally { await s.close(); }
+  }, 30000);
+
   test('sync 主动拉取当前状态', async () => {
     const a = await connect(srv.port);
     await nextMessage(a, m => m.type === 'welcome');
