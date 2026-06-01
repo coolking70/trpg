@@ -971,6 +971,34 @@ async function main() {
     } finally { await mock.close(); }
   });
 
+  await test('preset_build_from_blueprint 段③：①→②→③ 确定性生成 + analyze 0 必修', async () => {
+    const mock = await startMockChatCompletionsServer();
+    try {
+      const api = { apiKey: 'test-key', baseUrl: mock.baseUrl, model: 'mock-model' };
+      const digestPath = path.join(os.tmpdir(), `trpg-mcp-digest3-${Date.now()}.json`);
+      const bpPath = path.join(os.tmpdir(), `trpg-mcp-blueprint3-${Date.now()}.json`);
+      await client.call('novel_digest', { sourcePath: NOVEL_TMP, title: '星门 N3 试作', maxSections: 3, inspectSections: 20, maxApiSections: 1, ...api, outPath: digestPath });
+      await client.call('blueprint_draft', { digestPath, sizeClass: 'small', ...api, outPath: bpPath });
+
+      // 段③：确定性生成（不调 LLM）
+      const r = JSON.parse(await client.call('preset_build_from_blueprint', { blueprintPath: bpPath, digestPath, assignImages: true, confirm: true }));
+      assert(r.validation === 'ok', `生成应通过引用校验，实际：${JSON.stringify(r.validation)}`);
+      assert(r.counts.scenes >= 2 && r.counts.events >= 1, `应有场景与事件，实际：${JSON.stringify(r.counts)}`);
+      assert(r.counts.enemies >= 1, '应有敌人(战斗拓展)');
+      assert(r.counts.characters >= 1, '应有主角');
+
+      // 当前预设即生成结果 → 体检应 0 必修
+      const an = await client.call('preset_analyze');
+      assert(/0 必修/.test(an), `analyze 应 0 必修，实际尾部：${an.slice(-160)}`);
+      // 终章应有 ending 事件 + game_complete 路径
+      const exported = JSON.parse(await client.call('preset_export'));
+      assert(exported.events.some(e => (e.tags || []).includes('ending')), '应含结局事件');
+      assert(exported.startingSceneId, '应有 startingSceneId（presetNormalize 补全）');
+
+      fs.unlinkSync(digestPath); fs.unlinkSync(bpPath);
+    } finally { await mock.close(); }
+  });
+
   // 战略层工具链：在"成熟管线产物形态"的 faction 型预设上验证（替代已删的 mega setup）。
   // fixture = 正常结构（factions + scene_start_<id> + startingOptions.origins），不依赖小说源。
   await test('strategic-layer 工具链（canonicalize/expand/strategic/review）在管线型 fixture 上工作', async () => {

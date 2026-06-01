@@ -837,6 +837,144 @@ function validateBlueprint(bp, digest = null) {
   return errs;
 }
 
+// ============================================================
+// 小说→剧本 段③：消费 Blueprint + Digest 确定性生成完整剧本（不接触小说原文）
+//   逐章建线性场景图(主轴)+支线分叉 / 主事件(分支→选项) / 战斗(敌人+ecology掉落) / 终章多结局。
+//   生成后由调用方串 presetNormalize / ensureLootItems / assignImages / validatePreset。
+// ============================================================
+const TIER_STATS = {
+  trivial: { hp: 25,  attack: 6,  defense: 3,  difficulty: 'easy' },
+  common:  { hp: 45,  attack: 10, defense: 6,  difficulty: 'normal' },
+  elite:   { hp: 90,  attack: 16, defense: 10, difficulty: 'hard' },
+  boss:    { hp: 160, attack: 18, defense: 14, difficulty: 'boss' },  // atk 偏保守（参考平衡过的永燃之冠）
+};
+
+async function buildPresetFromBlueprint(blueprint, digest) {
+  const { resolveLootTable } = await import('../src/data/ecology.js');
+  const p = createEmptyPreset();
+  p.name = blueprint.title || digest.title || '未命名';
+  p.lore = { worldName: digest.world?.name || '', era: '', background: digest.world?.setting || '', rules: '', gmStyle: blueprint.tone || digest.tone || '' };
+  p.factions = (digest.world?.factions || []).map(f => ({ id: f.id, name: f.name, description: f.description || '', reputationVar: `rep_${f.id}`, tags: [`faction:${f.id}`] }));
+
+  // 角色：主角 + companions（按 characterMapping）
+  const roleOf = new Map((blueprint.characterMapping || []).map(m => [m.digestCharId, m.gameRole]));
+  const dchars = digest.characters || [];
+  const protag = dchars.find(c => roleOf.get(c.id) === 'protagonist') || dchars[0] || { name: '主角', description: '' };
+  p.characters.push({
+    id: 'char_player', name: protag.name || '主角', title: protag.title || '', description: protag.description || '',
+    stats: { hp: 120, hpCurrent: 120, mp: 30, mpCurrent: 30, attack: 12, defense: 6, speed: 10, luck: 1 },
+    abilities: [{ id: 'ability_strike', name: '强袭', type: 'active', cost: { mp: 0 }, effect: { damage: { formula: 'attack+1d8' } }, cooldown: 0 }],
+    inventory: [],
+  });
+  for (const c of dchars) {
+    if (roleOf.get(c.id) === 'companion') {
+      p.characters.push({
+        id: `char_${c.id}`, name: c.name, title: c.title || '', description: c.description || '',
+        stats: { hp: 80, hpCurrent: 80, mp: 20, mpCurrent: 20, attack: 9, defense: 5, speed: 11, luck: 1 },
+        abilities: [{ id: `ab_${c.id}_slash`, name: '斩击', type: 'active', cost: { mp: 0 }, effect: { damage: { formula: 'attack+1d6' } }, cooldown: 0 }],
+        _isCompanion: true,
+      });
+    }
+  }
+
+  // 逐章：线性主轴 hub + 支线分叉
+  const chapters = blueprint.chapters || [];
+  let prevHub = null;
+  chapters.forEach((ch, ci) => {
+    const hubId = `scene_${ch.id}`;
+    const hub = {
+      id: hubId, name: ch.title || `第${ci + 1}章`, type: ch.hubScene?.type || 'settlement', icon: '🏛',
+      coords: { x: ci * 3, y: 0 }, tags: ['main', ci === 0 ? 'spawn' : ''].filter(Boolean),
+      description: ch.mainEvent?.summary || ch.title || '', connections: [], events: [], vignettes: [],
+    };
+    p.scenes.push(hub);
+    if (prevHub) {
+      prevHub.connections.push({ to: hubId, label: `前往 ${hub.name}` });
+      hub.connections.push({ to: prevHub.id, label: `返回 ${prevHub.name}` });
+    }
+
+    // 主事件：分支点 → 选项（effect=set_variable，给 flag 后续可用）
+    const mainEvId = `ev_${ch.id}_main`;
+    let choices = (ch.branchPoints?.[0]?.options || []).map((o, oi) => ({
+      id: `choice_${oi + 1}`, text: o.label || `选项${oi + 1}`,
+      outcomes: [{ probability: 1.0, text: o.effectHint || '', effects: [{ type: 'set_variable', target: `${ch.id}_choice_${oi + 1}`, value: true }] }],
+    }));
+    if (choices.length === 0) choices = [{ id: 'continue', text: '继续', outcomes: [{ probability: 1.0, text: '', effects: [] }] }];
+    p.events.push({
+      id: mainEvId, type: 'event', name: ch.mainEvent?.title || ch.title || `第${ci + 1}章`,
+      description: ch.mainEvent?.summary || '', eventType: 'story', inScene: [hubId],
+      trigger: { type: 'composite', condition: { inScene: [hubId], excludeCompletedEvents: [mainEvId], probability: 1.0 } },
+      priority: 100, repeatable: false, tags: ['main'], choices,
+    });
+    hub.events.push(mainEvId);
+
+    // 战斗计划 → 敌人(+ecology 掉落) + 战斗事件（主事件后触发）
+    (ch.combatPlan || []).forEach((cp, cpi) => {
+      const tier = (cp.ecology?.tier && TIER_STATS[cp.ecology.tier]) ? cp.ecology.tier : 'common';
+      const st = TIER_STATS[tier];
+      const count = Math.max(1, Math.min(3, Number(cp.count) || 1));
+      const ids = [];
+      for (let k = 0; k < count; k++) {
+        const eid = `enemy_${ch.id}_${cpi + 1}_${k + 1}`;
+        const ecology = { biome: cp.ecology?.biome || 'plains', creatureType: cp.ecology?.creatureType || 'beast', tier };
+        p.enemies.push({
+          id: eid, name: cp.enemyConcept || '敌人', description: '',
+          stats: { hp: st.hp, hpCurrent: st.hp, mp: 0, mpCurrent: 0, attack: st.attack, defense: st.defense, magicDefense: Math.round(st.defense * 0.6), speed: 8, luck: 1 },
+          difficulty: st.difficulty, tags: ['enemy', tier], ecology, lootMode: 'static', lootTable: resolveLootTable({ ...ecology }) || [],
+        });
+        ids.push(eid);
+      }
+      const combatEvId = `ev_${ch.id}_combat_${cpi + 1}`;
+      p.events.push({
+        id: combatEvId, type: 'event', name: `遭遇：${cp.enemyConcept || '敌人'}`,
+        description: `${cp.enemyConcept || '敌人'} 拦住去路。`, eventType: 'encounter', inScene: [hubId],
+        trigger: { type: 'composite', condition: { inScene: [hubId], requireCompletedEvents: [mainEvId], excludeCompletedEvents: [combatEvId], probability: 1.0 } },
+        priority: 90 - cpi, repeatable: false, tags: ['combat'],
+        choices: [{ id: 'fight', text: '应战', outcomes: [{ probability: 1.0, text: '', effects: [{ type: 'start_combat', enemyIds: ids }] }] }],
+      });
+      hub.events.push(combatEvId);
+    });
+
+    // 支线内容 → 支线场景（从 hub 双向分叉）
+    (ch.sideContent || []).forEach((sc, si) => {
+      const sid = `scene_${ch.id}_side${si + 1}`;
+      const sscene = {
+        id: sid, name: sc.name || `支线${si + 1}`,
+        type: (sc.type === 'inn' || sc.type === 'shop') ? 'settlement' : 'vignette', icon: '✦',
+        coords: { x: ci * 3, y: si + 1 }, tags: sc.type === 'inn' ? ['safe', 'rest'] : [],
+        description: sc.summary || '', connections: [{ to: hubId, label: `返回 ${hub.name}` }], events: [], vignettes: [sc.summary || ''],
+      };
+      hub.connections.push({ to: sid, label: `前往 ${sscene.name}` });
+      p.scenes.push(sscene);
+    });
+
+    prevHub = hub;
+  });
+
+  // 终章：最后 hub 后接终章场景，单事件多选项 = 多结局（玩家可选）
+  if (prevHub) {
+    const finaleId = 'scene_finale';
+    const finale = { id: finaleId, name: '终章', type: 'ending', icon: '🌅', coords: { x: chapters.length * 3, y: 0 }, tags: ['main', 'ending_room'], description: '一切走向终局。', connections: [], events: [], vignettes: [] };
+    prevHub.connections.push({ to: finaleId, label: '走向终局' });
+    p.scenes.push(finale);
+    const endings = (blueprint.endings && blueprint.endings.length) ? blueprint.endings : [{ id: 'default', name: '终幕', summary: '故事落下帷幕。', tone: '' }];
+    const finaleEvId = 'ev_finale';
+    p.events.push({
+      id: finaleEvId, type: 'event', name: '结局判定', description: '你的旅程在此抵达终点。', eventType: 'story',
+      inScene: [finaleId], trigger: { type: 'composite', condition: { inScene: [finaleId], excludeCompletedEvents: [finaleEvId], probability: 1.0 } },
+      priority: 100, repeatable: false, tags: ['ending', 'main'],
+      choices: endings.map((e, ei) => ({
+        id: e.id || `ending_${ei + 1}`, text: e.name || `结局${ei + 1}`,
+        outcomes: [{ probability: 1.0, text: e.summary || '', effects: [{ type: 'set_variable', target: 'game_complete', value: true }, { type: 'set_variable', target: `ending_${e.id || ei + 1}`, value: true }] }],
+      })),
+    });
+    finale.events.push(finaleEvId);
+  }
+
+  p.startingSceneId = p.scenes[0]?.id || null;
+  return p;
+}
+
 
 function replaceFactionTags(tags, mapFactionId) {
   return (tags || []).map(tag => {
@@ -3609,6 +3747,71 @@ tools.blueprint_validate = {
       }, null, 2));
     } catch (e) {
       return err(`校验失败：${e.message}`);
+    }
+  },
+};
+
+// 小说→剧本 段③：确定性生成（消费 Blueprint+Digest，串成熟工具链；不接触小说原文、不调 LLM）
+tools.preset_build_from_blueprint = {
+  title: '小说→剧本 段③：从 Blueprint 确定性生成完整剧本',
+  description: `读取（人工确认过的）PresetBlueprint + NovelDigest → **确定性**生成完整可玩剧本：
+逐章建线性场景图(主轴)+支线分叉、主事件(分支→选项)、战斗(敌人+ecology 掉落)、终章多结局。
+随后串成熟工具链：presetNormalize 补全 → 物料化掉落物 → assignImages 配图 → 引用完整性校验。
+**全程不调 LLM、不读小说原文**，把"LLM 自由发挥"的风险隔离在前两段。生成结果设为当前预设，可继续用 preset_analyze / combat_simulate 体检。`,
+  schema: {
+    blueprintPath: z.string(),
+    digestPath: z.string(),
+    assignImages: z.boolean().default(true),
+    save: z.boolean().default(false),
+    confirm: z.boolean().default(false).describe('当前预设非空时必须 true 才覆盖'),
+  },
+  handler: async (args) => {
+    try {
+      if ((preset.scenes.length > 0 || preset.events.length > 0) && !args.confirm) {
+        return err(`当前预设非空（${preset.scenes.length} 场景 / ${preset.events.length} 事件）。请传 confirm=true 才覆盖。`);
+      }
+      const blueprint = JSON.parse(fs.readFileSync(args.blueprintPath, 'utf-8'));
+      const digest = JSON.parse(fs.readFileSync(args.digestPath, 'utf-8'));
+      const bErrs = validateBlueprint(blueprint, digest);
+      if (bErrs.length) return err(`blueprint 不合法：${bErrs.join('；')}`);
+
+      // 1) 确定性生成
+      preset = await buildPresetFromBlueprint(blueprint, digest);
+
+      // 2) presetNormalize 补全（startingSceneId/坐标/物品 effect/报告悬空变量等）
+      const { normalizePreset } = await import('../src/data/presetNormalize.js');
+      const norm = normalizePreset(preset, {});
+      preset = { ...createEmptyPreset(), ...norm.preset };
+
+      // 3) 物料化敌人掉落物到 preset.items（含图）
+      const lootIds = [...new Set(preset.enemies.flatMap(e => (e.lootTable || []).map(l => l.itemId)))];
+      const materialized = lootIds.length ? await ensureLootItems(lootIds) : [];
+
+      // 4) 配图
+      let imgNote = '';
+      if (args.assignImages) {
+        const { assignPresetImages } = await import('../src/data/assetLibrary.js');
+        preset = assignPresetImages(preset);
+        imgNote = '\n✓ 已按 assetLibrary 配图';
+      }
+
+      dirty = true;
+      if (args.save) saveToDisk();
+
+      // 5) 引用完整性校验
+      const vErrs = validatePreset();
+      return ok(JSON.stringify({
+        message: '已从 Blueprint 确定性生成剧本' + (imgNote ? '（已配图）' : ''),
+        name: preset.name,
+        counts: { scenes: preset.scenes.length, events: preset.events.length, enemies: preset.enemies.length, items: preset.items.length, characters: preset.characters.length },
+        materializedLoot: materialized.length,
+        imagesAssigned: !!imgNote,
+        normalizeReport: { startingSceneId: norm.report.startingSceneId, itemsFilled: norm.report.itemsFilled.length, enemyLoot: norm.report.enemyLoot.length, variablesSetButUnused: norm.report.variablesSetButUnused },
+        validation: vErrs.length ? vErrs : 'ok',
+        next: '可用 preset_analyze 体检、combat_simulate 验证数值平衡' + (args.save ? '；已落盘' : '；未落盘(dirty)'),
+      }, null, 2));
+    } catch (e) {
+      return err(`从 Blueprint 生成失败：${e.message}`);
     }
   },
 };
