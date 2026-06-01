@@ -429,13 +429,17 @@ export class AIGMEngine extends GameSystem {
           // 引擎级动作（spawn_event / scale_difficulty / recruit_companion / change_affection）
           // 需要引擎系统支撑，由 _applyEngineActions 处理；其余简单状态改动交 responseParser。
           const ENGINE_ACTION_TYPES = new Set(['spawn_event', 'scale_difficulty', 'recruit_companion', 'change_affection']);
+          // L4 创世：改写世界结构/结局，走带护栏（校验/快照/可撤销/审计）的专用通道
+          const WORLDSMITH_ACTION_TYPES = new Set(['rewrite_scene', 'edit_connection', 'author_ending', 'override_outcome', 'kill_npc']);
+          const worldsmithActions = allowed.filter(a => WORLDSMITH_ACTION_TYPES.has(a.type));
           const engineActions = allowed.filter(a => ENGINE_ACTION_TYPES.has(a.type));
-          const parserActions = allowed.filter(a => !ENGINE_ACTION_TYPES.has(a.type));
+          const parserActions = allowed.filter(a => !ENGINE_ACTION_TYPES.has(a.type) && !WORLDSMITH_ACTION_TYPES.has(a.type));
           if (parserActions.length > 0) {
             const cardManager = this.gameEngine ? this.gameEngine.getSystem('CardManager') : null;
             this.responseParser.applyActions(parserActions, gameState, this.eventSystem, cardManager);
           }
           if (engineActions.length > 0) this._applyEngineActions(engineActions, gameState, authLevel);
+          if (worldsmithActions.length > 0) this._applyWorldsmithActions(worldsmithActions, gameState);
         }
       } else if (parsed.actions.length > 0 && this.eventSystem) {
         this.eventSystem.publish('ai:authority_blocked', {
@@ -993,6 +997,137 @@ export class AIGMEngine extends GameSystem {
     gameState.activeEvent = card;
     gameState.addNarrative('system', `（一个新的转折出现了：${ev.name}）`);
     if (this.eventSystem) this.eventSystem.publish('ai:spawnedEvent', { eventId: id, name: ev.name });
+  }
+
+  // ============================================================
+  // L4 创世：世界改写（护栏：校验 → 快照 → 落地 → 审计；硬禁项不受档位影响）
+  //   仅 ≥L4 的动作能到这里（已过权限门）。每次改写记录可撤销快照 + 审计日志。
+  // ============================================================
+  _applyWorldsmithActions(actions, gameState) {
+    for (const action of actions) {
+      try {
+        const r = this._applyWorldsmithOne(action, gameState);
+        if (r && r.ok) {
+          (gameState._aiRewrites ||= []).push(r.undo);
+          (gameState._aiAuthorityLog ||= []).push({ ts: Date.now(), type: action.type, summary: r.summary });
+          gameState.addNarrative('system', `（世界被改写：${r.summary}）`);
+          if (this.eventSystem) this.eventSystem.publish('ai:worldRewrite', { type: action.type, summary: r.summary });
+        } else if (r && r.reason) {
+          gameState.addNarrative('system', `（GM 的改写被护栏拦下：${r.reason}）`);
+          if (this.eventSystem) this.eventSystem.publish('ai:rewriteRejected', { type: action.type, reason: r.reason });
+        }
+      } catch (e) {
+        console.error('应用 L4 世界改写失败:', action, e);
+      }
+    }
+  }
+
+  _applyWorldsmithOne(action, gameState) {
+    const ss = this.gameEngine?.getSystem('SceneSystem');
+    const cm = this.gameEngine?.getSystem('CardManager');
+    switch (action.type) {
+      case 'rewrite_scene': {
+        if (!ss) return { ok: false, reason: '场景系统不可用' };
+        const scene = ss.getScene(action.sceneId);
+        if (!scene) return { ok: false, reason: `场景不存在: ${action.sceneId}` };
+        const before = { name: scene.name, description: scene.description };
+        if (typeof action.name === 'string' && action.name.trim()) scene.name = action.name.trim();
+        if (typeof action.description === 'string' && action.description.trim()) scene.description = action.description.trim();
+        return { ok: true, summary: `重写场景「${scene.name}」`, undo: { type: 'rewrite_scene', sceneId: action.sceneId, before } };
+      }
+      case 'edit_connection': {
+        if (!ss) return { ok: false, reason: '场景系统不可用' };
+        const from = ss.getScene(action.from);
+        const to = ss.getScene(action.to);
+        if (!from || !to) return { ok: false, reason: `连接端点不存在: ${action.from} / ${action.to}` };
+        const before = JSON.parse(JSON.stringify(from.connections || []));
+        const op = action.op === 'remove' ? 'remove' : 'add';
+        if (op === 'add') {
+          if ((from.connections || []).some(c => c.to === action.to)) return { ok: false, reason: '连接已存在' };
+          (from.connections ||= []).push({ to: action.to, label: action.label || `前往 ${to.name}` });
+        } else {
+          // 硬禁项：移除连接不得减少玩家当前位置的可达场景集（防困死/孤立）
+          const sim = (from.connections || []).filter(c => c.to !== action.to);
+          const cur = gameState.mapState?.currentSceneId;
+          const beforeSet = this._reachableSet(ss, cur, {});
+          const afterSet = this._reachableSet(ss, cur, { [from.id]: sim });
+          if (afterSet.size < beforeSet.size) return { ok: false, reason: '移除该连接会令场景不可达（护栏拦截）' };
+          from.connections = sim;
+        }
+        return { ok: true, summary: `${op === 'add' ? '新增' : '移除'}连接 ${action.from}→${action.to}`, undo: { type: 'edit_connection', sceneId: from.id, before } };
+      }
+      case 'author_ending': {
+        if (!cm) return { ok: false, reason: '卡牌系统不可用' };
+        if (!action.description) return { ok: false, reason: '结局缺少描述' };
+        if (action.sceneId && ss && !ss.getScene(action.sceneId)) return { ok: false, reason: `结局所属场景不存在: ${action.sceneId}` };
+        const sceneId = action.sceneId || gameState.mapState?.currentSceneId;
+        gameState._aiSpawnSeq = (gameState._aiSpawnSeq || 0) + 1;
+        const id = `ev_ai_ending_${gameState._aiSpawnSeq}`;
+        cm.addCard({
+          id, type: 'event', name: action.name || '新的结局', description: action.description,
+          eventType: 'ai_ending', repeatable: false, tags: ['ending', 'main', 'ai_authored'],
+          inScene: sceneId ? [sceneId] : [],
+          choices: [{ id: 'embrace', text: '迎接这一结局', outcomes: [{ probability: 1.0, text: '', effects: [{ type: 'set_variable', target: 'game_complete', value: true }] }] }],
+        });
+        return { ok: true, summary: `新增结局「${action.name || '新的结局'}」`, undo: { type: 'add_card', cardId: id } };
+      }
+      case 'override_outcome': {
+        const before = {};
+        const vars = (action.setVariables && typeof action.setVariables === 'object') ? action.setVariables : {};
+        for (const [k, v] of Object.entries(vars)) { before[k] = gameState.variables[k]; gameState.variables[k] = v; }
+        if (action.gameComplete) { before.game_complete = gameState.variables.game_complete; gameState.variables.game_complete = true; }
+        if (action.narrative) gameState.addNarrative('gm', String(action.narrative));
+        return { ok: true, summary: '覆盖了既定结果', undo: { type: 'set_variables', before } };
+      }
+      case 'kill_npc': {
+        const ns = this.gameEngine?.getSystem('NPCSystem');
+        const protagId = gameState.activeCharacters?.[0]?.id;
+        if (!action.npcId) return { ok: false, reason: '缺少 npcId' };
+        if (action.npcId === protagId) return { ok: false, reason: '不可对主角执行（硬禁项）' };
+        if (ns) ns.applyNPCDeath(gameState, action.npcId);
+        return { ok: true, summary: `${action.npcId} 退场`, undo: { type: 'none' } };
+      }
+      default:
+        return { ok: false, reason: `未知世界改写: ${action.type}` };
+    }
+  }
+
+  /** BFS：从 startId 出发、以 overrides 覆盖部分场景连接后的可达场景集 */
+  _reachableSet(ss, startId, overrides = {}) {
+    const seen = new Set();
+    if (!startId || !ss.getScene(startId)) return seen;
+    seen.add(startId);
+    const q = [startId];
+    while (q.length) {
+      const id = q.shift();
+      const conns = overrides[id] !== undefined ? overrides[id] : (ss.getScene(id)?.connections || []);
+      for (const c of conns) {
+        if (c && c.to && !seen.has(c.to)) { seen.add(c.to); q.push(c.to); }
+      }
+    }
+    return seen;
+  }
+
+  /** 撤销最近一次 L4 世界改写（护栏：可撤销） */
+  undoLastRewrite(gameState) {
+    const stack = gameState._aiRewrites;
+    if (!stack || stack.length === 0) return { ok: false, reason: '没有可撤销的改写' };
+    const u = stack.pop();
+    const ss = this.gameEngine?.getSystem('SceneSystem');
+    const cm = this.gameEngine?.getSystem('CardManager');
+    try {
+      switch (u.type) {
+        case 'rewrite_scene': { const s = ss?.getScene(u.sceneId); if (s) { s.name = u.before.name; s.description = u.before.description; } break; }
+        case 'edit_connection': { const s = ss?.getScene(u.sceneId); if (s) s.connections = u.before; break; }
+        case 'add_card': { cm?.removeCard(u.cardId); break; }
+        case 'set_variables': { for (const [k, v] of Object.entries(u.before)) { if (v === undefined) delete gameState.variables[k]; else gameState.variables[k] = v; } break; }
+        default: break;
+      }
+      (gameState._aiAuthorityLog ||= []).push({ ts: Date.now(), type: 'undo', summary: `撤销 ${u.type}` });
+      return { ok: true, undone: u.type };
+    } catch (e) {
+      return { ok: false, reason: e.message };
+    }
   }
 
   /**

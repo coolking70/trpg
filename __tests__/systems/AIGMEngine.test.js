@@ -4,6 +4,7 @@
 
 import { AIGMEngine } from '../../src/systems/AIGMEngine.js';
 import { CardManager } from '../../src/systems/CardManager.js';
+import { SceneSystem } from '../../src/systems/SceneSystem.js';
 
 function mkEngine({ preset, aiTier = 'standard' } = {}) {
   const ai = new AIGMEngine();
@@ -413,6 +414,85 @@ describe('AIGMEngine L3 编剧引擎动作', () => {
     await ai.processGameAction('player_action', { text: '邀请' }, state);
     expect(ns.recruitCompanion).toHaveBeenCalledWith(state, 'npc_a');
     expect(state.activeCharacters.some(c => c.id === 'npc_a')).toBe(true);
+  });
+});
+
+describe('AIGMEngine L4 创世（世界改写 + 护栏）', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  function mkScenes() {
+    const ss = new SceneSystem();
+    ss.loadFromPreset({ scenes: [
+      { id: 'A', name: '入口', description: '旧描述', connections: [{ to: 'B', label: '前往B' }] },
+      { id: 'B', name: '中庭', description: 'B', connections: [{ to: 'A', label: '回A' }] },
+      { id: 'C', name: '密室', description: 'C', connections: [] },
+    ] });
+    return ss;
+  }
+  function mkAIW(actions, systems) {
+    const ai = new AIGMEngine();
+    ai.setAPIConfig({ endpoint: 'https://example.test/v1', apiKey: 'ok', model: 'm' });
+    ai._cachedSystemPrompt = 'sys';
+    ai._callAIOnce = jest.fn().mockResolvedValue(JSON.stringify({ narrative: '创世。', actions, diceRequests: [] }));
+    ai.gameEngine = { getSystem: (n) => systems[n] };
+    return ai;
+  }
+  function gsW(level, current = 'A') {
+    return {
+      aiAuthority: level, mapState: { currentSceneId: current, playerPosition: { x: 0, y: 0 } },
+      activeCharacters: [{ id: 'pc', name: '主角', inventory: [], stats: { hp: 100, hpCurrent: 100 } }],
+      variables: {}, addNarrative: jest.fn(),
+    };
+  }
+
+  test('L4 rewrite_scene 改写场景描述 + 记录审计 + 可撤销', async () => {
+    const ss = mkScenes();
+    const ai = mkAIW([{ type: 'rewrite_scene', sceneId: 'A', description: '崭新的描述' }], { SceneSystem: ss });
+    const state = gsW(4);
+    await ai.processGameAction('player_action', { text: '改写此地' }, state);
+    expect(ss.getScene('A').description).toBe('崭新的描述');
+    expect(state._aiAuthorityLog.some(e => e.type === 'rewrite_scene')).toBe(true);
+    // 撤销
+    ai.undoLastRewrite(state);
+    expect(ss.getScene('A').description).toBe('旧描述');
+  });
+
+  test('L4 edit_connection 新增连接', async () => {
+    const ss = mkScenes();
+    const ai = mkAIW([{ type: 'edit_connection', op: 'add', from: 'A', to: 'C', label: '暗门' }], { SceneSystem: ss });
+    await ai.processGameAction('player_action', { text: '开暗门' }, gsW(4));
+    expect(ss.getScene('A').connections.some(c => c.to === 'C')).toBe(true);
+  });
+
+  test('L4 edit_connection 移除会令场景不可达 → 护栏拦截', async () => {
+    const ss = mkScenes();
+    // 玩家在 A，A→B 是唯一通往 B 的边；移除会让 B 不可达
+    const ai = mkAIW([{ type: 'edit_connection', op: 'remove', from: 'A', to: 'B' }], { SceneSystem: ss });
+    await ai.processGameAction('player_action', { text: '封路' }, gsW(4, 'A'));
+    expect(ss.getScene('A').connections.some(c => c.to === 'B')).toBe(true); // 仍在（被拦）
+  });
+
+  test('L4 author_ending 注入结局事件（tag=ending）', async () => {
+    const ss = mkScenes();
+    const cm = new CardManager();
+    const ai = mkAIW([{ type: 'author_ending', name: '灰烬结局', description: '一切归于灰烬。', sceneId: 'C' }], { SceneSystem: ss, CardManager: cm });
+    await ai.processGameAction('player_action', { text: '写下结局' }, gsW(4));
+    const ending = cm.getCardsByType('event').find(e => (e.tags || []).includes('ending') && e.name === '灰烬结局');
+    expect(ending).toBeTruthy();
+  });
+
+  test('L4 kill_npc 对主角 → 硬禁项拦截', async () => {
+    const ns = { applyNPCDeath: jest.fn() };
+    const ai = mkAIW([{ type: 'kill_npc', npcId: 'pc' }], { NPCSystem: ns });
+    await ai.processGameAction('player_action', { text: '弑主角' }, gsW(4));
+    expect(ns.applyNPCDeath).not.toHaveBeenCalled();
+  });
+
+  test('L3 时 rewrite_scene 被权限门拦截（需 L4）', async () => {
+    const ss = mkScenes();
+    const ai = mkAIW([{ type: 'rewrite_scene', sceneId: 'A', description: 'x' }], { SceneSystem: ss });
+    await ai.processGameAction('player_action', { text: 'x' }, gsW(3));
+    expect(ss.getScene('A').description).toBe('旧描述'); // 未改
   });
 });
 
