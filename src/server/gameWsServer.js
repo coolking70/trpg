@@ -1,0 +1,102 @@
+/**
+ * 实时多人 WebSocket 对局服务器（核心，可被 jest 测试）
+ *
+ * 与 MCP 对局服务（请求-响应，AI 席）互补：真人实时多人的传输适配器——
+ * 同一个权威核心 GameSession，换 WebSocket 传输，实现服务器→客户端推送
+ * （任一席位行动后，所有席位即时收到新状态）。
+ *
+ * CLI 入口在 mcp-server/game-ws-server.mjs（薄包装，负责命令行与 Node 全局 shim）。
+ *
+ * 协议（JSON over WS）：
+ *   服务器→客户端：{type:'welcome',seatId,state} / {type:'state',state,by?} / {type:'error',message}
+ *   客户端→服务器：{type:'action',action} / {type:'sync'}
+ * 席位模型（v1）：共享控制（hot-seat），任一席位都可行动；席位→角色绑定留待后续。
+ */
+
+import { WebSocketServer } from 'ws';
+import { GameSession } from '../core/GameSession.js';
+import { DEFAULT_PRESET } from '../data/defaultPreset.js';
+
+// headless 环境 shim（Node CLI 下需要；jsdom 测试环境已自带，||= 不覆盖）
+globalThis.requestAnimationFrame ||= (cb) => setTimeout(() => cb(Date.now()), 16);
+globalThis.cancelAnimationFrame ||= (id) => clearTimeout(id);
+globalThis.localStorage ||= (() => {
+  const store = new Map();
+  return {
+    getItem: (k) => (store.has(k) ? store.get(k) : null),
+    setItem: (k, v) => store.set(k, String(v)),
+    removeItem: (k) => store.delete(k),
+    clear: () => store.clear(),
+    get length() { return store.size; },
+    key: (i) => Array.from(store.keys())[i] ?? null,
+  };
+})();
+
+/**
+ * @param {object} opts
+ * @param {number} [opts.port=8787]   0=随机端口（测试用）
+ * @param {object} [opts.presetData]  预设对象（省略=默认预设）
+ * @param {object} [opts.creation]    角色创建选择
+ * @param {object} [opts.ai]          GM 接入（{endpoint,model,apiKey,apiStyle}）
+ * @param {string} [opts.combatMode='interactive']
+ * @returns {Promise<{wss, session, port, close}>}
+ */
+export async function startGameWsServer(opts = {}) {
+  const presetData = opts.presetData || DEFAULT_PRESET;
+  const session = new GameSession({ combatMode: opts.combatMode || 'interactive' });
+  if (opts.ai?.endpoint && opts.ai?.model) {
+    session.configureAI({
+      endpoint: opts.ai.endpoint, model: opts.ai.model,
+      apiKey: opts.ai.apiKey || '', maxTokens: 3200, temperature: 0.7,
+      timeoutMs: opts.ai.timeoutMs || 60000,
+      ...(opts.ai.apiStyle ? { apiStyle: opts.ai.apiStyle } : {}),
+    });
+  }
+  session.loadPreset(presetData, opts.creation || null);
+  await session.kickoff();
+
+  const wss = new WebSocketServer({ port: opts.port ?? 8787 });
+  let seatSeq = 0;
+  const send = (ws, msg) => { try { ws.send(JSON.stringify(msg)); } catch { /* closed */ } };
+  const broadcast = (msg) => { for (const c of wss.clients) if (c.readyState === c.OPEN) send(c, msg); };
+
+  let applying = false; // 串行化动作，避免并发改同一份权威状态
+  async function handleAction(seatId, action) {
+    while (applying) await new Promise(r => setTimeout(r, 10));
+    applying = true;
+    try {
+      const state = await session.applyAction(action);
+      broadcast({ type: 'state', state, by: seatId });
+    } catch (e) {
+      broadcast({ type: 'error', message: `动作失败: ${e.message}` });
+    } finally {
+      applying = false;
+    }
+  }
+
+  wss.on('connection', (ws) => {
+    const seatId = `seat_${++seatSeq}`;
+    send(ws, { type: 'welcome', seatId, state: session.getState() });
+    ws.on('message', (raw) => {
+      let msg;
+      try { msg = JSON.parse(raw.toString()); } catch { return send(ws, { type: 'error', message: '非法 JSON' }); }
+      if (msg.type === 'action') handleAction(seatId, msg.action || {});
+      else if (msg.type === 'sync') send(ws, { type: 'state', state: session.getState() });
+    });
+  });
+
+  const port = await new Promise((resolve) => {
+    const addr = wss.address();
+    if (addr && typeof addr === 'object') return resolve(addr.port);
+    wss.on('listening', () => resolve(wss.address().port));
+  });
+
+  function close() {
+    return new Promise((resolve) => {
+      for (const c of wss.clients) { try { c.terminate(); } catch { /* */ } }
+      wss.close(() => { try { session.destroy(); } catch { /* */ } resolve(); });
+    });
+  }
+
+  return { wss, session, port, close };
+}

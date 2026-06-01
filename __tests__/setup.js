@@ -2,7 +2,8 @@
  * Jest测试环境配置
  */
 
-// 模拟Canvas API
+// 模拟Canvas API（node 测试环境无 DOM，跳过）
+if (typeof HTMLCanvasElement !== 'undefined') {
 HTMLCanvasElement.prototype.getContext = function (type) {
   if (type === '2d') {
     return {
@@ -45,6 +46,7 @@ HTMLCanvasElement.prototype.getContext = function (type) {
   }
   return null;
 };
+}
 
 // 模拟requestAnimationFrame
 global.requestAnimationFrame = (callback) => setTimeout(callback, 16);
