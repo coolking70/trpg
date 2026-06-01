@@ -39,6 +39,7 @@ const MAX_ITER = parseInt(argVal('--max-iter', '200'), 10);
 const API_TIMEOUT_MS = parseInt(process.env.OPENAI_TIMEOUT_MS || argVal('--timeout-ms', '60000'), 10);
 // 玩家扮演模式（不再支持 LLM 玩家）：scripted（默认, 确定性启发式）/ manual（固定路线）/ interactive（人/MCP）
 const PLAYER_MODE = argVal('--player', 'scripted');
+const NO_GM = argv.includes('--no-gm'); // 不接 AI GM，叙述走 localFallback（纯玩法/可达性/数值测试用，飞快）
 
 // ---------- 环境补丁 ----------
 globalThis.requestAnimationFrame ||= (cb) => setTimeout(() => cb(Date.now()), 16);
@@ -477,20 +478,12 @@ class ScriptedPlayer extends BasePlayer {
       };
     }
 
-    // 低血先用药
-    if (context.lowestHpPct < 40 && context.usableItems.length > 0) {
-      const item = context.usableItems[0];
-      return {
-        reasoning: '低血量用药',
-        action: { type: 'use_item', itemId: item.itemId, targetId: item.owner },
-      };
-    }
-
-    // 没药又低血、或有队员倒地 → 休整回满（避免直扑高阶目标被团灭）。
-    // 这是上轮 deepseek 玩测的发现：scripted 一路莽冲、主角倒地仍硬推 → party-wiped。
+    // 安全网：HP 偏低或有队员倒地 → 直接休整回满，再推进。
+    // 玩测发现：只在"无药时"才休整不够——会把药喝到低血、进高阶区(龙穴)才休整、为时已晚而团灭。
+    // 改用 manual 模式已验证可通关的无条件阈值（<60 / 倒地即休整，休整优先于喝药）。
     const someoneDown = (context.chars || []).some(c => c.alive === false);
-    if ((context.lowestHpPct < 50 && context.usableItems.length === 0) || someoneDown) {
-      return { reasoning: someoneDown ? '有人倒地，休整' : '低血无药，休整', action: { type: 'manual_rest' } };
+    if (context.lowestHpPct < 60 || someoneDown) {
+      return { reasoning: someoneDown ? '有人倒地，休整回满' : '血量偏低，休整回满', action: { type: 'manual_rest' } };
     }
 
     if (context.nextObjective?.inScene?.length) {
@@ -832,23 +825,25 @@ async function main() {
     interactive: 'Interactive (人/MCP)',
     scripted: 'Scripted (确定性启发式)',
   }[PLAYER_MODE] || 'Scripted (确定性启发式)';
-  console.log(`Player: ${playerLabel}  GM: ${GM_MODEL}`);
+  console.log(`Player: ${playerLabel}  GM: ${NO_GM ? 'localFallback(无AI)' : GM_MODEL}`);
   console.log(`Endpoint: ${ENDPOINT}`);
   console.log(`Preset: ${PRESET_PATH}`);
   console.log(`Max iter: ${MAX_ITER}`);
 
   const app = new HeadlessApp();
   const aiEngine = app.engine.getSystem('AIGMEngine');
-  aiEngine.setAPIConfig({
-    endpoint: ENDPOINT,
-    apiKey: KEY,
-    model: GM_MODEL,
-    maxTokens: 3200,
-    temperature: 0.7,
-    timeoutMs: API_TIMEOUT_MS,
-    // OPENAI_API_STYLE=responses → 走 /responses(如 hy3-preview)；省略=自动(/chat/completions 或按 endpoint 探测)
-    ...(process.env.OPENAI_API_STYLE ? { apiStyle: process.env.OPENAI_API_STYLE } : {}),
-  });
+  if (!NO_GM) {
+    aiEngine.setAPIConfig({
+      endpoint: ENDPOINT,
+      apiKey: KEY,
+      model: GM_MODEL,
+      maxTokens: 3200,
+      temperature: 0.7,
+      timeoutMs: API_TIMEOUT_MS,
+      // OPENAI_API_STYLE=responses → 走 /responses(如 hy3-preview)；省略=自动(/chat/completions 或按 endpoint 探测)
+      ...(process.env.OPENAI_API_STYLE ? { apiStyle: process.env.OPENAI_API_STYLE } : {}),
+    });
+  }
 
   // 加载自定义预设
   let presetData;
