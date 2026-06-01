@@ -902,117 +902,30 @@ async function main() {
     assert(info.note.includes('不再本地猜测人物或势力'), '应说明 inspect 不做本地人物/势力分析');
   });
 
-  await test('novel_build_mega_preset 拒绝本地启发式生成', async () => {
-    try {
-      await client.call('novel_build_mega_preset', {
-        sourcePath: NOVEL_TMP,
-        title: '星门试作',
-        maxSections: 3,
-        inspectSections: 20,
-        confirm: true,
-        useApi: false,
-      });
-      assert(false, '应拒绝本地启发式生成');
-    } catch (e) {
-      assert(e.message.includes('本地启发式自动分析已废除'), `应提示本地启发式已废除，实际：${e.message}`);
-    }
-  });
-
-  await test('novel_build_mega_preset 可通过 OpenAI-compatible API 增强摘要', async () => {
+  await test('novel_digest 段①：概括汇总为 NovelDigest（不生成剧本结构）', async () => {
     const mock = await startMockChatCompletionsServer();
     try {
-      const r = await client.call('novel_build_mega_preset', {
-        sourcePath: NOVEL_TMP,
-        title: '星门 API 试作',
-        maxSections: 3,
-        inspectSections: 20,
-        confirm: true,
-        useApi: true,
-        apiKey: 'test-key',
-        baseUrl: mock.baseUrl,
-        model: 'mock-model',
-        maxApiSections: 1,
+      const outPath = path.join(os.tmpdir(), `trpg-mcp-digest-${Date.now()}.json`);
+      const r = await client.call('novel_digest', {
+        sourcePath: NOVEL_TMP, title: '星门 Digest 试作',
+        maxSections: 3, inspectSections: 20, maxApiSections: 1,
+        apiKey: 'test-key', baseUrl: mock.baseUrl, model: 'mock-model', outPath,
       });
       const result = JSON.parse(r);
-      assert(result.apiEnhanced === true, `应标记 API 增强，实际：${r}`);
-      assert(mock.calls === 4, `应按每批 1 个片段调用 mock API 三次，并额外调用一次实体归一化，实际 ${mock.calls}`);
-      const exported = JSON.parse(await client.call('preset_export'));
-      assert(exported.sourceMaterial.apiEnhanced === true, 'sourceMaterial 应记录 apiEnhanced');
-      assert(exported.sourceMaterial.analysisMode === 'api_only', 'sourceMaterial 应记录 api_only');
-      assert(exported.sourceMaterial.canonicalizedEntities === true, 'sourceMaterial 应记录 API 实体归一化');
-      assert(exported.scenes.some(s => String(s.description).includes('API 摘要')), '场景描述应采用 API 摘要');
-      assert(exported.startingOptions.origins.length >= 3, '应使用 API 势力生成多个起点');
-      assert(exported.startingSceneId === 'scene_start_academy', `应设置 API 势力首个开局场景，实际：${exported.startingSceneId}`);
-      assert(!exported.scenes.some(s => s.type === 'ending'), '短样本不应仅因末段窗口被强行标为 ending');
-
-      exported.factions.push({ id: 'academy_alt', name: '学院别称', description: '研究星门的组织', reputationVar: 'rep_academy_alt', tags: ['faction:academy_alt'] });
-      fs.writeFileSync(TMP, JSON.stringify(exported, null, 2), 'utf-8');
-      await client.call('preset_load', {});
-      const canon = JSON.parse(await client.call('preset_canonicalize_entities_api', {
-        apiKey: 'test-key',
-        baseUrl: mock.baseUrl,
-        model: 'mock-model',
-        factionLimit: 3,
-      }));
-      assert(canon.canonicalFactionCount === 3, `应归一化为 3 个势力，实际：${JSON.stringify(canon)}`);
-      const canonExport = JSON.parse(await client.call('preset_export'));
-      assert(canonExport.sourceMaterial.canonicalizedEntities === true, '单独工具应记录 canonicalizedEntities');
-      assert(!canonExport.factions.some(f => f.id === 'academy_alt'), 'API alias 指向的重复势力应被合并');
-      const expanded = JSON.parse(await client.call('preset_expand_routes_api', {
-        apiKey: 'test-key',
-        baseUrl: mock.baseUrl,
-        model: 'mock-model',
-        factionIds: ['academy'],
-        routeLength: 1,
-        includeEndings: true,
-      }));
-      assert(expanded.createdCounts.scenes === 2, `应新增 1 个支线场景 + 1 个结局场景，实际：${JSON.stringify(expanded)}`);
-      const expandedExport = JSON.parse(await client.call('preset_export'));
-      assert(expandedExport.sourceMaterial.routeExpansion.apiEnhanced === true, '应记录 API 路线扩写');
-      assert(expandedExport.scenes.some(s => s.id === 'scene_route_academy_01'), '应创建势力专属路线场景');
-      const strategic = JSON.parse(await client.call('preset_generate_strategic_layer_api', {
-        apiKey: 'test-key',
-        baseUrl: mock.baseUrl,
-        model: 'mock-model',
-        mode: 'novel_adaptation',
-        factionIds: ['academy'],
-        maxSourceSections: 0,
-        createBriefingEvents: true,
-      }));
-      assert(strategic.factionCount === 1, `应为指定势力生成战略层，实际：${JSON.stringify(strategic)}`);
-      const strategicExport = JSON.parse(await client.call('preset_export'));
-      assert(strategicExport.strategicLayer.apiEnhanced === true, '应写入 strategicLayer');
-      assert(strategicExport.strategicLayer.mode === 'novel_adaptation', '应记录小说改编模式');
-      assert(strategicExport.strategicLayer.factions.academy.holdings.length >= 2, '应生成城市/矿区等据点资源');
-      assert(strategicExport.events.some(e => e.id === 'ev_strategy_briefing_academy'), '应创建势力战略汇报事件');
-      assert(strategicExport.scenes.find(s => s.id === 'scene_start_academy').events.includes('ev_strategy_briefing_academy'), '起点应挂载战略汇报事件');
-      const reviewDryRun = JSON.parse(await client.call('preset_review_strategic_layer_api', {
-        apiKey: 'test-key',
-        baseUrl: mock.baseUrl,
-        model: 'mock-model',
-        factionIds: ['academy'],
-        maxSourceSections: 0,
-        applyCorrections: false,
-      }));
-      assert(reviewDryRun.issues.length === 1, `dryRun 应返回审稿问题，实际：${JSON.stringify(reviewDryRun)}`);
-      assert(reviewDryRun.note.includes('未修改'), 'dryRun 应说明未修改');
-      const reviewApply = JSON.parse(await client.call('preset_review_strategic_layer_api', {
-        apiKey: 'test-key',
-        baseUrl: mock.baseUrl,
-        model: 'mock-model',
-        factionIds: ['academy'],
-        maxSourceSections: 0,
-        applyCorrections: true,
-      }));
-      assert(reviewApply.issueCounts.warning === 1, `写回后应记录 warning 计数，实际：${JSON.stringify(reviewApply)}`);
-      const reviewedExport = JSON.parse(await client.call('preset_export'));
-      assert(reviewedExport.strategicLayer.lastReview.issues.length === 1, '应记录 lastReview issues');
-      assert(reviewedExport.strategicLayer.factions.academy.intelligenceProfile.uncertainty.includes('审稿确认'), '应写回校正后的 uncertainty');
-      assert(reviewedExport.sourceMaterial.strategicLayerReview.apiEnhanced === true, '应记录 sourceMaterial.strategicLayerReview');
-    } finally {
-      await mock.close();
-    }
+      assert(result.validation === 'ok', `digest 应通过校验，实际：${JSON.stringify(result.validation)}`);
+      assert(result.counts.factions >= 3, `应有≥3 势力，实际：${result.counts.factions}`);
+      assert(result.counts.characters >= 1, `应有≥1 角色，实际：${result.counts.characters}`);
+      assert(result.counts.plotBeats >= 1, `应有≥1 剧情节拍，实际：${result.counts.plotBeats}`);
+      const digest = JSON.parse(fs.readFileSync(outPath, 'utf-8'));
+      assert(digest.schemaVersion === 1 && digest.title === '星门 Digest 试作', 'digest 头部应正确');
+      assert(digest.plotBeats.length > 0, 'digest 应有 plotBeats');
+      // 关键：digest 是"概括"产物，绝不含游戏结构（场景图/选项/掉落）
+      assert(digest.plotBeats.every(b => !('choices' in b) && !('sceneType' in b)), 'digest 节拍不应含游戏结构(choices/sceneType)');
+      assert(!('scenes' in digest) && !('startingSceneId' in digest), 'digest 不应是剧本(无 scenes/startingSceneId)');
+      fs.unlinkSync(outPath);
+    } finally { await mock.close(); }
   });
+
 
   client.close();
   if (fs.existsSync(TMP)) fs.unlinkSync(TMP);

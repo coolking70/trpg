@@ -646,263 +646,78 @@ async function analyzeNovelWithApi({ sections, apiKey, baseUrl, model, maxApiSec
   return canonicalizeAnalysisWithApi({ analysis: merged, apiKey, baseUrl, model, factionLimit });
 }
 
-function buildMegaPresetFromNovel({
-  sourcePath, title, sections, analysis,
-  maxSections = null,
-  beatsPerSection = 3,
-  factionLimit = 8,
-  npcLimit = 60,
-  mainSectionCount = 24,
-  endingSectionCount = 8,
-}) {
-  const chosen = (analysis.sections || sections).slice(0, maxSections || (analysis.sections || sections).length);
-  const factions = analysis.factions.slice(0, factionLimit);
-  const names = (analysis.characters || []).slice(0, npcLimit);
-  const worldName = title || analysis.world?.name || path.basename(sourcePath, path.extname(sourcePath));
-  const totalBeats = chosen.reduce((sum, section) => sum + (section.beats?.length || Math.max(1, beatsPerSection)), 0);
-
-  preset = createEmptyPreset();
-  preset.name = `${worldName}：超大剧本草案`;
-  preset.author = 'MCP novel importer';
-  preset.description = '由长篇小说/设定集导入生成的超大剧本骨架，保留势力起点、多分支主线和可继续扩写的章节节点。';
-  preset.displayMode = 'scene-graph';
-  preset.combatMode = 'solo';
-  preset.lore = {
-    worldName,
-    era: '由原作素材推断',
-    background: analysis.world?.background || `基于 AI/MCP 结构抽取生成。素材被切分为 ${sections.length} 个章节/片段，本草案使用 ${chosen.length} 个 API 解析章节/片段、约 ${totalBeats} 个剧情节拍构建可玩骨架。`,
-    rules: '玩家可从不同势力/身份出发，通过事件选择改变 worldFlags、势力声望和结局路线。',
-    gmStyle: analysis.world?.gmStyle || '尊重原素材气质，避免照搬原文；鼓励玩家用行动改写关键冲突。',
-  };
-  preset.sourceMaterial = {
-    type: 'novel',
-    path: sourcePath,
-    sectionCount: sections.length,
-    importedSections: chosen.length,
-    beatsPerSection: Math.max(1, beatsPerSection),
-    importedBeats: totalBeats,
-    generatedAt: new Date().toISOString(),
-    apiEnhanced: true,
-    analysisMode: 'api_only',
-    canonicalizedEntities: !!analysis.raw?.canonicalization?.apiEnhanced,
-    canonicalization: analysis.raw?.canonicalization,
-  };
-  preset.factions = factions.map(f => ({
-    id: f.id,
-    name: f.name,
-    description: f.description || `${f.name}是由 API 从素材中抽取的可选势力，可继续用 MCP 补写领袖、据点和结局线。`,
-    reputationVar: `rep_${f.id}`,
-    tags: f.tags,
+// ============================================================
+// 小说→剧本 段①：把 LLM 抽取结果(analysis) 规整为 NovelDigest（"概括汇总"）
+//   只做"理解"层的结构化摘要——世界/势力/角色/地点/剧情节拍；
+//   不产出任何游戏结构（场景图/选项/掉落/结局由后续 blueprint/build 阶段决定）。
+//   这是新管线的第一段产物，落盘为 JSON 供人工审阅/编辑后进入段②。
+// ============================================================
+function buildDigestFromAnalysis(analysis = {}, { title, sourcePath } = {}) {
+  const world = analysis.world || {};
+  const factions = (analysis.factions || []).map(f => ({
+    id: f.id, name: f.name,
+    role: (f.tags || []).find(t => /role|阵营|faction/i.test(t)) || '',
+    description: f.description || '',
   }));
-
-  preset.startingOptions = {
-    races: [{ id: 'human', name: '人类', icon: '👤', tags: ['race:human'], description: '默认可用身份' }],
-    origins: factions.map(f => ({
-      id: f.id,
-      name: f.name,
-      icon: '◆',
-      tags: [`origin:${f.id}`, `faction:${f.id}`],
-      description: `以${f.name}成员或关联者身份开局。`,
-      statBonus: {},
-    })),
-    backgrounds: [
-      { id: 'envoy', name: '使者', tags: ['role:envoy'], statBonus: { luck: 1 }, description: '擅长交涉与穿梭阵营' },
-      { id: 'investigator', name: '调查者', tags: ['role:investigator'], statBonus: { speed: 1 }, description: '擅长追查隐秘线索' },
-      { id: 'fighter', name: '行动派', tags: ['role:fighter'], statBonus: { attack: 2 }, description: '擅长正面冲突' },
-    ],
-    faiths: [
-      { id: 'protect_order', name: '守护秩序', tags: ['ethic:order'], description: '倾向维护既有秩序' },
-      { id: 'seek_truth', name: '追寻真相', tags: ['ethic:truth'], description: '倾向揭开隐藏事实' },
-      { id: 'change_fate', name: '改写命运', tags: ['ethic:change'], description: '倾向打破原有结局' },
-    ],
+  const inferRole = (c) => {
+    if (c.recruitable) return 'ally';
+    const tags = (c.tags || []).join(' ');
+    if (/反派|antagonist|boss|敌/i.test(tags)) return 'antagonist';
+    return 'npc';
   };
-
-  preset.characters.push({
-    id: 'char_player', type: 'character', name: '玩家角色', title: '命运改写者',
-    description: '玩家自定义角色，所属势力由开局选项决定。',
-    stats: { hp: 110, hpCurrent: 110, mp: 35, mpCurrent: 35, attack: 12, defense: 9, magicAttack: 8, magicDefense: 8, speed: 11, luck: 6 },
-    abilities: [
-      { id: 'ability_decisive_action', name: '果断行动', type: 'active', cost: { mp: 0 }, effect: { damage: { formula: 'attack+d6+2' } }, cooldown: 0 },
-      { id: 'ability_read_situation', name: '审时度势', type: 'active', cost: { mp: 5 }, effect: { heal: { formula: '12' } }, cooldown: 1 },
-    ],
-    inventory: ['item_starter_blade'], equipment: { weapon: 'item_starter_blade', armor: null, accessory: null },
-    position: { x: 0, y: 0 }, level: 1, experience: 0, statusEffects: [], tags: ['player'], notes: '',
-  });
-  preset.items.push({
-    id: 'item_starter_blade', type: 'item', name: '旅人短刃',
-    description: '超大剧本模式的默认防身武器，可在后续根据势力改写为更贴合原作的装备。',
-    image: '', itemType: 'weapon', statModifiers: { attack: 2 },
-    consumeEffect: null, equipSlot: 'weapon', buyPrice: 0, sellPrice: 5,
-    stackable: false, maxStack: 1, tags: ['starter'], notes: '',
-  });
-
-  factions.forEach((f, i) => {
-    const sceneId = `scene_start_${f.id}`;
-    preset.scenes.push({
-      id: sceneId,
-      name: `${f.name}起点`,
-      type: 'spawn',
-      icon: '◆',
-      description: `你从${f.name}的视角进入这场庞大的故事。这里适合继续补写该势力的导师、任务和初始冲突。`,
-      coords: { x: 0, y: i * 2 },
-      connections: [{ to: 'scene_crossroads', label: '前往交汇地' }],
-      events: [`ev_intro_${f.id}`],
-      vignettes: [`${f.name}的日常仍在继续，但你的选择已经让局势出现细微偏移。`],
-      tags: ['main', 'start', `faction:${f.id}`],
-    });
-    preset.startingSceneRules.push({ when: { tags: [`origin:${f.id}`] }, sceneId });
-    preset.events.push({
-      id: `ev_intro_${f.id}`, type: 'event', name: `${f.name}的开端`,
-      description: `你以${f.name}相关身份开始行动，第一项任务是判断这场故事里真正值得守护或推翻的东西。`,
-      eventType: 'story', priority: 100,
-      trigger: { type: 'composite', condition: { inScene: [sceneId], excludeCompletedEvents: [`ev_intro_${f.id}`], probability: 1.0 } },
-      choices: [{
-        id: 'accept_mission', text: '接受所属势力的最初使命', requirements: null,
-        outcomes: [{ probability: 1.0, text: '你记下任务，也保留了自己的判断。', effects: [
-          { type: 'set_variable', name: `rep_${f.id}`, value: 1 },
-          { type: 'set_variable', name: 'mega_story_started', value: true },
-          { type: 'add_memory', value: `玩家从${f.name}起点进入故事。` },
-        ] }],
-      }],
-      repeatable: false, maxOccurrences: 1, tags: ['main', `faction:${f.id}`],
-    });
-  });
-  preset.startingSceneRules.push({ default: `scene_start_${factions[0]?.id || 'protagonist_circle'}` });
-  if (!preset.startingSceneId && factions[0]) preset.startingSceneId = `scene_start_${factions[0].id}`;
-
-  preset.scenes.push({
-    id: 'scene_crossroads', name: '命运交汇地', type: 'settlement', icon: '✦',
-    description: '多方势力、传闻和未解冲突在这里交汇。它是超大剧本的中央 hub。',
-    coords: { x: 3, y: Math.max(1, Math.floor(factions.length)) },
-    connections: [], events: ['ev_crossroads_first_arrival'],
-    vignettes: ['交汇地的消息不断更新，新的路线也可能因你的行动浮现。'],
-    tags: ['main', 'hub', 'safe'],
-  });
-  for (const f of factions) {
-    const start = findById(preset.scenes, `scene_start_${f.id}`);
-    if (start) preset.scenes.find(s => s.id === 'scene_crossroads').connections.push({ to: start.id, label: `返回${f.name}起点` });
+  const characters = (analysis.characters || []).map(c => ({
+    id: c.id, name: c.name, title: c.title || '', factionId: c.factionId || '',
+    role: inferRole(c), description: c.description || '',
+  }));
+  const locMap = new Map();
+  const plotBeats = [];
+  let order = 0;
+  for (const sec of (analysis.sections || [])) {
+    for (const loc of (sec.locations || [])) {
+      if (!locMap.has(loc)) locMap.set(loc, { id: slugifyId(loc, `loc_${locMap.size}`), name: loc, description: '', significance: '' });
+    }
+    for (const b of (sec.beats || [])) {
+      order++;
+      const tags = b.tags || [];
+      const type = tags.includes('ending') ? '收束' : (order <= 2 ? '铺垫' : '上升');
+      plotBeats.push({
+        id: `beat_${order}`, order,
+        sectionTitle: sec.title || '',
+        title: b.title || `节拍 ${order}`,
+        summary: b.summary || sec.summary || '',
+        type,
+        locations: sec.locations || [],
+        conflicts: sec.conflicts || [],
+        focusFactionId: b.focusFactionId || '',
+        // 注意：故意不保留 sceneType/eventType/choices —— 那是游戏结构，留给 blueprint/build 决定
+      });
+    }
   }
-
-  const firstSceneBySection = [];
-  const lastSceneBySection = [];
-  chosen.forEach((section, i) => {
-    const sectionNo = String(i + 1).padStart(3, '0');
-    const hasEnoughEndingWindow = chosen.length >= Math.max(6, endingSectionCount + 2);
-    const isEndingSection = hasEnoughEndingWindow && i >= Math.max(0, chosen.length - endingSectionCount);
-    const isMainSection = i < mainSectionCount;
-    const beats = section.beats || [];
-
-    beats.forEach((beat, j) => {
-      const beatNo = String(j + 1).padStart(2, '0');
-      const sceneId = `scene_arc_${sectionNo}_${beatNo}`;
-      const eventId = `ev_arc_${sectionNo}_${beatNo}`;
-      const prevId = j === 0
-        ? (i === 0 ? 'scene_crossroads' : lastSceneBySection[i - 1])
-        : `scene_arc_${sectionNo}_${String(j).padStart(2, '0')}`;
-      const isFinalBeat = j === beats.length - 1;
-      const beatTags = Array.isArray(beat.tags) ? beat.tags : [];
-      const isEndingBeat = isEndingSection && (beat.sceneType === 'ending' || beatTags.includes('ending') || isFinalBeat);
-      const fallbackSceneType = beat.sceneType === 'ending' ? 'vignette' : (beat.sceneType || 'wilderness');
-      const sceneType = isEndingBeat ? 'ending' : fallbackSceneType;
-      const summary = beat.summary || section.summary || 'AI 已抽取该节拍，但未提供详细摘要。';
-      const tags = [
-        'arc',
-        isMainSection ? 'main' : 'side',
-        isEndingBeat ? 'ending' : 'branch',
-        `section:${sectionNo}`,
-        `beat:${beatNo}`,
-      ];
-
-      preset.scenes.push({
-        id: sceneId,
-        name: truncateText(beat.title, 30),
-        type: sceneType,
-        icon: isEndingBeat ? '◇' : '○',
-        description: summarizePlayableText(summary, `${truncateText(section.title, 30)}的局势正在展开。`),
-        coords: { x: 5 + (j % beatsPerSection) + (i % 6) * Math.max(2, beatsPerSection), y: Math.floor(i / 6) * 2 },
-        connections: [],
-        events: [eventId],
-        vignettes: [`你重新审视${truncateText(beat.title, 20)}，发现它与当前势力局势产生了新的联系。`],
-        tags,
-      });
-
-      const prev = findById(preset.scenes, prevId);
-      if (prev) prev.connections.push({ to: sceneId, label: j === 0 ? `进入：${truncateText(section.title, 14)}` : `推进：${j + 1}` });
-      const scene = findById(preset.scenes, sceneId);
-      if (scene && prevId) scene.connections.push({ to: prevId, label: prevId === 'scene_crossroads' ? '回到命运交汇地' : '回到上一节拍' });
-
-      const varName = `arc_${sectionNo}_${beatNo}_resolved`;
-      const faction = findById(factions, beat.focusFactionId) || factions[(i + j) % factions.length] || { id: 'world', name: '世界' };
-      const aiChoices = (beat.choices && beat.choices.length ? beat.choices : [
-        { id: 'act', text: `推动${faction.name}目标`, outcome: `${faction.name}的影响力上升。` },
-        { id: 'third_path', text: '寻找第三条道路', outcome: '新的分支可能因此打开。' },
-      ]).slice(0, 3);
-      preset.events.push({
-        id: eventId, type: 'event',
-        name: `改写节拍：${truncateText(beat.title, 22)}`,
-        description: summarizePlayableText(summary, `${faction.name}在此面对新的局势。`),
-        eventType: isEndingBeat ? 'boss' : (beat.eventType || 'story'),
-        priority: 70,
-        trigger: { type: 'composite', condition: { inScene: [sceneId], excludeCompletedEvents: [eventId], probability: 1.0 } },
-        choices: [
-          ...aiChoices.map((choice, choiceIndex) => ({
-            id: normalizeAIId(choice.id, `choice_${choiceIndex + 1}`),
-            text: choice.text || `选择 ${choiceIndex + 1}`,
-            requirements: null,
-            outcomes: [{ probability: 1.0, text: choice.outcome || '局势因此改变。', effects: [
-              { type: 'set_variable', name: varName, value: true },
-              { type: 'set_variable', name: choice.setVariable || `${varName}_choice_${choiceIndex + 1}`, value: true },
-              ...(choiceIndex === 0 ? [{ type: 'set_variable', name: `rep_${faction.id}`, value: 2 }] : []),
-              { type: 'add_memory', value: `玩家在${beat.title}中选择：${choice.text || `选择 ${choiceIndex + 1}`}。` },
-            ] }],
-          })),
-        ],
-        repeatable: false, maxOccurrences: 1, tags,
-        aiPromptHint: `API改编摘要：${summary}`,
-      });
-
-      if (j === 0) firstSceneBySection[i] = sceneId;
-      if (isFinalBeat) lastSceneBySection[i] = sceneId;
-    });
-  });
-
-  names.forEach((n, i) => {
-    const faction = findById(factions, n.factionId) || factions[i % factions.length] || { id: 'neutral', name: '中立' };
-    const spawn = i < factions.length ? `scene_start_${faction.id}` : (firstSceneBySection[i % Math.max(1, chosen.length)] || 'scene_crossroads');
-    preset.npcs.push({
-      id: n.id?.startsWith('npc_') ? n.id : `npc_${normalizeAIId(n.id || n.name, `name_${i}`)}`,
-      type: 'npc',
-      name: n.name,
-      title: n.title || `${faction.name}相关人物`,
-      description: n.description || '由 API 从素材中抽取的角色候选，需要后续用 MCP 补写关系和专属剧情。',
-      icon: '◇',
-      personality: 'source_inferred',
-      recruitable: !!n.recruitable || i < 3,
-      spawnScene: spawn,
-      initialInventory: [],
-      giftPreferences: {},
-      schedule: [{ day: 'any', hour: [8, 20], scene: spawn }],
-      stats: i < 3 ? { hp: 90, mp: 25, attack: 10, defense: 8, magicAttack: 8, magicDefense: 8, speed: 10, luck: 5 } : undefined,
-      abilities: i < 3 ? [{ id: `ab_${slugifyId(n.name, `name_${i}`)}_assist`, name: '协助', type: 'active', cost: { mp: 0 }, effect: { damage: { formula: 'attack+d4' } }, cooldown: 0 }] : [],
-      dialogueTree: { root: { speaker: 'self', text: '你想从我这里知道哪一部分真相？', branches: [{ text: '谈谈当前局势', exit: true, affectionDelta: 1 }] } },
-      tags: [`faction:${faction.id}`, 'source_inferred'],
-    });
-  });
-
-  preset.events.push({
-    id: 'ev_crossroads_first_arrival', type: 'event', name: '交汇地的第一夜',
-    description: '来自不同势力的消息同时抵达。你意识到，这不是一条线性的故事，而是一张可以被你改变的网。',
-    eventType: 'story', priority: 90,
-    trigger: { type: 'composite', condition: { inScene: ['scene_crossroads'], excludeCompletedEvents: ['ev_crossroads_first_arrival'], probability: 1.0 } },
-    choices: [{
-      id: 'open_world', text: '整理所有线索', requirements: null,
-      outcomes: [{ probability: 1.0, text: '你把线索铺开，决定从其中一条开始追查。', effects: [{ type: 'set_variable', name: 'crossroads_unlocked', value: true }] }],
-    }],
-    repeatable: false, maxOccurrences: 1, tags: ['main'],
-  });
-
-  dirty = true;
+  return {
+    schemaVersion: 1,
+    title: title || world.name || '未命名',
+    logline: '',           // 可由段② 补；段① 不强求
+    themes: [],
+    tone: world.gmStyle || '',
+    world: { name: world.name || '', setting: world.background || '', gmStyle: world.gmStyle || '', factions },
+    characters,
+    locations: [...locMap.values()],
+    plotBeats,
+    sourceMaterial: { sourcePath: sourcePath || '', sections: (analysis.sections || []).length, beats: plotBeats.length },
+  };
 }
+
+/** 校验 NovelDigest 结构完整性，返回错误数组（空=通过） */
+function validateNovelDigest(d) {
+  const errs = [];
+  if (!d || typeof d !== 'object') return ['digest 非对象'];
+  if (!d.title) errs.push('缺 title');
+  if (!d.world || !Array.isArray(d.world.factions)) errs.push('world.factions 非数组');
+  if (!Array.isArray(d.characters) || d.characters.length < 1) errs.push('characters 至少 1 个');
+  if (!Array.isArray(d.plotBeats) || d.plotBeats.length < 1) errs.push('plotBeats 至少 1 个');
+  return errs;
+}
+
 
 function replaceFactionTags(tags, mapFactionId) {
   return (tags || []).map(tag => {
@@ -3550,7 +3365,7 @@ tools.novel_source_inspect = {
         rawSections: rawSections.length,
         excludedNonStorySections: rawSections.length - sections.length,
         firstSections: sections.slice(0, 12).map(s => ({ title: s.title, chars: s.text.length })),
-        note: '这里只做读取/切章/正文过滤，不再本地猜测人物或势力。生成可玩预设必须调用 novel_build_mega_preset 并接入 API。',
+        note: '这里只做读取/切章/正文过滤，不再本地猜测人物或势力。下一步用 novel_digest 概括汇总成 NovelDigest（接入 API）。',
       }, null, 2));
     } catch (e) {
       return err(e.message);
@@ -3558,101 +3373,63 @@ tools.novel_source_inspect = {
   },
 };
 
-tools.novel_build_mega_preset = {
-  title: '从小说/设定集生成超大剧本骨架',
-  description: `读取整部本地长文本，生成一个可继续扩写的 scene-graph 大型剧本：
-  - 多势力起点：玩家可作为不同势力/身份开局
-  - 章节节点：把 API 返回的 beats 变成可探索场景和事件
-  - 分支结局种子：优先使用 API 标记的 ending；长样本末段可作为结局窗口
-  - NPC 候选：使用 API 从素材中抽取的角色列表生成可继续补写的 NPC
-  - sourceMaterial 元数据：保留素材路径和导入规模
-
-仅使用 OpenAI-compatible /chat/completions 做结构抽取；本地逻辑只负责读取、切章和组装 MCP 预设，不再用正则/关键词猜人物、势力或剧情（apiKey 不会写入预设）。`,
+// 小说→剧本 段①：概括汇总 → NovelDigest（替代已废弃的 novel_build_mega_preset 自由发挥式 mega-emit）
+tools.novel_digest = {
+  title: '小说→剧本 段①：概括汇总为 NovelDigest',
+  description: `读取本地长文本 → 分块 + LLM 抽取 + 合并去重 → 结构化 NovelDigest（世界/势力/角色/地点/剧情节拍）。
+这是新生成管线的第一段：只做"理解"层的概括汇总，**不生成任何剧本结构**（场景图/选项/掉落/结局留给后续
+blueprint(段②设计规模/边界/拓展) 与 build(段③确定性生成) 阶段）。仅用 OpenAI-compatible API 做摘要抽取。
+产物落盘为 JSON，供人工审阅/编辑后进入段②。`,
   schema: {
     sourcePath: z.string(),
-    title: z.string().optional().describe('预设/世界名；省略则用文件名'),
-    maxSections: z.number().min(3).max(500).optional().describe('用于生成剧本的章节/片段数；省略=使用识别到的全部章节/片段'),
-    inspectSections: z.number().min(3).max(800).default(500).describe('读取和切分时最多检查多少章节/片段'),
-    beatsPerSection: z.number().min(1).max(8).default(3).describe('每个章节/片段拆成多少个剧情节拍；标准长篇建议 3-5'),
-    factionLimit: z.number().min(3).max(12).default(8).describe('最多生成多少个势力/开局来源'),
-    npcLimit: z.number().min(6).max(120).default(60).describe('最多生成多少个 NPC 候选'),
-    mainSectionCount: z.number().min(1).max(200).default(36).describe('前多少章节/片段标为 main 主线骨架'),
-    endingSectionCount: z.number().min(1).max(60).default(10).describe('末尾多少章节/片段作为结局种子'),
-    includeNonStory: z.boolean().default(false).describe('true=保留后记/插图/特典等非正文；默认过滤'),
-    confirm: z.boolean().default(false).describe('当前预设非空时必须 true 才覆盖'),
-    useApi: z.boolean().default(true).describe('必须为 true；保留该字段仅兼容旧调用'),
-    apiKey: z.string().optional().describe('可选；不传则读取 OPENAI_API_KEY 环境变量；本地 127.0.0.1/localhost 端点可留空'),
+    title: z.string().optional().describe('作品/世界名；省略则用文件名或抽取到的世界名'),
+    maxSections: z.number().min(3).max(500).optional().describe('参与摘要的章节/片段数；省略=全部正文片段'),
+    inspectSections: z.number().min(3).max(800).default(500).describe('读取切分时最多检查多少片段'),
+    factionLimit: z.number().min(3).max(12).default(8),
+    npcLimit: z.number().min(6).max(120).default(60),
+    includeNonStory: z.boolean().default(false).describe('true=保留后记/插图等非正文'),
+    apiKey: z.string().optional(),
     baseUrl: z.string().optional().describe(`默认 ${DEFAULT_OPENAI_BASE_URL}`),
     model: z.string().optional().describe(`默认 ${DEFAULT_OPENAI_MODEL}`),
-    maxApiSections: z.number().min(1).max(20).default(6).describe('每批最多调用 API 分析多少个章节/片段；会循环处理 maxSections 覆盖的全部正文片段'),
-    canonicalizeEntities: z.boolean().default(true).describe('true=分批抽取完成后再调用 API 归一化跨批势力 id/name 漂移'),
+    maxApiSections: z.number().min(1).max(20).default(6).describe('每批调用 API 分析多少片段；循环覆盖全部'),
+    outPath: z.string().optional().describe('digest 落盘路径；省略=<source>.digest.json'),
   },
   handler: async (args) => {
     try {
-      if ((preset.scenes.length > 0 || preset.events.length > 0 || preset.npcs.length > 0) && !args.confirm) {
-        return err(`当前预设非空（${preset.scenes.length} 场景 / ${preset.events.length} 事件 / ${preset.npcs.length} NPC）。请传 confirm=true 才覆盖。`);
-      }
-      if (!args.useApi) {
-        return err('本地启发式自动分析已废除。novel_build_mega_preset 必须 useApi=true 并提供 OpenAI-compatible API。');
-      }
       const { abs, text } = readNovelSource(args.sourcePath);
       const rawSections = splitNovelSections(text, args.inspectSections);
       const sections = filterStorySections(rawSections, args.includeNonStory);
-      if (sections.length < 3) return err('素材切分后少于 3 个片段，不适合生成超大剧本骨架');
-
-      const buildSections = sections.slice(0, args.maxSections || sections.length);
+      if (sections.length < 3) return err('素材切分后少于 3 个片段，不适合概括');
+      const useSections = sections.slice(0, args.maxSections || sections.length);
       const analysis = await analyzeNovelWithApi({
-        sections: buildSections,
-        apiKey: args.apiKey,
-        baseUrl: args.baseUrl,
-        model: args.model,
-        maxApiSections: Math.min(args.maxApiSections || buildSections.length, buildSections.length),
-        npcLimit: args.npcLimit,
-        factionLimit: args.factionLimit,
-        beatsPerSection: args.beatsPerSection,
-        canonicalizeEntities: args.canonicalizeEntities,
+        sections: useSections,
+        apiKey: args.apiKey, baseUrl: args.baseUrl, model: args.model,
+        maxApiSections: Math.min(args.maxApiSections || useSections.length, useSections.length),
+        npcLimit: args.npcLimit, factionLimit: args.factionLimit,
+        beatsPerSection: 3, canonicalizeEntities: true,
       });
-      buildMegaPresetFromNovel({
-        sourcePath: abs,
-        title: args.title,
-        sections,
-        analysis,
-        maxSections: analysis.sections.length,
-        beatsPerSection: args.beatsPerSection,
-        factionLimit: args.factionLimit,
-        npcLimit: args.npcLimit,
-        mainSectionCount: args.mainSectionCount,
-        endingSectionCount: args.endingSectionCount,
-      });
-      saveToDisk();
-      const refErrs = validatePreset();
+      const digest = buildDigestFromAnalysis(analysis, { title: args.title, sourcePath: abs });
+      const errs = validateNovelDigest(digest);
+      const outPath = args.outPath || abs.replace(/\.[^.]+$/, '') + '.digest.json';
+      fs.writeFileSync(outPath, JSON.stringify(digest, null, 2), 'utf-8');
       return ok(JSON.stringify({
-        message: '已从长文本生成超大剧本骨架',
-        filePath,
-        name: preset.name,
+        message: '已生成 NovelDigest（概括汇总）',
+        outPath,
         counts: {
-          scenes: preset.scenes.length,
-          events: preset.events.length,
-          characters: preset.characters.length,
-          npcs: preset.npcs.length,
-          factions: preset.factions?.length || 0,
+          factions: digest.world.factions.length,
+          characters: digest.characters.length,
+          locations: digest.locations.length,
+          plotBeats: digest.plotBeats.length,
         },
-        source: preset.sourceMaterial,
-        excludedNonStorySections: rawSections.length - sections.length,
-        apiEnhanced: true,
-        validation: { valid: refErrs.length === 0, errors: refErrs },
-        nextSteps: [
-          '调用 preset_analyze 做全面体检',
-          '调用 preset_scale_check 检查超大剧本密度',
-          '用 npc_update / dialogue_node_set 精修关键 NPC',
-          '用 event_create 为重要章节补充分歧和结局',
-        ],
+        validation: errs.length ? errs : 'ok',
+        next: '审阅/编辑 digest 后 → 段② blueprint_draft（设计规模/边界/拓展点）',
       }, null, 2));
     } catch (e) {
-      return err(e.message);
+      return err(`生成 digest 失败：${e.message}`);
     }
   },
 };
+
 
 tools.preset_canonicalize_entities_api = {
   title: '通过 API 归一化当前预设实体',
