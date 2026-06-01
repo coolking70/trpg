@@ -718,6 +718,125 @@ function validateNovelDigest(d) {
   return errs;
 }
 
+// ============================================================
+// 小说→剧本 段②：从 NovelDigest 设计 PresetBlueprint（规模/边界/游戏性拓展）
+//   LLM 在此"设计"（决定规模、明确边界、标出需补的游戏性），不产出剧本结构本身。
+//   产物落盘，需人工审阅/编辑后才进段③ 确定性生成。
+// ============================================================
+const BLUEPRINT_SIZE = {
+  small:  { sceneCount: [15, 25],  chapterCount: [3, 5],   enemyCount: [4, 8],   endingCount: [2, 3] },
+  medium: { sceneCount: [40, 60],  chapterCount: [6, 10],  enemyCount: [8, 16],  endingCount: [3, 5] },
+  large:  { sceneCount: [80, 120], chapterCount: [10, 16], enemyCount: [16, 28], endingCount: [4, 6] },
+};
+function _clampInt(val, [lo, hi], def) {
+  const n = Math.round(Number(val));
+  if (!Number.isFinite(n)) return def;
+  return Math.max(lo, Math.min(hi, n));
+}
+
+function buildBlueprintPrompt(digest, { sizeClass = 'medium', arc = '' } = {}) {
+  const sz = BLUEPRINT_SIZE[sizeClass] || BLUEPRINT_SIZE.medium;
+  return [
+    {
+      role: 'system',
+      content: [
+        '你是 TRPG 剧本设计师。基于给定的 NovelDigest（小说概括）设计一份 PresetBlueprint（剧本蓝图）。',
+        '你的任务是"设计"，不是写剧本结构：① 确定规模 ② 明确边界（取小说哪一段、从哪 beat 开始、到哪 beat 结束）',
+        '③ 标出"基于游戏性需要拓展"的地方——小说是线性的，游戏要交互：战斗遭遇、玩家选择分支、可探索枢纽/支线、多结局。',
+        '不要输出场景图/具体选项 id/掉落表（那是后续确定性生成阶段的事）。只输出一个 JSON 对象。',
+      ].join('\n'),
+    },
+    {
+      role: 'user',
+      content: JSON.stringify({
+        task: '设计 PresetBlueprint',
+        sizeClass, scaleTargets: sz, arc,
+        outputSchema: {
+          title: 'string', logline: 'string', tone: 'string',
+          scale: { sceneCount: 'number', chapterCount: 'number', enemyCount: 'number', endingCount: 'number' },
+          scope: { includeBeatIds: ['beat id'], startBeatId: 'beat id', endBeatId: 'beat id', excludedBeatIds: ['beat id'], note: 'string' },
+          characterMapping: [{ digestCharId: 'digest 角色 id', gameRole: 'protagonist|companion|questgiver|boss|npc', notes: 'string' }],
+          chapters: [{
+            id: 'ascii_id', title: 'string', fromBeatIds: ['beat id'],
+            hubScene: { name: 'string', type: 'settlement|wilderness|dungeon' },
+            mainEvent: { title: 'string', summary: 'string' },
+            combatPlan: [{ enemyConcept: 'string', ecology: { biome: 'string', creatureType: 'string', tier: 'trivial|common|elite|boss' }, count: 'number' }],
+            branchPoints: [{ prompt: 'string', options: [{ label: 'string', effectHint: 'string' }] }],
+            sideContent: [{ type: 'shop|inn|sidequest|vignette', name: 'string', summary: 'string' }],
+          }],
+          endings: [{ id: 'ascii_id', name: 'string', condition: '触发条件描述', summary: 'string', tone: 'string' }],
+          expansionNotes: ['为游戏性而新增/改动小说的说明'],
+        },
+        digest: {
+          title: digest.title, tone: digest.tone, world: digest.world,
+          characters: digest.characters, locations: digest.locations, plotBeats: digest.plotBeats,
+        },
+      }),
+    },
+  ];
+}
+
+function normalizeBlueprint(raw = {}, digest = {}, { sizeClass = 'medium' } = {}) {
+  const sz = BLUEPRINT_SIZE[sizeClass] || BLUEPRINT_SIZE.medium;
+  const mid = (r) => Math.round((r[0] + r[1]) / 2);
+  const beats = digest.plotBeats || [];
+  const scale = {
+    sizeClass,
+    sceneCount: _clampInt(raw.scale?.sceneCount, sz.sceneCount, mid(sz.sceneCount)),
+    chapterCount: _clampInt(raw.scale?.chapterCount, sz.chapterCount, mid(sz.chapterCount)),
+    enemyCount: _clampInt(raw.scale?.enemyCount, sz.enemyCount, mid(sz.enemyCount)),
+    endingCount: _clampInt(raw.scale?.endingCount, sz.endingCount, mid(sz.endingCount)),
+  };
+  const chapters = (Array.isArray(raw.chapters) ? raw.chapters : []).map((c, i) => ({
+    id: c.id || `ch${i + 1}`, title: c.title || `第${i + 1}章`,
+    fromBeatIds: Array.isArray(c.fromBeatIds) ? c.fromBeatIds : [],
+    hubScene: c.hubScene || null,
+    mainEvent: c.mainEvent || { title: c.title || `第${i + 1}章`, summary: '' },
+    combatPlan: Array.isArray(c.combatPlan) ? c.combatPlan : [],
+    branchPoints: Array.isArray(c.branchPoints) ? c.branchPoints : [],
+    sideContent: Array.isArray(c.sideContent) ? c.sideContent : [],
+  }));
+  const endings = (Array.isArray(raw.endings) ? raw.endings : []).map((e, i) => ({
+    id: e.id || `ending_${i + 1}`, name: e.name || `结局${i + 1}`,
+    condition: e.condition || '', summary: e.summary || '', tone: e.tone || '',
+  }));
+  return {
+    schemaVersion: 1,
+    title: raw.title || digest.title || '未命名',
+    logline: raw.logline || digest.logline || '',
+    tone: raw.tone || digest.tone || '',
+    scale,
+    scope: {
+      includeBeatIds: Array.isArray(raw.scope?.includeBeatIds) ? raw.scope.includeBeatIds : beats.map(b => b.id),
+      startBeatId: raw.scope?.startBeatId || beats[0]?.id || '',
+      endBeatId: raw.scope?.endBeatId || beats[beats.length - 1]?.id || '',
+      excludedBeatIds: Array.isArray(raw.scope?.excludedBeatIds) ? raw.scope.excludedBeatIds : [],
+      note: raw.scope?.note || '',
+    },
+    characterMapping: Array.isArray(raw.characterMapping) ? raw.characterMapping : [],
+    chapters, endings,
+    expansionNotes: Array.isArray(raw.expansionNotes) ? raw.expansionNotes : [],
+    sourceDigest: digest.title || '',
+  };
+}
+
+/** 校验 PresetBlueprint，返回错误数组（空=通过）；传 digest 则额外校验 beat/角色引用 */
+function validateBlueprint(bp, digest = null) {
+  const errs = [];
+  if (!bp || typeof bp !== 'object') return ['blueprint 非对象'];
+  if (!bp.scale) errs.push('缺 scale');
+  if (!Array.isArray(bp.chapters) || bp.chapters.length < 1) errs.push('chapters 至少 1 个');
+  if (!Array.isArray(bp.endings) || bp.endings.length < 1) errs.push('endings 至少 1 个');
+  if (digest) {
+    const beatIds = new Set((digest.plotBeats || []).map(b => b.id));
+    for (const id of (bp.scope?.includeBeatIds || [])) if (!beatIds.has(id)) errs.push(`scope 含未知 beat: ${id}`);
+    for (const ch of (bp.chapters || [])) for (const id of (ch.fromBeatIds || [])) if (!beatIds.has(id)) errs.push(`章节 ${ch.id} 引用未知 beat: ${id}`);
+    const charIds = new Set((digest.characters || []).map(c => c.id));
+    for (const m of (bp.characterMapping || [])) if (m.digestCharId && !charIds.has(m.digestCharId)) errs.push(`characterMapping 含未知角色: ${m.digestCharId}`);
+  }
+  return errs;
+}
+
 
 function replaceFactionTags(tags, mapFactionId) {
   return (tags || []).map(tag => {
@@ -3426,6 +3545,70 @@ blueprint(段②设计规模/边界/拓展) 与 build(段③确定性生成) 阶
       }, null, 2));
     } catch (e) {
       return err(`生成 digest 失败：${e.message}`);
+    }
+  },
+};
+
+// 小说→剧本 段②：从 Digest 起草设计蓝图（规模/边界/游戏性拓展），产物需人工确认后才进段③
+tools.blueprint_draft = {
+  title: '小说→剧本 段②：从 Digest 起草剧本蓝图',
+  description: `读取 NovelDigest → LLM 设计 PresetBlueprint：① 确定规模（按 sizeClass）② 明确边界（取哪段/起止 beat）
+③ 标出基于游戏性的拓展点（战斗遭遇 / 选择分支 / 可探索枢纽支线 / 多结局）。
+此段是"设计"不是"生成结构"。产物落盘，⚠ 请人工审阅/编辑后再进段③ preset_build_from_blueprint。仅用 OpenAI-compatible API。`,
+  schema: {
+    digestPath: z.string().describe('段① 产出的 NovelDigest JSON 路径'),
+    sizeClass: z.enum(['small', 'medium', 'large']).default('medium').describe('目标规模：small 15-25 / medium 40-60 / large 80-120 场景'),
+    arc: z.string().optional().describe('只取小说哪一段/卷（自由文本提示）'),
+    apiKey: z.string().optional(),
+    baseUrl: z.string().optional().describe(`默认 ${DEFAULT_OPENAI_BASE_URL}`),
+    model: z.string().optional().describe(`默认 ${DEFAULT_OPENAI_MODEL}`),
+    outPath: z.string().optional().describe('蓝图落盘路径；省略=<digest>.blueprint.json'),
+  },
+  handler: async (args) => {
+    try {
+      const digest = JSON.parse(fs.readFileSync(args.digestPath, 'utf-8'));
+      const dErrs = validateNovelDigest(digest);
+      if (dErrs.length) return err(`digest 不合法：${dErrs.join('；')}`);
+      const content = await callOpenAICompatible({
+        baseUrl: args.baseUrl, apiKey: args.apiKey, model: args.model,
+        messages: buildBlueprintPrompt(digest, args), temperature: 0.4, maxTokens: 6000,
+      });
+      let raw;
+      try { raw = parseAIJson(content); } catch (e) { return err(`蓝图 JSON 解析失败：${e.message}`); }
+      const bp = normalizeBlueprint(raw, digest, args);
+      const errs = validateBlueprint(bp, digest);
+      const outPath = args.outPath || args.digestPath.replace(/\.digest\.json$|\.json$/, '') + '.blueprint.json';
+      fs.writeFileSync(outPath, JSON.stringify(bp, null, 2), 'utf-8');
+      return ok(JSON.stringify({
+        message: '已起草 PresetBlueprint（⚠ 请人工审阅/编辑后再进段③）',
+        outPath, scale: bp.scale, chapters: bp.chapters.length, endings: bp.endings.length,
+        validation: errs.length ? errs : 'ok',
+        next: '审阅/编辑 blueprint 后 → 段③ preset_build_from_blueprint',
+      }, null, 2));
+    } catch (e) {
+      return err(`起草蓝图失败：${e.message}`);
+    }
+  },
+};
+
+tools.blueprint_validate = {
+  title: '校验 PresetBlueprint（结构/边界/引用）',
+  description: '结构校验：规模存在、章节/结局非空；传 digestPath 时额外校验 scope 与章节引用的 beat、角色映射都在 digest 内。',
+  schema: {
+    blueprintPath: z.string(),
+    digestPath: z.string().optional().describe('传则交叉校验 beat/角色引用'),
+  },
+  handler: async (args) => {
+    try {
+      const bp = JSON.parse(fs.readFileSync(args.blueprintPath, 'utf-8'));
+      const digest = args.digestPath ? JSON.parse(fs.readFileSync(args.digestPath, 'utf-8')) : null;
+      const errs = validateBlueprint(bp, digest);
+      return ok(JSON.stringify({
+        ok: errs.length === 0, errors: errs,
+        scale: bp.scale, chapters: bp.chapters?.length || 0, endings: bp.endings?.length || 0,
+      }, null, 2));
+    } catch (e) {
+      return err(`校验失败：${e.message}`);
     }
   },
 };

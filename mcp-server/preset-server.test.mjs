@@ -212,6 +212,24 @@ function startMockChatCompletionsServer() {
         }) } }] }));
         return;
       }
+      if (String(userContent).includes('设计 PresetBlueprint')) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify({
+          title: '星门 蓝图', logline: '三方争夺星门', tone: '政治奇幻冒险',
+          scale: { sceneCount: 45, chapterCount: 6, enemyCount: 10, endingCount: 3 },
+          characterMapping: [{ digestCharId: 'lin_zhou', gameRole: 'protagonist', notes: '玩家视角' }],
+          chapters: [{
+            id: 'ch1', title: '序章：星门初启',
+            mainEvent: { title: '钟声响起', summary: '学院察觉星门异动。' },
+            combatPlan: [{ enemyConcept: '帝国斥候', ecology: { biome: 'tunnel', creatureType: 'humanoid', tier: 'common' }, count: 2 }],
+            branchPoints: [{ prompt: '是否上报学院', options: [{ label: '上报', effectHint: 'rep_academy+' }, { label: '隐瞒', effectHint: 'flag secret' }] }],
+            sideContent: [{ type: 'shop', name: '学院杂货', summary: '补给点' }],
+          }],
+          endings: [{ id: 'e_academy', name: '学院之路', condition: 'rep_academy 高', summary: '星门归学院。', tone: '希望' }],
+          expansionNotes: ['为战斗补"帝国斥候"遭遇；为分支补"上报/隐瞒"选择'],
+        }) } }] }));
+        return;
+      }
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         choices: [{
@@ -923,6 +941,33 @@ async function main() {
       assert(digest.plotBeats.every(b => !('choices' in b) && !('sceneType' in b)), 'digest 节拍不应含游戏结构(choices/sceneType)');
       assert(!('scenes' in digest) && !('startingSceneId' in digest), 'digest 不应是剧本(无 scenes/startingSceneId)');
       fs.unlinkSync(outPath);
+    } finally { await mock.close(); }
+  });
+
+  await test('blueprint_draft 段②：从 Digest 起草 PresetBlueprint + blueprint_validate', async () => {
+    const mock = await startMockChatCompletionsServer();
+    try {
+      const api = { apiKey: 'test-key', baseUrl: mock.baseUrl, model: 'mock-model' };
+      const digestPath = path.join(os.tmpdir(), `trpg-mcp-digest2-${Date.now()}.json`);
+      await client.call('novel_digest', { sourcePath: NOVEL_TMP, title: '星门蓝图试作', maxSections: 3, inspectSections: 20, maxApiSections: 1, ...api, outPath: digestPath });
+
+      const bpPath = path.join(os.tmpdir(), `trpg-mcp-blueprint-${Date.now()}.json`);
+      const r = JSON.parse(await client.call('blueprint_draft', { digestPath, sizeClass: 'medium', ...api, outPath: bpPath }));
+      assert(r.validation === 'ok', `蓝图应通过校验，实际：${JSON.stringify(r.validation)}`);
+      assert(r.chapters >= 1 && r.endings >= 1, `应有章节与结局，实际：${JSON.stringify(r)}`);
+      assert(r.scale.sceneCount >= 40 && r.scale.sceneCount <= 60, `medium 规模场景数应在 40-60，实际：${r.scale.sceneCount}`);
+
+      const bp = JSON.parse(fs.readFileSync(bpPath, 'utf-8'));
+      assert(bp.schemaVersion === 1, 'blueprint 头部应正确');
+      assert(bp.chapters[0].combatPlan.length >= 1, '章节应含战斗拓展计划（游戏性）');
+      assert(bp.chapters[0].branchPoints.length >= 1, '章节应含分支点（游戏性）');
+      // blueprint 是"设计"产物，不应含成品场景图字段
+      assert(!('scenes' in bp), 'blueprint 不应含已生成的 scenes');
+
+      const v = JSON.parse(await client.call('blueprint_validate', { blueprintPath: bpPath, digestPath }));
+      assert(v.ok === true, `blueprint_validate 应通过，实际：${JSON.stringify(v)}`);
+
+      fs.unlinkSync(digestPath); fs.unlinkSync(bpPath);
     } finally { await mock.close(); }
   });
 
