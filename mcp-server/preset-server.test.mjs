@@ -926,6 +926,63 @@ async function main() {
     } finally { await mock.close(); }
   });
 
+  // 战略层工具链：在"成熟管线产物形态"的 faction 型预设上验证（替代已删的 mega setup）。
+  // fixture = 正常结构（factions + scene_start_<id> + startingOptions.origins），不依赖小说源。
+  await test('strategic-layer 工具链（canonicalize/expand/strategic/review）在管线型 fixture 上工作', async () => {
+    const mock = await startMockChatCompletionsServer();
+    try {
+      const fixture = {
+        name: '星门战略层 fixture', author: 'test',
+        characters: [{ id: 'char_player', name: '玩家', stats: { hp: 100, atk: 10, def: 5 } }],
+        factions: [
+          { id: 'academy', name: '学院', description: '研究星门的组织', reputationVar: 'rep_academy', tags: ['faction:academy'] },
+          { id: 'empire', name: '帝国', description: '军事势力', reputationVar: 'rep_empire', tags: ['faction:empire'] },
+          { id: 'church', name: '教会', description: '宗教势力', reputationVar: 'rep_church', tags: ['faction:church'] },
+        ],
+        scenes: [
+          { id: 'scene_start_academy', name: '学院起点', type: 'spawn', coords: { x: 0, y: 0 }, events: [], connections: [] },
+          { id: 'scene_start_empire', name: '帝国起点', type: 'spawn', coords: { x: 2, y: 0 }, events: [], connections: [] },
+          { id: 'scene_start_church', name: '教会起点', type: 'spawn', coords: { x: 4, y: 0 }, events: [], connections: [] },
+        ],
+        startingOptions: { origins: [
+          { id: 'academy', name: '学院', tags: ['faction:academy'] },
+          { id: 'empire', name: '帝国', tags: ['faction:empire'] },
+          { id: 'church', name: '教会', tags: ['faction:church'] },
+        ] },
+        startingSceneId: 'scene_start_academy',
+        events: [], items: [], sourceMaterial: {},
+      };
+      const api = { apiKey: 'test-key', baseUrl: mock.baseUrl, model: 'mock-model' };
+
+      // 归一化：加一个重复势力 academy_alt，应被 API alias 合并回 academy
+      fixture.factions.push({ id: 'academy_alt', name: '学院别称', description: '研究星门的组织', reputationVar: 'rep_academy_alt', tags: ['faction:academy_alt'] });
+      fs.writeFileSync(TMP, JSON.stringify(fixture, null, 2), 'utf-8');
+      await client.call('preset_load', {});
+      const canon = JSON.parse(await client.call('preset_canonicalize_entities_api', { ...api, factionLimit: 3 }));
+      assert(canon.canonicalFactionCount === 3, `应归一化为 3 势力，实际：${JSON.stringify(canon)}`);
+      assert(!JSON.parse(await client.call('preset_export')).factions.some(f => f.id === 'academy_alt'), 'academy_alt 应被合并');
+
+      // 路线扩写：为 academy 生成 1 支线场景 + 1 结局场景
+      const expanded = JSON.parse(await client.call('preset_expand_routes_api', { ...api, factionIds: ['academy'], routeLength: 1, includeEndings: true }));
+      assert(expanded.createdCounts.scenes === 2, `应新增 1 支线 + 1 结局场景，实际：${JSON.stringify(expanded)}`);
+      assert(JSON.parse(await client.call('preset_export')).scenes.some(s => s.id === 'scene_route_academy_01'), '应创建势力专属路线场景');
+
+      // 战略层：为 academy 生成据点 + 战略汇报事件（maxSourceSections:0 不依赖小说源）
+      const strat = JSON.parse(await client.call('preset_generate_strategic_layer_api', { ...api, mode: 'novel_adaptation', factionIds: ['academy'], maxSourceSections: 0, createBriefingEvents: true }));
+      assert(strat.factionCount === 1, `应为 1 势力生成战略层，实际：${JSON.stringify(strat)}`);
+      const se = JSON.parse(await client.call('preset_export'));
+      assert(se.strategicLayer.factions.academy.holdings.length >= 2, '应生成据点资源');
+      assert(se.events.some(e => e.id === 'ev_strategy_briefing_academy'), '应创建战略汇报事件');
+      assert(se.scenes.find(s => s.id === 'scene_start_academy').events.includes('ev_strategy_briefing_academy'), '起点应挂载汇报事件');
+
+      // 审稿：dryRun 不改 + apply 写回
+      const dry = JSON.parse(await client.call('preset_review_strategic_layer_api', { ...api, factionIds: ['academy'], maxSourceSections: 0, applyCorrections: false }));
+      assert(dry.issues.length === 1 && dry.note.includes('未修改'), `dryRun 应返回问题且不改，实际：${JSON.stringify(dry)}`);
+      const applied = JSON.parse(await client.call('preset_review_strategic_layer_api', { ...api, factionIds: ['academy'], maxSourceSections: 0, applyCorrections: true }));
+      assert(applied.issueCounts.warning === 1, `写回应记 warning，实际：${JSON.stringify(applied)}`);
+    } finally { await mock.close(); }
+  });
+
 
   client.close();
   if (fs.existsSync(TMP)) fs.unlinkSync(TMP);
