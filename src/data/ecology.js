@@ -34,9 +34,17 @@ export const TIERS = ['trivial', 'common', 'elite', 'boss'];
 
 const TIER_RANK = { trivial: 0, common: 1, elite: 2, boss: 3 };
 
-/** difficulty(敌人卡常用) → tier 归一 */
+/** difficulty(敌人卡常用) → tier 归一。兼容字符串(easy/normal/hard/boss)与数字(1~5+，AI 生成常用) */
 export function difficultyToTier(difficulty) {
-  switch ((difficulty || '').toLowerCase()) {
+  // 数字难度（含数字字符串）：1→trivial, 2→common, 3→elite, ≥4→boss
+  if (typeof difficulty === 'number' || (typeof difficulty === 'string' && /^\d+$/.test(difficulty.trim()))) {
+    const n = Number(difficulty);
+    if (n <= 1) return 'trivial';
+    if (n === 2) return 'common';
+    if (n === 3) return 'elite';
+    return 'boss';
+  }
+  switch (String(difficulty || '').toLowerCase()) {
     case 'easy': return 'trivial';
     case 'normal': return 'common';
     case 'hard': return 'elite';

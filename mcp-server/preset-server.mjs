@@ -2959,6 +2959,67 @@ tools.enemy_assign_ecology = {
   },
 };
 
+tools.preset_import_json = {
+  title: '导入一次性生成的剧本 JSON → 自动补全 + 物料化 + 配图',
+  description: `把"一次性 AI 生成"的剧本 JSON 导入为当前预设，并跑补全流水线：
+  1. 补 startingSceneId（缺则取首个场景）、自动布局缺失坐标
+  2. 给消耗品补 heal、给装备补 statModifiers（按名称推断）、规范 itemType/type
+  3. 给敌人据 tags 推断 ecology 并烘焙静态掉落表，把掉落物从 assetLibrary 物料化进 items
+  4. 可选 assignImages：给角色/敌人/物品/场景配图
+  5. 报告"需作者决策"项：设了不用的变量 / 孤儿敌人 / 缺结局
+适合把本地模型生成的"骨架"一步变成"可玩"。json 与 path 二选一。`,
+  schema: {
+    json: z.string().optional().describe('剧本 JSON 文本（一次性生成的输出）'),
+    path: z.string().optional().describe('剧本 JSON 文件路径（与 json 二选一）'),
+    assignImages: z.boolean().default(true).describe('是否按 assetLibrary 自动配图'),
+    addEndingScaffold: z.boolean().default(false).describe('无结局时是否自动补一个结局事件脚手架'),
+    save: z.boolean().default(false).describe('是否落盘到当前预设文件'),
+  },
+  handler: async (args) => {
+    // 1) 解析输入
+    let raw;
+    try {
+      if (args.json) raw = JSON.parse(args.json);
+      else if (args.path) raw = JSON.parse(fs.readFileSync(args.path, 'utf-8'));
+      else return err('请提供 json（文本）或 path（文件路径）之一');
+    } catch (e) {
+      return err(`JSON 解析失败：${e.message}`);
+    }
+
+    // 2) 补全
+    const { normalizePreset, formatNormalizeReport } = await import('../src/data/presetNormalize.js');
+    const { preset: normalized, report, lootItemsNeeded } = normalizePreset(raw, {
+      addEndingScaffold: args.addEndingScaffold,
+    });
+
+    // 3) 设为当前预设（补齐服务端要求的默认结构）
+    preset = { ...createEmptyPreset(), ...normalized };
+
+    // 4) 物料化掉落物（操作全局 preset.items）
+    let materialized = [];
+    if (lootItemsNeeded.length) materialized = await ensureLootItems(lootItemsNeeded);
+
+    // 5) 配图（可选）
+    let imgNote = '';
+    if (args.assignImages) {
+      const { assignPresetImages } = await import('../src/data/assetLibrary.js');
+      preset = assignPresetImages(preset);
+      imgNote = '\n✓ 已按 assetLibrary 配图（characters/enemies/items/scenes）';
+    }
+
+    dirty = true;
+    if (args.save) saveToDisk();
+
+    // 6) 报告 + 校验
+    const reportText = formatNormalizeReport(report, lootItemsNeeded);
+    const matNote = materialized.length ? `\n✓ 物料化 ${materialized.length} 个掉落物到 items` : '';
+    const vErrs = validatePreset();
+    const vNote = vErrs.length === 0 ? '\n✓ 引用完整性校验通过' : `\n⚠ 校验问题(${vErrs.length})：\n${vErrs.map(e => '  - ' + e).join('\n')}`;
+    const counts = `\n规模：${preset.scenes.length} 场景 / ${preset.events.length} 事件 / ${preset.enemies.length} 敌人 / ${preset.items.length} 物品`;
+    return ok(`✓ 已导入并补全：${preset.name || '(未命名)'}${counts}\n\n${reportText}${matNote}${imgNote}${vNote}${args.save ? '\n💾 已落盘' : '\n（未落盘，dirty）'}`);
+  },
+};
+
 // ---------- 物品 ----------
 tools.item_list = {
   title: '列出所有物品',
