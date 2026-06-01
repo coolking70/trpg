@@ -92,6 +92,19 @@ describe('DifficultyTracker', () => {
     });
   });
 
+  describe('setManualBias（L3 编剧调难度）', () => {
+    test('偏置累加并 clamp 到 [-1,1]，叠加进挑战分数', () => {
+      expect(dt.setManualBias(0.3)).toBeCloseTo(0.3);
+      expect(dt.computeChallengeScore()).toBeCloseTo(0.3); // 无战斗历史时分数=偏置
+      dt.setManualBias(0.9);
+      expect(dt.manualBias).toBe(1); // clamp 上限
+      // 正偏置 → getDynamicModifier 增强敌人
+      expect(dt.getDynamicModifier().hpMul).toBeGreaterThan(1);
+      dt.setManualBias(-2.5);
+      expect(dt.manualBias).toBe(-1); // clamp 下限
+    });
+  });
+
   describe('getSnapshot', () => {
     test('返回完整状态', () => {
       dt.recordCombat({ result: 'victory', hpRatio: 0.9, rounds: 2 });

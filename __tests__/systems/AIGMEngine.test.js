@@ -3,6 +3,7 @@
  */
 
 import { AIGMEngine } from '../../src/systems/AIGMEngine.js';
+import { CardManager } from '../../src/systems/CardManager.js';
 
 function mkEngine({ preset, aiTier = 'standard' } = {}) {
   const ai = new AIGMEngine();
@@ -341,6 +342,77 @@ describe('AIGMEngine AI 参与度（权限）门', () => {
     ai._cachedSystemPrompt = 'sys';
     const msgs = ai._buildMessages('当前消息', { authorityHint: '【你的 GM 权限】当前：L0 旁白。' });
     expect(msgs.some(m => m.role === 'system' && m.content.includes('L0 旁白'))).toBe(true);
+  });
+});
+
+describe('AIGMEngine L3 编剧引擎动作', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  function mkAIEngine(actions, systems) {
+    const ai = new AIGMEngine();
+    ai.setAPIConfig({ endpoint: 'https://example.test/v1', apiKey: 'ok', model: 'm' });
+    ai._cachedSystemPrompt = 'sys';
+    ai._callAIOnce = jest.fn().mockResolvedValue(JSON.stringify({ narrative: '编剧。', actions, diceRequests: [] }));
+    ai.gameEngine = { getSystem: (n) => systems[n] };
+    return ai;
+  }
+  function gs(level) {
+    return {
+      aiAuthority: level, mapState: { playerPosition: { x: 0, y: 0 } },
+      activeCharacters: [{ id: 'pc', name: '主角', inventory: [], stats: { hp: 100, hpCurrent: 100 } }],
+      variables: {}, addNarrative: jest.fn(),
+    };
+  }
+
+  test('L3 spawn_event：注入事件到 CardManager 并设为 activeEvent', async () => {
+    const cm = new CardManager();
+    const ai = mkAIEngine([{ type: 'spawn_event', event: { name: '塌方', description: '巨石封住去路。', choices: [{ text: '搬开', effects: [] }] } }], { CardManager: cm });
+    const state = gs(3);
+    await ai.processGameAction('player_action', { text: '继续前进' }, state);
+    const card = cm.getCard('ev_ai_spawn_1');
+    expect(card).toBeTruthy();
+    expect(card.name).toBe('塌方');
+    expect(state.activeEvent?.id).toBe('ev_ai_spawn_1');
+  });
+
+  test('L3 spawn_event：选项里的 L4 effect 被剥离（防越权夹带），L2 effect 保留', async () => {
+    const cm = new CardManager();
+    const ai = mkAIEngine([{
+      type: 'spawn_event',
+      event: { name: '裂隙', description: '虚空裂开。', choices: [{ text: '凝视', effects: [{ type: 'set_variable', target: 'gazed', value: true }, { type: 'author_ending', endingId: 'x' }] }] },
+    }], { CardManager: cm });
+    await ai.processGameAction('player_action', { text: 'x' }, gs(3));
+    const effs = cm.getCard('ev_ai_spawn_1').choices[0].outcomes[0].effects.map(e => e.type);
+    expect(effs).toContain('set_variable');   // L2 保留
+    expect(effs).not.toContain('author_ending'); // L4 剥离
+  });
+
+  test('L2 时 spawn_event 被权限门拦截（不注入）', async () => {
+    const cm = new CardManager();
+    const ai = mkAIEngine([{ type: 'spawn_event', event: { name: 'x', description: 'y' } }], { CardManager: cm });
+    const state = gs(2);
+    await ai.processGameAction('player_action', { text: 'x' }, state);
+    expect(cm.getCard('ev_ai_spawn_1')).toBeUndefined();
+    expect(state.activeEvent).toBeFalsy();
+  });
+
+  test('L3 scale_difficulty → DifficultyTracker.setManualBias', async () => {
+    const tracker = { setManualBias: jest.fn(() => 0.2) };
+    const ai = mkAIEngine([{ type: 'scale_difficulty', delta: 0.2 }], { DifficultyTracker: tracker });
+    await ai.processGameAction('player_action', { text: 'x' }, gs(3));
+    expect(tracker.setManualBias).toHaveBeenCalledWith(0.2);
+  });
+
+  test('L3 recruit_companion → NPCSystem.recruitCompanion + 入队', async () => {
+    const ns = {
+      recruitCompanion: jest.fn(() => true),
+      getNPC: jest.fn(() => ({ id: 'npc_a', name: '同伴A', stats: { hp: 50, mp: 10 } })),
+    };
+    const ai = mkAIEngine([{ type: 'recruit_companion', npcId: 'npc_a' }], { NPCSystem: ns });
+    const state = gs(3);
+    await ai.processGameAction('player_action', { text: '邀请' }, state);
+    expect(ns.recruitCompanion).toHaveBeenCalledWith(state, 'npc_a');
+    expect(state.activeCharacters.some(c => c.id === 'npc_a')).toBe(true);
   });
 });
 

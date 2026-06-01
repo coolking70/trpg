@@ -25,6 +25,8 @@ export class DifficultyTracker extends GameSystem {
     this.history = [];
     /** @type {boolean} 当前是否启用动态难度（默认开） */
     this.enabled = true;
+    /** @type {number} 手动偏置（-1~+1）：L3 编剧 AI 可微调难度（scale_difficulty） */
+    this.manualBias = 0;
   }
 
   /**
@@ -46,22 +48,30 @@ export class DifficultyTracker extends GameSystem {
    * @returns {number} -1 ~ +1（负=玩家挣扎，正=玩家碾压）
    */
   computeChallengeScore() {
-    if (this.history.length === 0) return 0;
-
     let score = 0;
-    for (const r of this.history) {
-      if (r.result === 'defeat') score -= 0.6;
-      else if (r.result === 'flee') score -= 0.2;
-      else if (r.result === 'victory') {
-        if (r.hpRatio >= HP_RATIO_GOOD) score += 0.3;
-        else if (r.hpRatio <= HP_RATIO_HARD) score -= 0.3;
-        if (r.rounds <= ROUNDS_QUICK) score += 0.2;
-        else if (r.rounds >= ROUNDS_LONG) score -= 0.2;
+    if (this.history.length > 0) {
+      for (const r of this.history) {
+        if (r.result === 'defeat') score -= 0.6;
+        else if (r.result === 'flee') score -= 0.2;
+        else if (r.result === 'victory') {
+          if (r.hpRatio >= HP_RATIO_GOOD) score += 0.3;
+          else if (r.hpRatio <= HP_RATIO_HARD) score -= 0.3;
+          if (r.rounds <= ROUNDS_QUICK) score += 0.2;
+          else if (r.rounds >= ROUNDS_LONG) score -= 0.2;
+        }
       }
+      score /= this.history.length;
     }
-
-    score /= this.history.length;
+    // 叠加 AI（L3 编剧）的手动偏置：正=故意更难，负=故意更易（无战斗历史时分数=偏置）
+    score += this.manualBias;
     return Math.max(-1, Math.min(1, score));
+  }
+
+  /** L3 编剧 AI 微调难度：delta 累加到偏置，clamp 到 [-1,1] */
+  setManualBias(delta) {
+    const d = Number(delta) || 0;
+    this.manualBias = Math.max(-1, Math.min(1, this.manualBias + d));
+    return this.manualBias;
   }
 
   /**

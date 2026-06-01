@@ -9,7 +9,7 @@ import { AIPromptBuilder } from './AIPromptBuilder.js';
 import { AIResponseParser } from './AIResponseParser.js';
 import { estimateTokens } from '../utils/tokenEstimator.js';
 import {
-  clampAuthority, filterActionsByAuthority, narrationCanMutate, authorityPromptSection,
+  clampAuthority, filterActionsByAuthority, narrationCanMutate, authorityPromptSection, requiredAuthority,
 } from './AIAuthority.js';
 
 export class AIGMEngine extends GameSystem {
@@ -426,8 +426,16 @@ export class AIGMEngine extends GameSystem {
           this.eventSystem.publish('ai:authority_blocked', { level: authLevel, blocked: blocked.map(a => a.type) });
         }
         if (allowed.length > 0) {
-          const cardManager = this.gameEngine ? this.gameEngine.getSystem('CardManager') : null;
-          this.responseParser.applyActions(allowed, gameState, this.eventSystem, cardManager);
+          // 引擎级动作（spawn_event / scale_difficulty / recruit_companion / change_affection）
+          // 需要引擎系统支撑，由 _applyEngineActions 处理；其余简单状态改动交 responseParser。
+          const ENGINE_ACTION_TYPES = new Set(['spawn_event', 'scale_difficulty', 'recruit_companion', 'change_affection']);
+          const engineActions = allowed.filter(a => ENGINE_ACTION_TYPES.has(a.type));
+          const parserActions = allowed.filter(a => !ENGINE_ACTION_TYPES.has(a.type));
+          if (parserActions.length > 0) {
+            const cardManager = this.gameEngine ? this.gameEngine.getSystem('CardManager') : null;
+            this.responseParser.applyActions(parserActions, gameState, this.eventSystem, cardManager);
+          }
+          if (engineActions.length > 0) this._applyEngineActions(engineActions, gameState, authLevel);
         }
       } else if (parsed.actions.length > 0 && this.eventSystem) {
         this.eventSystem.publish('ai:authority_blocked', {
@@ -900,6 +908,91 @@ export class AIGMEngine extends GameSystem {
     }
     parts.push('伙伴的反应/台词需要轮换，不要每次都用相同的警示或动作。');
     return parts.join('\n');
+  }
+
+  // ============================================================
+  // L3 编剧：引擎级动作执行（spawn_event / scale_difficulty / recruit_companion / change_affection）
+  //   已通过权限过滤器（≥L3 才会到这里），此处负责真正落地到引擎系统。
+  // ============================================================
+  _applyEngineActions(actions, gameState, level) {
+    for (const action of actions) {
+      try {
+        switch (action.type) {
+          case 'spawn_event': this._spawnEvent(action, gameState, level); break;
+          case 'scale_difficulty': {
+            const tracker = this.gameEngine?.getSystem('DifficultyTracker');
+            const delta = Number(action.delta ?? action.value ?? 0);
+            if (tracker && delta) {
+              tracker.setManualBias(delta);
+              gameState.addNarrative('system', `（GM 调整了难度倾向：${delta > 0 ? '更具挑战' : '稍作宽限'}）`);
+            }
+            break;
+          }
+          case 'recruit_companion': {
+            const ns = this.gameEngine?.getSystem('NPCSystem');
+            const npcId = action.npcId;
+            if (ns && npcId) {
+              const ok = ns.recruitCompanion(gameState, npcId);
+              const npc = ns.getNPC(npcId);
+              if (ok && npc && npc.stats && !gameState.activeCharacters.some(c => c.id === npcId)) {
+                const slot = JSON.parse(JSON.stringify(npc));
+                slot._isCompanion = true; slot.type = 'character';
+                slot.stats.hpCurrent = slot.stats.hp; slot.stats.mpCurrent = slot.stats.mp || 0;
+                gameState.activeCharacters.push(slot);
+              }
+              if (ok && npc) gameState.addNarrative('system', `🤝 ${npc.name} 加入了你的队伍。`);
+            }
+            break;
+          }
+          case 'change_affection': {
+            const ns = this.gameEngine?.getSystem('NPCSystem');
+            if (ns && action.npcId !== undefined) ns.changeAffection(gameState, action.npcId, Number(action.value) || 0);
+            break;
+          }
+        }
+      } catch (e) {
+        console.error('应用 L3 引擎动作失败:', action, e);
+      }
+    }
+  }
+
+  /**
+   * spawn_event：AI 即兴编写并注入一个支线/遭遇事件（L3 编剧的标志能力）。
+   * 安全：事件各选项的 effects 在注入时按当前权限过滤（剥离超出档位的 effect），
+   *   防止经"自造事件的 outcome"绕过权限门夹带 L4 改写。
+   */
+  _spawnEvent(action, gameState, level) {
+    const ev = action.event || action;
+    if (!ev || !ev.name || !ev.description) return;
+    const cm = this.gameEngine?.getSystem('CardManager');
+    if (!cm) return;
+
+    gameState._aiSpawnSeq = (gameState._aiSpawnSeq || 0) + 1;
+    const id = `ev_ai_spawn_${gameState._aiSpawnSeq}`;
+
+    // 过滤每个选项的 effects（effect.type 与动作类型共用权限表）
+    const choices = Array.isArray(ev.choices) ? ev.choices.map((c, i) => {
+      const rawEffects = Array.isArray(c.effects) ? c.effects
+        : (Array.isArray(c.outcomes) ? (c.outcomes[0]?.effects || []) : []);
+      const effects = rawEffects.filter(e => e && requiredAuthority(e.type) <= clampAuthority(level));
+      return {
+        id: c.id || `choice_${i + 1}`,
+        text: c.text || `选项 ${i + 1}`,
+        outcomes: [{ probability: 1.0, text: c.outcomeText || '', effects }],
+      };
+    }) : [];
+
+    const card = {
+      id, type: 'event', name: ev.name, description: ev.description,
+      eventType: 'ai_spawn', repeatable: false,
+      tags: ['ai_spawn', ...(Array.isArray(ev.tags) ? ev.tags : [])],
+      choices,
+    };
+    cm.addCard(card);
+    // 设为当前事件，交由引擎/UI 走正常的事件解析（选项→outcome.effects 落地）
+    gameState.activeEvent = card;
+    gameState.addNarrative('system', `（一个新的转折出现了：${ev.name}）`);
+    if (this.eventSystem) this.eventSystem.publish('ai:spawnedEvent', { eventId: id, name: ev.name });
   }
 
   /**
