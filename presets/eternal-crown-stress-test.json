@@ -3,7 +3,7 @@
   "presetId": "eternal_crown_stress",
   "name": "永燃之冠",
   "author": "AI 压力测试",
-  "createdAt": "2026-05-31T04:44:53.306Z",
+  "createdAt": "2026-06-01T03:35:17.072Z",
   "description": "一份用于压测 Phase 19-25 全部基础设施的中世纪奇幻剧本：5 章主线 / 3 城镇 / 多区域 / 4 结局 / 22 NPC 关系网。",
   "lore": {
     "worldName": "艾尔西亚",
@@ -587,7 +587,7 @@
       "stats": {
         "hp": 70,
         "mp": 0,
-        "attack": 16,
+        "attack": 14,
         "defense": 8,
         "magicAttack": 0,
         "magicDefense": 6,
@@ -617,15 +617,15 @@
       "name": "岩龙",
       "description": "",
       "stats": {
-        "hp": 180,
+        "hp": 170,
         "mp": 0,
-        "attack": 22,
+        "attack": 16,
         "defense": 14,
         "magicAttack": 8,
         "magicDefense": 4,
         "speed": 8,
         "luck": 1,
-        "hpCurrent": 180,
+        "hpCurrent": 170,
         "mpCurrent": 0
       },
       "abilities": [],
@@ -657,9 +657,9 @@
       "stats": {
         "hp": 200,
         "mp": 0,
-        "attack": 24,
+        "attack": 16,
         "defense": 12,
-        "magicAttack": 20,
+        "magicAttack": 14,
         "magicDefense": 4,
         "speed": 8,
         "luck": 1,
@@ -688,15 +688,15 @@
       "name": "龙王 厄尼斯",
       "description": "",
       "stats": {
-        "hp": 380,
+        "hp": 280,
         "mp": 0,
-        "attack": 32,
+        "attack": 19,
         "defense": 22,
-        "magicAttack": 28,
+        "magicAttack": 18,
         "magicDefense": 22,
         "speed": 14,
         "luck": 1,
-        "hpCurrent": 380,
+        "hpCurrent": 280,
         "mpCurrent": 0
       },
       "abilities": [

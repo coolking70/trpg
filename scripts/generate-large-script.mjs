@@ -325,28 +325,29 @@ enemy('enemy_marsh_lurker',  '沼泽潜行者', { stats: { hp: 50, attack: 14, d
 enemy('enemy_swamp_witch',   '沼泽女巫',  { stats: { hp: 60, attack: 8, defense: 4, magicAttack: 18, magicDefense: 12 }, exp: 30 });
 enemy('enemy_skeleton',      '骷髅战士',  { stats: { hp: 45, attack: 11, defense: 7 }, exp: 16, tags: ['undead'] });
 enemy('enemy_lich',          '巫妖',      { stats: { hp: 150, attack: 12, defense: 10, magicAttack: 22, magicDefense: 18 }, exp: 80, difficulty: 'boss', tags: ['undead', 'boss'] });
-enemy('enemy_drake',         '小型龙崽',  { stats: { hp: 70, attack: 16, defense: 8, magicDefense: 6 }, exp: 35, tags: ['dragon'] });
-enemy('enemy_drake_alpha',   '岩龙',      { stats: { hp: 180, attack: 22, defense: 14, magicAttack: 8 }, exp: 100, difficulty: 'boss', tags: ['dragon', 'boss'], lootTable: [{ itemId: 'item_dragon_bone', dropRate: 1.0 }] });
-enemy('enemy_void_thing',    '虚空之物',  { stats: { hp: 200, attack: 24, defense: 12, magicAttack: 20 }, exp: 150, difficulty: 'boss', tags: ['void', 'boss'] });
+enemy('enemy_drake',         '小型龙崽',  { stats: { hp: 70, attack: 14, defense: 8, magicDefense: 6 }, exp: 35, tags: ['dragon'] });
+enemy('enemy_drake_alpha',   '岩龙',      { stats: { hp: 170, attack: 16, defense: 14, magicAttack: 8 }, exp: 100, difficulty: 'boss', tags: ['dragon', 'boss'], lootTable: [{ itemId: 'item_dragon_bone', dropRate: 1.0 }] });
+enemy('enemy_void_thing',    '虚空之物',  { stats: { hp: 200, attack: 16, defense: 12, magicAttack: 14 }, exp: 150, difficulty: 'boss', tags: ['void', 'boss'] });
 enemy('enemy_dragon_king',   '龙王 厄尼斯', {
-  stats: { hp: 380, attack: 32, defense: 22, magicAttack: 28, magicDefense: 22, speed: 14 },
+  // 平衡（2 人队基线）：基础与阶段加成下调，使满血能"带活口取胜"而非惨胜灭团
+  stats: { hp: 280, attack: 19, defense: 22, magicAttack: 18, magicDefense: 22, speed: 14 },
   exp: 500, difficulty: 'boss', tags: ['dragon', 'boss', 'final'],
   abilities: [
     { id: 'dk_claw', name: '巨爪挥击', type: 'active',
       effect: { damage: { formula: 'attack+2d8' }, applyStatus: { type: 'debuff', stat: 'defense', value: 4, duration: 2 } } },
   ],
-  // Phase 26C — 三阶段 boss
+  // Phase 26C — 三阶段 boss（加成已软化）
   phases: [
-    { id: 'rage_75', hpThreshold: 0.75, statBoosts: { attack: 4 },
+    { id: 'rage_75', hpThreshold: 0.75, statBoosts: { attack: 3 },
       narrative: '⚡ 龙王厄尼斯怒吼，鳞片下渗出灼热的红光——它进入愤怒状态！' },
-    { id: 'rage_50', hpThreshold: 0.50, statBoosts: { speed: 6, attack: 4 },
+    { id: 'rage_50', hpThreshold: 0.50, statBoosts: { speed: 6, attack: 2 },
       abilities: [{ id: 'dk_breath', name: '龙息（群攻）', type: 'active',
-        effect: { damage: { formula: '2d12+12' }, aoe: true, target: 'all_enemies' } }],
+        effect: { damage: { formula: '2d8+8' }, aoe: true, target: 'all_enemies' } }],
       narrative: '🔥 龙王张开獠牙，焦黑的浓烟从喉咙深处升起——龙息要来了！' },
-    { id: 'desperate_25', hpThreshold: 0.25, statBoosts: { defense: -8, attack: 8 },
+    { id: 'desperate_25', hpThreshold: 0.25, statBoosts: { defense: -8, attack: 5 },
       abilities: [{ id: 'dk_final', name: '末日狂吟', type: 'active',
-        effect: { damage: { formula: '3d10+20' }, aoe: true, target: 'all_enemies',
-                  applyStatus: { type: 'dot', stat: 'hp', value: 8, duration: 3 } } }],
+        effect: { damage: { formula: '2d10+12' }, aoe: true, target: 'all_enemies',
+                  applyStatus: { type: 'dot', stat: 'hp', value: 6, duration: 3 } } }],
       narrative: '☠ 龙王身上裂出黑色伤口，它已无后退——这是最后的一搏！' },
   ],
 });

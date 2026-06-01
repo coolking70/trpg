@@ -481,8 +481,9 @@ class ScriptedPlayer extends BasePlayer {
     // 安全网：HP 偏低或有队员倒地 → 直接休整回满，再推进。
     // 玩测发现：只在"无药时"才休整不够——会把药喝到低血、进高阶区(龙穴)才休整、为时已晚而团灭。
     // 改用 manual 模式已验证可通关的无条件阈值（<60 / 倒地即休整，休整优先于喝药）。
+    // 阈值取 80：boss 半血入场胜率骤降，故几乎每战后回满，尽量满血赴战（含 boss）。
     const someoneDown = (context.chars || []).some(c => c.alive === false);
-    if (context.lowestHpPct < 60 || someoneDown) {
+    if (context.lowestHpPct < 80 || someoneDown) {
       return { reasoning: someoneDown ? '有人倒地，休整回满' : '血量偏低，休整回满', action: { type: 'manual_rest' } };
     }
 
