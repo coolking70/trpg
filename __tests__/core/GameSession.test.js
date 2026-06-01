@@ -69,4 +69,19 @@ describe('GameSession 权威对局核心', () => {
     expect(typeof p.hpPct).toBe('number');
     expect(p.alive).toBe(true);
   });
+
+  test('战斗自动结算：start_combat 后 _autoResolveCombat 清空 activeCombat 且不挂起', async () => {
+    Math.random = () => 0.3; // 非退化值（避免 DiceSystem 快排在全 0 下退化）
+    // 起一场对弱敌的战斗（主角满血 vs 低血敌人）
+    session._startCombat(['enemy_001']);
+    expect(session.gameState.activeCombat).toBeTruthy();
+
+    await session._autoResolveCombat();
+
+    // 关键：战斗被结算清空（dedup 后 harness 依赖此自动结算路径）
+    expect(session.gameState.activeCombat).toBeFalsy();
+    // 产生了战斗系统叙述（攻击/胜负）
+    const sysLines = session.gameState.narrativeLog.filter(n => n.speaker === 'system').map(n => n.text);
+    expect(sysLines.some(t => /战斗胜利|战斗结束|使用|攻击/.test(t))).toBe(true);
+  });
 });
