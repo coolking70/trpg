@@ -258,26 +258,31 @@ function isLocalOpenAIBaseUrl(baseUrl) {
   }
 }
 
-async function callOpenAICompatible({ baseUrl, apiKey, model, messages, temperature = 0.2, maxTokens = 1200 }) {
+async function callOpenAICompatible({ baseUrl, apiKey, model, messages, temperature = 0.2, maxTokens = 1200, apiStyle }) {
   const key = apiKey || process.env.OPENAI_API_KEY;
   const normalizedBaseUrl = normalizeOpenAIBaseUrl(baseUrl);
   if (!key && !isLocalOpenAIBaseUrl(normalizedBaseUrl)) {
     throw new Error('缺少 API key：请传 apiKey，或设置 OPENAI_API_KEY；本地 127.0.0.1/localhost 端点可留空');
   }
-  const url = `${normalizedBaseUrl}/chat/completions`;
+  // Responses-API（如 hy3-preview）：apiStyle='responses' 或 OPENAI_API_STYLE=responses 或 endpoint 指向 /responses
+  const useResponses = apiStyle === 'responses'
+    || (apiStyle !== 'chat' && (process.env.OPENAI_API_STYLE === 'responses' || /\/responses\/?$/.test(normalizedBaseUrl)));
+  const base = normalizedBaseUrl.replace(/\/(responses|chat\/completions)$/, '');
+  const url = useResponses ? `${base}/responses` : `${base}/chat/completions`;
   const controller = new AbortController();
   const timeoutMs = Number(process.env.OPENAI_TIMEOUT_MS || 180000);
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  const requestBody = {
-    model: model || DEFAULT_OPENAI_MODEL,
-    messages,
-    temperature,
-    max_tokens: maxTokens,
-  };
-  if (isLocalOpenAIBaseUrl(normalizedBaseUrl)) {
-    requestBody.reasoning_effort = 'none';
+
+  let requestBody;
+  if (useResponses) {
+    const sys = messages.filter(m => m.role === 'system').map(m => m.content).filter(Boolean).join('\n\n');
+    const rest = messages.filter(m => m.role !== 'system');
+    const input = rest.length === 1 ? rest[0].content : rest.map(m => `[${m.role}] ${m.content}`).join('\n\n');
+    requestBody = { model: model || DEFAULT_OPENAI_MODEL, instructions: sys, input: input || '(开始)', stream: false, max_output_tokens: maxTokens };
   } else {
-    requestBody.response_format = { type: 'json_object' };
+    requestBody = { model: model || DEFAULT_OPENAI_MODEL, messages, temperature, max_tokens: maxTokens };
+    if (isLocalOpenAIBaseUrl(normalizedBaseUrl)) requestBody.reasoning_effort = 'none';
+    else requestBody.response_format = { type: 'json_object' };
   }
 
   let res;
@@ -304,6 +309,12 @@ async function callOpenAICompatible({ baseUrl, apiKey, model, messages, temperat
     throw new Error(`API 调用失败 ${res.status}: ${body.slice(0, 500)}`);
   }
   const json = await res.json();
+  if (useResponses) {
+    if (typeof json.output_text === 'string' && json.output_text) return json.output_text;
+    const parts = [];
+    for (const item of (json.output || [])) for (const c of (item.content || [])) if (typeof c.text === 'string') parts.push(c.text);
+    return parts.join('') || (json.choices?.[0]?.message?.content || '');
+  }
   return json.choices?.[0]?.message?.content || '';
 }
 
@@ -912,7 +923,9 @@ async function buildPresetFromBlueprint(blueprint, digest) {
     (ch.combatPlan || []).forEach((cp, cpi) => {
       const tier = (cp.ecology?.tier && TIER_STATS[cp.ecology.tier]) ? cp.ecology.tier : 'common';
       const st = TIER_STATS[tier];
-      const count = Math.max(1, Math.min(3, Number(cp.count) || 1));
+      // 平衡纪律：按 tier 限制同场敌人数，避免"多个 boss/精英同屏"造成不可通关
+      const maxByTier = { trivial: 3, common: 3, elite: 2, boss: 1 };
+      const count = Math.max(1, Math.min(maxByTier[tier] || 3, Number(cp.count) || 1));
       const ids = [];
       for (let k = 0; k < count; k++) {
         const eid = `enemy_${ch.id}_${cpi + 1}_${k + 1}`;
