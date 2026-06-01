@@ -173,3 +173,15 @@
   .endgame-modal__grid { grid-template-columns: repeat(2, 1fr); }
   .endgame-modal__lib-group-grid { grid-template-columns: 1fr; }
 }
+
+/* AI 参与度滑条（新游戏选择） */
+.endgame-modal__authority {
+  margin: 8px 0 14px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+}
+.endgame-modal__authority-label { font-weight: 600; display: block; margin-bottom: 6px; }
+.endgame-modal__authority-desc { margin-top: 6px; font-size: 0.92em; opacity: 0.95; }
+.endgame-modal__authority-hint { margin-top: 4px; font-size: 0.8em; opacity: 0.6; line-height: 1.4; }

@@ -14,6 +14,9 @@
  */
 
 import './EndgameModal.css';
+import { AUTHORITY_LEVELS, DEFAULT_AUTHORITY } from '../systems/AIAuthority.js';
+
+const AI_CONFIG_KEY = 'trpg_ai_config';
 
 export class EndgameModal {
   constructor(containerElement, eventSystem) {
@@ -127,6 +130,23 @@ export class EndgameModal {
       libLabel.textContent = isMainQuestComplete ? '🎬 开启下一段冒险' : '📚 选择你的剧本';
       libBody.appendChild(libLabel);
 
+      // 🎚 AI 参与度滑条（新游戏时选择；与设置里的滑条共用持久化）
+      const initAuth = this._readAuthority();
+      const authWrap = document.createElement('div');
+      authWrap.className = 'endgame-modal__authority';
+      authWrap.innerHTML = `
+        <label class="endgame-modal__authority-label">🎚 AI 参与度（主导度）</label>
+        <input type="range" id="endgame-ai-authority" min="0" max="4" step="1" value="${initAuth}" style="width:100%">
+        <div id="endgame-ai-authority-desc" class="endgame-modal__authority-desc">${this._authorityLabelHTML(initAuth)}</div>
+        <div class="endgame-modal__authority-hint">越左 AI 越克制（仅氛围）｜越右越主导（高档可改写剧情/结局）。游戏中可随时在设置里调整。</div>
+      `;
+      libBody.appendChild(authWrap);
+      const authSlider = authWrap.querySelector('#endgame-ai-authority');
+      const authDesc = authWrap.querySelector('#endgame-ai-authority-desc');
+      authSlider.addEventListener('input', () => {
+        authDesc.innerHTML = this._authorityLabelHTML(parseInt(authSlider.value, 10) || 0);
+      });
+
       const libGrid = document.createElement('div');
       libGrid.className = 'endgame-modal__lib-grid';
       const groups = new Map();
@@ -164,8 +184,11 @@ export class EndgameModal {
             <div class="endgame-modal__lib-desc">${choice.description || ''}</div>
           `;
           card.addEventListener('click', () => {
+            // 新游戏选择的 AI 参与度：持久化进 config（loadPreset 会读它应用到新局）
+            const lv = this._readSliderValue(libBody);
+            this._persistAuthority(lv);
             // 让 main.js 实际去生成/获取预设数据
-            this.eventSystem.publish('game:newGame', { presetKey: choice.key });
+            this.eventSystem.publish('game:newGame', { presetKey: choice.key, aiAuthority: lv });
             this.hide();
           });
           groupGrid.appendChild(card);
@@ -219,6 +242,37 @@ export class EndgameModal {
     this._backdrop.appendChild(modal);
     this.container.appendChild(this._backdrop);
     this.container.classList.add('active');
+  }
+
+  /** 读取已持久化的 AI 参与度（缺失→默认） */
+  _readAuthority() {
+    try {
+      const cfg = JSON.parse(localStorage.getItem(AI_CONFIG_KEY) || '{}');
+      if (cfg.aiAuthority !== undefined && cfg.aiAuthority !== null) {
+        return Math.max(0, Math.min(4, Math.round(Number(cfg.aiAuthority)) || 0));
+      }
+    } catch { /* */ }
+    return DEFAULT_AUTHORITY;
+  }
+
+  /** 把选择的参与度写回持久化 config（与设置滑条共用同一存储） */
+  _persistAuthority(level) {
+    try {
+      const cfg = JSON.parse(localStorage.getItem(AI_CONFIG_KEY) || '{}');
+      cfg.aiAuthority = Math.max(0, Math.min(4, Math.round(Number(level)) || 0));
+      localStorage.setItem(AI_CONFIG_KEY, JSON.stringify(cfg));
+    } catch { /* localStorage 不可用则忽略，payload 里仍带值 */ }
+  }
+
+  _readSliderValue(root) {
+    const el = root && root.querySelector('#endgame-ai-authority');
+    return el ? Math.max(0, Math.min(4, parseInt(el.value, 10) || 0)) : this._readAuthority();
+  }
+
+  _authorityLabelHTML(level) {
+    const lv = Math.max(0, Math.min(4, Math.round(Number(level)) || 0));
+    const meta = AUTHORITY_LEVELS[lv] || AUTHORITY_LEVELS[DEFAULT_AUTHORITY];
+    return `<b>L${lv} ${meta.name}</b> — ${meta.blurb}`;
   }
 
   hide() {
