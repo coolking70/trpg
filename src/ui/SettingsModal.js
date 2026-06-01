@@ -3,6 +3,8 @@
  * AI API配置、游戏参数设置
  */
 
+import { AUTHORITY_LEVELS, DEFAULT_AUTHORITY } from '../systems/AIAuthority.js';
+
 const STORAGE_KEY = 'trpg_ai_config';
 
 export class SettingsModal {
@@ -24,6 +26,7 @@ export class SettingsModal {
       allyAIMode: 'heuristic',   // 'heuristic' | 'llm' - AI 队友决策模式
       budgetWarningTokens: 0,    // Token 预算告警阈值（0 = 关闭）
       aiTier: 'standard',        // Phase 26B - AI 叙事丰度 (none/light/standard/advanced)
+      aiAuthority: DEFAULT_AUTHORITY, // AI 参与度/主导度（0–4，权限轴）
     };
 
     this._loadConfig();
@@ -143,7 +146,19 @@ export class SettingsModal {
             <option value="standard" ${this.config.aiTier === 'standard' ? 'selected' : ''}>标准 — 绝大多数节点都调（推荐）</option>
             <option value="advanced" ${this.config.aiTier === 'advanced' ? 'selected' : ''}>丰富 — 全开，含 vignette 重访叙事</option>
           </select>
-          <span class="settings__hint">控制 AI 在何时介入叙事。预设作者可通过 preset.aiHooks 强制 always/never 某个 hook。</span>
+          <span class="settings__hint">控制 AI 在何时介入叙事（频率）。预设作者可通过 preset.aiHooks 强制 always/never 某个 hook。</span>
+        </div>
+
+        <div class="settings__field">
+          <label class="settings__label">🎚 AI 参与度（主导度）</label>
+          <input type="range" class="settings__range" id="setting-ai-authority"
+            min="0" max="4" step="1" value="${this.config.aiAuthority ?? DEFAULT_AUTHORITY}"
+            style="width:100%">
+          <div id="setting-ai-authority-label" class="settings__authority-label">
+            ${this._authorityLabelHTML(this.config.aiAuthority ?? DEFAULT_AUTHORITY)}
+          </div>
+          <span class="settings__hint">控制 AI 操作的 GM 对游戏进程的<b>控制力度</b>（权限）。可随时拖动，下次 AI 行动即生效。
+            ⬅ 越左 AI 越克制（仅氛围）｜越右 AI 越主导（高档可改写剧情/结局）。</span>
         </div>
       </div>
 
@@ -216,6 +231,19 @@ export class SettingsModal {
         this.eventSystem.publish('tokenStats:resetRequest');
       });
     }
+
+    // AI 参与度滑条：拖动即实时生效（无需保存/关闭），并实时更新档位说明
+    const authEl = body.querySelector('#setting-ai-authority');
+    const authLabel = body.querySelector('#setting-ai-authority-label');
+    if (authEl) {
+      authEl.addEventListener('input', () => {
+        const lv = Math.max(0, Math.min(4, parseInt(authEl.value, 10) || 0));
+        if (authLabel) authLabel.innerHTML = this._authorityLabelHTML(lv);
+        this.config.aiAuthority = lv;
+        // 专用事件：只改 gameState.aiAuthority，不触动其它设置
+        this.eventSystem.publish('settings:authorityLive', { aiAuthority: lv });
+      });
+    }
   }
 
   /** 填充 token 统计区 */
@@ -269,11 +297,20 @@ export class SettingsModal {
     this.hide();
   }
 
+  /** AI 参与度档位的展示文本（名称 + 能力简述） */
+  _authorityLabelHTML(level) {
+    const lv = Math.max(0, Math.min(4, Math.round(Number(level)) || 0));
+    const meta = AUTHORITY_LEVELS[lv] || AUTHORITY_LEVELS[DEFAULT_AUTHORITY];
+    return `<b>L${lv} ${meta.name}</b> — ${meta.blurb}`;
+  }
+
   /** 从表单读取当前配置，不要求用户先保存 */
   _readFormConfig(body) {
     const tierEl = body.querySelector('#setting-ai-tier');
+    const authEl = body.querySelector('#setting-ai-authority');
     return {
       ...this.config,
+      aiAuthority: authEl ? Math.max(0, Math.min(4, parseInt(authEl.value, 10) || 0)) : this.config.aiAuthority,
       endpoint: body.querySelector('#setting-endpoint').value.trim(),
       apiKey: body.querySelector('#setting-apikey').value.trim(),
       model: body.querySelector('#setting-model').value.trim(),

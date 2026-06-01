@@ -543,6 +543,14 @@ class TRPGApp {
       }
     });
 
+    // ---- AI 参与度滑条实时拖动（专用轻量事件，只改 gameState.aiAuthority，不触动其它设置）----
+    es.subscribe('settings:authorityLive', (evt) => {
+      const lv = evt.data?.aiAuthority;
+      if (lv === undefined || lv === null || !this.gameState) return;
+      this.gameState.aiAuthority = Math.max(0, Math.min(4, Math.round(Number(lv)) || 0));
+      es.publish('game:stateChanged', { gameState: this.gameState });
+    });
+
     // ---- Token 统计请求/重置（SettingsModal 解耦用） ----
     es.subscribe('tokenStats:request', () => {
       const aiEngine = this.engine.getSystem('AIGMEngine');
@@ -865,6 +873,18 @@ class TRPGApp {
     if (playerChoices) {
       this._applyPlayerCharacterChoices(playerChoices);
     }
+
+    // 新游戏继承已保存设置里的 AI 频率/参与度（= 新游戏时的选择，由设置滑条持久化）
+    try {
+      const saved = localStorage.getItem('trpg_ai_config');
+      if (saved) {
+        const cfg = JSON.parse(saved);
+        if (cfg.aiTier) this.gameState.aiTier = cfg.aiTier;
+        if (cfg.aiAuthority !== undefined && cfg.aiAuthority !== null) {
+          this.gameState.aiAuthority = Math.max(0, Math.min(4, Math.round(Number(cfg.aiAuthority)) || 0));
+        }
+      }
+    } catch { /* 配置缺失/损坏 → 用 GameState 默认值 */ }
 
     // Phase 19B — 初始化 NPC 运行时状态
     const npcSystem = this.engine.getSystem('NPCSystem');
