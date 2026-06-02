@@ -16,7 +16,7 @@ import {
   HOLDING_TYPES, governorBonusFromWarfare, holdingEffectiveDev, holdingEffectiveSecurity,
 } from '../data/governance.js';
 import { battleTerritoryOutcome } from '../data/campaign.js';
-import { XUN_PER_SEASON, MARCH_BASE_ETA, regionDistance, marchEta, marchDetectChance, siegeTick, siegeOutcome, postureMoraleMod } from '../data/war.js';
+import { XUN_PER_SEASON, MARCH_BASE_ETA, MARCH_POSTURES, regionDistance, marchEta, marchDetectChance, siegeTick, siegeOutcome, postureMoraleMod } from '../data/war.js';
 
 const clamp200 = (v) => Math.max(0, Math.min(200, Math.round(v)));
 
@@ -365,15 +365,29 @@ export class StrategicSystem extends GameSystem {
     const defenderId = this._holdingOwner(gameState, targetHoldingId);
     if (!atk || !defenderId) return null;
     const want = troops != null ? troops : Math.round((atk.troops || 0) * 0.6);
-    const mobilized = this.mobilize(gameState, attackerId, want);
+    let mobilized = this.mobilize(gameState, attackerId, want);
     if (mobilized <= 0) return null;
     const supply = Math.floor((atk.food || 0) * 0.4);
     atk.food = Math.max(0, (atk.food || 0) - supply);
+
+    // 公开讨伐（Phase 41 W5）：盟友响应，一同出兵
+    const alliesJoined = [];
+    if (MARCH_POSTURES[posture]?.allyResponse) {
+      for (const [aid, rel] of Object.entries(atk.diplomacy || {})) {
+        if (aid === defenderId) continue;
+        if (rel.stance === 'ally' || rel.relation >= 50) {
+          const ally = this.getFactionState(gameState, aid);
+          const join = this.mobilize(gameState, aid, Math.round((ally?.troops || 0) * 0.3));
+          if (join > 0) { mobilized += join; alliesJoined.push({ id: aid, troops: join }); }
+        }
+      }
+    }
+
     const dist = this._distanceToHolding(gameState, attackerId, targetHoldingId);
     const march = {
       id: `march_${attackerId}_${targetHoldingId}_${s.warXun}`,
       attacker: attackerId, defender: defenderId, targetHoldingId, posture,
-      army: { troops: mobilized, supply, generalIds }, etaXun: marchEta(dist, posture),
+      army: { troops: mobilized, supply, generalIds, allies: alliesJoined }, etaXun: marchEta(dist, posture),
       detected: false, detectedAtXun: null,
     };
     s.marches.push(march);
@@ -453,14 +467,15 @@ export class StrategicSystem extends GameSystem {
       };
       return { kind: 'battle', battleDef };
     }
-    // hold → 围城
-    const garrison = this.mobilize(gameState, defender, Math.round((def?.troops || 0) * 0.85));
+    // hold → 围城。突袭使守方来不及调兵遣将、加固城防（defenderPrep 缩减守军与城防）
+    const prep = MARCH_POSTURES[march.posture]?.defenderPrep ?? 1;
+    const garrison = this.mobilize(gameState, defender, Math.round((def?.troops || 0) * (0.5 + 0.35 * prep)));
     const siege = {
       id: `siege_${attacker}_${holdingId}_${gameState.strategicState.warXun}`,
       attacker, defender, holdingId, mode: march.posture === 'raid' ? 'assault' : 'blockade', xun: 0,
       atk: { troops: march.army.troops, morale: 70 + postureMoraleMod(march.posture), supply: march.army.supply },
       def: { troops: garrison, supply: Math.floor((def?.food || 0) * 0.6), morale: 70 },
-      works: { gate: 220, wall: 320 }, machinePower: 30,
+      works: { gate: Math.round(220 * (0.6 + 0.4 * prep)), wall: Math.round(320 * (0.6 + 0.4 * prep)) }, machinePower: 30,
     };
     if (def) def.food = Math.max(0, (def.food || 0) - siege.def.supply);
     gameState.strategicState.sieges.push(siege);
