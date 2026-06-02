@@ -16,7 +16,7 @@ import {
   HOLDING_TYPES, governorBonusFromWarfare, holdingEffectiveDev, holdingEffectiveSecurity,
 } from '../data/governance.js';
 import { battleTerritoryOutcome } from '../data/campaign.js';
-import { XUN_PER_SEASON, MARCH_BASE_ETA, regionDistance, marchEta, marchDetectChance, siegeTick, siegeOutcome } from '../data/war.js';
+import { XUN_PER_SEASON, MARCH_BASE_ETA, regionDistance, marchEta, marchDetectChance, siegeTick, siegeOutcome, postureMoraleMod } from '../data/war.js';
 
 const clamp200 = (v) => Math.max(0, Math.min(200, Math.round(v)));
 
@@ -407,7 +407,13 @@ export class StrategicSystem extends GameSystem {
     }
     for (const m of arrived) {
       s.marches = s.marches.filter(x => x !== m);
-      events.push({ type: 'army_arrived', march: m });
+      if (m.defender === pid) {
+        events.push({ type: 'army_arrived', march: m, playerEngagement: true }); // 玩家守方 → 待玩家抉择
+      } else {
+        // AI 守方：自动闭城固守（建围城，后续旬推进结算）
+        const r = this.resolveEngagement(gameState, m, 'hold');
+        events.push({ type: 'siege_begin', siege: r.siege });
+      }
     }
 
     // 围城推进
@@ -419,6 +425,46 @@ export class StrategicSystem extends GameSystem {
     }
     return events;
   }
+
+  /**
+   * 接敌抉择（Phase 41 W3）：行军抵达后，守方选 sally(出城迎击) / hold(闭城固守)。
+   *   sally → 返回 { kind:'battle', battleDef }（野战，交 GameSession 起战术战）
+   *   hold  → 建 siege 并返回 { kind:'siege', siege }
+   */
+  resolveEngagement(gameState, march, choice) {
+    const attacker = march.attacker, defender = march.defender, holdingId = march.targetHoldingId;
+    const def = this.getFactionState(gameState, defender);
+    if (choice === 'sally') {
+      const garrison = def?.troops || 1;
+      const atkT = march.army.troops;
+      const battleDef = {
+        battleType: 'field', drawFromStrategy: true, playerFactionId: defender, enemyFactionId: attacker,
+        objectiveName: `${this._factionName(gameState, attacker)}犯境·野战`, campaignKey: `sally_${holdingId}`,
+        supply: { player: 9999, enemy: march.army.supply },
+        units: [
+          { id: 'def_main', side: 'player', unitType: 'spearman', troops: garrison, generalId: march.defenderGeneralId },
+          { id: 'atk_main', side: 'enemy', unitType: 'infantry', troops: atkT },
+          { id: 'atk_cav', side: 'enemy', unitType: 'cavalry', troops: Math.max(1, Math.round(atkT * 0.3)) },
+        ],
+      };
+      return { kind: 'battle', battleDef };
+    }
+    // hold → 围城
+    const garrison = this.mobilize(gameState, defender, Math.round((def?.troops || 0) * 0.85));
+    const siege = {
+      id: `siege_${attacker}_${holdingId}_${gameState.strategicState.warXun}`,
+      attacker, defender, holdingId, mode: march.posture === 'raid' ? 'assault' : 'blockade', xun: 0,
+      atk: { troops: march.army.troops, morale: 70 + postureMoraleMod(march.posture), supply: march.army.supply },
+      def: { troops: garrison, supply: Math.floor((def?.food || 0) * 0.6), morale: 70 },
+      works: { gate: 220, wall: 320 }, machinePower: 30,
+    };
+    if (def) def.food = Math.max(0, (def.food || 0) - siege.def.supply);
+    gameState.strategicState.sieges.push(siege);
+    this._publish('war:siegeBegin', { siege });
+    return { kind: 'siege', siege };
+  }
+
+  _factionName(gameState, id) { return gameState.strategicState?.factions?.[id]?.name || id; }
 
   // ============================================================
   // 季度推进：全势力 upkeep + 敌国 AI + 事件产出
@@ -464,10 +510,12 @@ export class StrategicSystem extends GameSystem {
       }
     }
 
-    // 作战层：一季 = XUN_PER_SEASON 旬，逐旬推进行军/围城
+    // 作战层：一季 = XUN_PER_SEASON 旬，逐旬推进行军/围城；遇玩家接敌抉择则提前停（剩余旬留待抉择后再推）
     if (s.regions) {
       for (let i = 0; i < XUN_PER_SEASON; i++) {
-        for (const ev of this.advanceWarXun(gameState)) events.push(ev);
+        const xunEvents = this.advanceWarXun(gameState);
+        for (const ev of xunEvents) events.push(ev);
+        if (xunEvents.some(e => e.playerEngagement)) break;
       }
     }
 

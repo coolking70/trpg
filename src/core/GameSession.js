@@ -741,10 +741,47 @@ export class GameSession {
     const { narratives, invasion } = applySeasonEvents(this.gameState, events);
     for (const n of narratives) this.gameState.addNarrative('system', n);
     try { await this.sys('AIGMEngine').processGameAction('narrate_governance', { kind: 'season', season, events, player: ss.getPlayerState(this.gameState) }, this.gameState); } catch { /* */ }
-    // 战役级连战（Phase 38）：敌国来犯 → 立刻一场守城战
+
+    // 作战层（Phase 41 W3）：探报 + 接敌抉择（regions 启用时取代 instant invasion）
+    for (const d of events.filter(e => e.type === 'march_detected')) {
+      this.gameState.addNarrative('system', `🛰 探报：${this._factionName(d.march.attacker)} 一支军马正向 ${this._holdingName(d.march.targetHoldingId)} 开进（${d.march.posture === 'raid' ? '踪迹隐秘' : '旗号公开'}）。`);
+    }
+    const arrival = events.find(e => e.type === 'army_arrived' && e.playerEngagement);
+    if (arrival) {
+      this.gameState._pendingEngagement = arrival.march;
+      this.gameState.addNarrative('system', `⚔ ${this._factionName(arrival.march.attacker)} 大军已抵 ${this._holdingName(arrival.march.targetHoldingId)} 城下！`);
+      try { await this.sys('AIGMEngine').processGameAction('narrate_event', { event: { name: '兵临城下', description: `${this._factionName(arrival.march.attacker)}大军压境${arrival.march.posture === 'raid' ? '（事出突然，城防未备）' : ''}。当出城迎击，还是闭城固守？` } }, this.gameState); } catch { /* */ }
+      return; // 暂停，待玩家接敌抉择
+    }
+
+    // 战役级连战（Phase 38，无 regions 旧路径）：敌国来犯 → 立刻一场守城战
     if (invasion) {
       const battle = ss.buildInvasionBattle(this.gameState, invasion.by, this.gameState.strategicState.playerFactionId);
       if (battle) { this._startLegionBattle(battle); if (this.gameState.activeLegionBattle) { await this._enterLegionBattle(); return; } }
+    }
+    await this._scanAfter(TRIGGER_MOMENTS.SCENE_ENTER);
+  }
+
+  _holdingName(id) {
+    const st = this.gameState.strategicState;
+    for (const f of Object.values(st?.factions || {})) { const h = (f.holdings || []).find(x => x.id === id); if (h) return h.name; }
+    return id;
+  }
+
+  /** 接敌抉择（Phase 41 W3）：sally 出城迎击→野战；hold 闭城固守→围城 */
+  async _resolveEngagement(choice) {
+    const m = this.gameState._pendingEngagement;
+    if (!m) return;
+    this.gameState._pendingEngagement = null;
+    const ss = this.sys('StrategicSystem');
+    const r = ss.resolveEngagement(this.gameState, m, choice);
+    if (r.kind === 'battle') {
+      this.gameState.addNarrative('system', `🐎 ${this._holdingName(m.targetHoldingId)} 守军出城列阵，迎击来犯之敌！`);
+      this._startLegionBattle(r.battleDef);
+      if (this.gameState.activeLegionBattle) { await this._enterLegionBattle(); return; }
+    } else {
+      this.gameState.addNarrative('system', `🏯 ${this._holdingName(m.targetHoldingId)} 闭门坚守，围城战起。`);
+      try { await this.sys('AIGMEngine').processGameAction('narrate_event', { event: { name: '闭城固守', description: `${this._holdingName(m.targetHoldingId)}紧闭城门，深沟高垒，与城外大军相持。` } }, this.gameState); } catch { /* */ }
     }
     await this._scanAfter(TRIGGER_MOMENTS.SCENE_ENTER);
   }
@@ -837,6 +874,9 @@ export class GameSession {
       case 'advance_season':
         await this._advanceSeason();
         break;
+      case 'engage':
+        await this._resolveEngagement(action.choice || 'hold');
+        break;
       default:
         this.gameState.addNarrative('system', `（未知动作类型：${action.type}）`);
     }
@@ -879,7 +919,14 @@ export class GameSession {
     let combat = null;
     let legion = null;
     let strategy = null;
-    if (gs.activeLegionBattle) {
+    if (gs._pendingEngagement) {
+      // 接敌抉择（Phase 41 W3）：敌军兵临城下，出城迎击 or 闭城固守
+      situation = 'engagement';
+      const m = gs._pendingEngagement;
+      event = { name: '兵临城下', description: `${this._factionName(m.attacker)} 大军（约 ${m.army.troops} 众）已抵 ${this._holdingName(m.targetHoldingId)} 城下。` };
+      options.push({ n: 1, type: 'engage', choice: 'sally', text: '出城迎击（野战决胜）' });
+      options.push({ n: 2, type: 'engage', choice: 'hold', text: '闭城固守（凭城消耗）' });
+    } else if (gs.activeLegionBattle) {
       situation = 'legion';
       legion = this._buildLegionSnapshot(gs, options);
     } else if (gs.activeCombat) {
