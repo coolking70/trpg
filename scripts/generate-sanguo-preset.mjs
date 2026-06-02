@@ -205,7 +205,7 @@ const blueprint = {
       id, name, type, population: pop, dev, security: sec,
       ...(gov ? { governorId: gov, governorName: chars.find(c => c.id === gov)?.name, governorWarfare: warOf[gov] } : {}),
     });
-    return {
+    const setup = {
       playerFactionId: 'shu',
       factions: {
         shu: { name: '蜀汉', gold: 200, food: 400, troops: 8000, order: 62,
@@ -235,7 +235,24 @@ const blueprint = {
             H('nanzhong_city', '南中', 'city', 12000, 85, 40, 'menghuo'),
           ] },
       },
+      // 作战层（Phase 41）：区域邻接图 + 城池归属区域 → 行军时间/情报半径
+      regions: {
+        yizhou: { name: '益州', adjacency: ['hanzhong', 'jingzhou', 'nanzhong'] },
+        nanzhong: { name: '南中', adjacency: ['yizhou'] },
+        hanzhong: { name: '汉中', adjacency: ['yizhou', 'guanzhong'] },
+        guanzhong: { name: '关中', adjacency: ['hanzhong', 'zhongyuan', 'hebei'] },
+        hebei: { name: '河北', adjacency: ['guanzhong', 'zhongyuan'] },
+        zhongyuan: { name: '中原', adjacency: ['guanzhong', 'hebei', 'jingzhou', 'huainan', 'xuzhou'] },
+        jingzhou: { name: '荆州', adjacency: ['yizhou', 'zhongyuan', 'jiangdong', 'huainan'] },
+        huainan: { name: '淮南', adjacency: ['zhongyuan', 'jingzhou', 'jiangdong', 'xuzhou'] },
+        jiangdong: { name: '江东', adjacency: ['jingzhou', 'huainan'] },
+        xuzhou: { name: '徐州', adjacency: ['zhongyuan', 'huainan'] },
+      },
     };
+    // 城池归属区域
+    const HR = { chengdu: 'yizhou', jiangzhou: 'yizhou', hanzhong: 'hanzhong', jingzhou: 'jingzhou', xuchang: 'zhongyuan', yecheng: 'hebei', guandu: 'zhongyuan', hefei: 'huainan', jianye: 'jiangdong', chaisang: 'jiangdong', jiangling: 'jingzhou', xiapi_city: 'xuzhou', nanzhong_city: 'nanzhong' };
+    for (const f of Object.values(setup.factions)) for (const h of f.holdings) h.region = HR[h.id] || 'zhongyuan';
+    return setup;
   })(),
 };
 

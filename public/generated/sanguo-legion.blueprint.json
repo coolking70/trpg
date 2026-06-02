@@ -1180,7 +1180,8 @@
                 "ambush",
                 "rally"
               ]
-            }
+            },
+            "region": "yizhou"
           },
           {
             "id": "hanzhong",
@@ -1200,7 +1201,8 @@
                 "charge",
                 "ambush"
               ]
-            }
+            },
+            "region": "hanzhong"
           },
           {
             "id": "jiangzhou",
@@ -1208,7 +1210,8 @@
             "type": "port",
             "population": 7000,
             "dev": 95,
-            "security": 55
+            "security": 55,
+            "region": "yizhou"
           },
           {
             "id": "jingzhou",
@@ -1228,7 +1231,8 @@
                 "charge",
                 "rally"
               ]
-            }
+            },
+            "region": "jingzhou"
           }
         ]
       },
@@ -1258,7 +1262,8 @@
                 "ambush",
                 "rally"
               ]
-            }
+            },
+            "region": "zhongyuan"
           },
           {
             "id": "yecheng",
@@ -1266,7 +1271,8 @@
             "type": "city",
             "population": 60000,
             "dev": 110,
-            "security": 65
+            "security": 65,
+            "region": "hebei"
           },
           {
             "id": "guandu",
@@ -1274,7 +1280,8 @@
             "type": "fortress",
             "population": 30000,
             "dev": 95,
-            "security": 60
+            "security": 60,
+            "region": "zhongyuan"
           },
           {
             "id": "hefei",
@@ -1294,7 +1301,8 @@
                 "charge",
                 "ambush"
               ]
-            }
+            },
+            "region": "huainan"
           }
         ]
       },
@@ -1322,7 +1330,8 @@
               "abilities": [
                 "rally"
               ]
-            }
+            },
+            "region": "jiangdong"
           },
           {
             "id": "chaisang",
@@ -1343,7 +1352,8 @@
                 "ambush",
                 "rally"
               ]
-            }
+            },
+            "region": "jiangdong"
           },
           {
             "id": "jiangling",
@@ -1351,7 +1361,8 @@
             "type": "city",
             "population": 20000,
             "dev": 100,
-            "security": 55
+            "security": 55,
+            "region": "jingzhou"
           }
         ]
       },
@@ -1379,7 +1390,8 @@
               "abilities": [
                 "charge"
               ]
-            }
+            },
+            "region": "xuzhou"
           },
           {
             "id": "nanzhong_city",
@@ -1398,8 +1410,89 @@
               "abilities": [
                 "charge"
               ]
-            }
+            },
+            "region": "nanzhong"
           }
+        ]
+      }
+    },
+    "regions": {
+      "yizhou": {
+        "name": "益州",
+        "adjacency": [
+          "hanzhong",
+          "jingzhou",
+          "nanzhong"
+        ]
+      },
+      "nanzhong": {
+        "name": "南中",
+        "adjacency": [
+          "yizhou"
+        ]
+      },
+      "hanzhong": {
+        "name": "汉中",
+        "adjacency": [
+          "yizhou",
+          "guanzhong"
+        ]
+      },
+      "guanzhong": {
+        "name": "关中",
+        "adjacency": [
+          "hanzhong",
+          "zhongyuan",
+          "hebei"
+        ]
+      },
+      "hebei": {
+        "name": "河北",
+        "adjacency": [
+          "guanzhong",
+          "zhongyuan"
+        ]
+      },
+      "zhongyuan": {
+        "name": "中原",
+        "adjacency": [
+          "guanzhong",
+          "hebei",
+          "jingzhou",
+          "huainan",
+          "xuzhou"
+        ]
+      },
+      "jingzhou": {
+        "name": "荆州",
+        "adjacency": [
+          "yizhou",
+          "zhongyuan",
+          "jiangdong",
+          "huainan"
+        ]
+      },
+      "huainan": {
+        "name": "淮南",
+        "adjacency": [
+          "zhongyuan",
+          "jingzhou",
+          "jiangdong",
+          "xuzhou"
+        ]
+      },
+      "jiangdong": {
+        "name": "江东",
+        "adjacency": [
+          "jingzhou",
+          "huainan"
+        ]
+      },
+      "xuzhou": {
+        "name": "徐州",
+        "adjacency": [
+          "zhongyuan",
+          "huainan"
         ]
       }
     }

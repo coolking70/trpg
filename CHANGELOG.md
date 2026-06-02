@@ -4,6 +4,23 @@
 
 ## [Unreleased]
 
+### Phase 41 — 叙事化战争层（行军·情报·明暗·围城·救援）🏰⚔️
+
+在战术层（warfare.js/LegionWarfareSystem）之上加"作战层"，取代"一回合兵临城下"，实现 TRPG 跑团的战争叙事合理性。
+
+**W1 数据层** `src/data/war.js`（纯函数）：区域邻接图 `regionDistance(BFS)`、旬时钟 `XUN_PER_SEASON=3`、明暗姿态 `MARCH_POSTURES`（突袭/公开讨伐）、`marchEta`、情报半径 `intelRange`/`marchDetectChance`、围城消耗 `siegeTick`（强攻/围困）、`siegeOutcome`（破城/献城/退兵/城陷）。
+**W2 行军层**：`StrategicSystem.launchMarch`（扣兵粮组军 + 区域距离 ETA）、`advanceWarXun`（逐旬递减 + 情报揭示 + 抵达）、季=3旬、**敌国 AI 改发行军取代 instant invasion**。
+**W3 接敌抉择**：行军抵达 → 探报 → `situation:'engagement'`（出城迎击=野战 / 闭城固守=围城）。
+**W4 围城状态机**：守方 坚守/强攻反击/求援/突围、攻方 强攻/围困/退兵、救援军里应外合解围、破城/献城/城陷→`transferHolding` 易主、退兵→守住。`situation:'siege'` + 逐旬下令。
+**W5 明暗 + 盟友**：公开讨伐自动征召盟友一同出兵 + 攻方士气加成；突袭使守方来不及调兵加固（`defenderPrep` 缩减守军/城防）。
+**W7 三国内容**：`generate-sanguo-preset.mjs` 加 10 区域邻接图（益州/汉中/荆州/关中/中原/河北/江东/淮南/徐州/南中）+ 城池归属；重建 0 必修全可达。
+
+**向后兼容**：无 `regions` 的剧本（现有 bundled）走原 instant 路径，零影响。
+
+**验证**：jest 706/706（war 12 + warMarch 5 + warEngagement 3 + warSiege 5 + warPosture 4）+ MCP 45/45。deepseek-v4-flash 真 GM 玩测整条作战链：出兵公开讨伐(ETA 8 旬)→探报敌军开进→兵临城下→闭城固守→围城消耗(断粮/士气降)→多线动态战事，GM 叙述忠于三国。
+
+**W6 浏览器作战 UI**：尚待做（作战层目前在 headless/GameSession 完整可玩；浏览器面板镜像为后续）。
+
 ### Phase 40 — 收敛阶段2：战略编排单一事实源 🧹
 
 延续 Phase 39，把 GameSession 与 main.js 仍各维护一份的**战略事件效果 + 季度事件分派**收敛到共享模块（渐进收敛，单一事实源；小步可回退）。
