@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+### Phase 39 — main.js / GameSession 收敛（阶段1：抽共享编排）🧹
+
+`main.js`（浏览器）与 `GameSession`（headless/RPC）各有一套并行编排，军团战的"出征装配 + 战后结算"逻辑双份维护、易漂移。本期抽出共享纯模块去重。
+
+**Added/Changed**
+- `src/systems/legionOrchestration.js`：`assembleLegionBattle`（drawFromStrategy 扣兵屯粮 + 外交援军 + 主将武备补全 → strategyCtx）、`settleLegionBattle`（残部归队/民心/资源/关系 + 领土易主 recordBattleOutcome + flags）。
+- `GameSession._startLegionBattle`/`_endLegionBattle` 与 `main.js` 同名方法均改为调用共享模块——去除 ~70 行重复，单点维护。
+- **阶段2**（浏览器以 `getState()/applyAction()` 为权威态、把系统编排迁入 GameSession）属高风险全量重写、零功能收益，按计划评估后**暂缓**；当前停在阶段1。
+
+**验证**：jest 672/672（含 `legionOrchestration` 契约单测 3）+ MCP 45/45 + `npm run build`；headless 三国连战链路复测正常（魏来犯→守城获胜→残部归队）。
+
 ### Phase 38 — 战役级连战（campaign meta）⚔️🔗
 
 把孤立单场军团战串成"会战争霸弧"：战役有领土后果、敌国主动来犯、战局态可呈现/驱动剧情。

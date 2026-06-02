@@ -41,6 +41,7 @@ import { GamePreset } from '../models/GamePreset.js';
 import { GameState } from '../models/GameState.js';
 import { FORMATIONS, canUseFormation, generalHasTactic, TACTICS } from '../data/warfare.js';
 import { POLICIES, DIPLOMACY_ACTIONS, clampRelation, stanceFromRelation } from '../data/governance.js';
+import { assembleLegionBattle, settleLegionBattle } from '../systems/legionOrchestration.js';
 
 /** 默认战斗决策：有可用主动技能就用（集火最低血敌人），否则普攻 */
 function defaultDecideCombat(combatant, enemies) {
@@ -600,51 +601,12 @@ export class GameSession {
   /** 从事件效果/预设装配一场军团战并交给 LegionWarfareSystem */
   _startLegionBattle(battleDef) {
     if (!battleDef || !Array.isArray(battleDef.units) || battleDef.units.length === 0) return;
-    const lw = this.sys('LegionWarfareSystem');
-    const cm = this.sys('CardManager');
-    let def = { ...battleDef, units: battleDef.units.map(u => ({ ...u })) };
-    this._legionStrategyCtx = null;
     this._legionBattleDef = battleDef; // 留作战后领土结算（Phase 38）
-
-    // 深耦合（Phase 33）：drawFromStrategy → 我方兵力/粮草从玩家势力国库取并扣减
-    const st = this.gameState.strategicState;
-    if (battleDef.drawFromStrategy && st) {
-      const ss = this.sys('StrategicSystem');
-      const fid = battleDef.playerFactionId || st.playerFactionId;
-      const playerUnits = def.units.filter(u => u.side !== 'enemy');
-      const requested = playerUnits.reduce((s, u) => s + (Number(u.troops) || 0), 0) || (ss.getFactionState(this.gameState, fid)?.troops || 0);
-      const mobilized = ss.mobilize(this.gameState, fid, requested);
-      const scale = requested > 0 ? mobilized / requested : 1;
-      for (const u of playerUnits) u.troops = Math.max(1, Math.round((Number(u.troops) || 0) * scale));
-      // 粮草：未指定则从国库粮取半数随军，并扣减
-      const f = ss.getFactionState(this.gameState, fid);
-      def.supply = def.supply || {};
-      if (def.supply.player == null && f) {
-        const carried = Math.floor((f.food || 0) * 0.5);
-        def.supply.player = carried;
-        f.food = Math.max(0, (f.food || 0) - carried);
-      }
-      // 外交援军（sideFromDiplomacy）：盟友按关系出兵助战
-      if (battleDef.allyFactionId) {
-        const ally = ss.getFactionState(this.gameState, battleDef.allyFactionId);
-        const rel = ss.relationOf(this.gameState, fid, battleDef.allyFactionId);
-        if (ally && rel.stance === 'ally') {
-          const aid = ss.mobilize(this.gameState, battleDef.allyFactionId, Math.round((ally.troops || 0) * 0.4));
-          if (aid > 0) def.units.push({ id: `ally_${battleDef.allyFactionId}`, side: 'player', unitType: 'infantry', troops: aid, name: `${ally.name}援军` });
-        }
-      }
-      this._legionStrategyCtx = { fid, mobilized, enemyFid: battleDef.enemyFactionId || null };
-    }
-
-    // 装配主将信息（武备）：先用 battleDef.generals 内联，再从预设角色/NPC 卡补全
-    const generals = { ...(def.generals || {}) };
-    for (const u of def.units) {
-      if (u.generalId && !generals[u.generalId]) {
-        const card = cm ? cm.getCard(u.generalId) : null;
-        if (card) generals[u.generalId] = { name: card.name, warfare: card.warfare || null };
-      }
-    }
-    lw.startBattle(this.gameState, { ...def, generals });
+    const { def, strategyCtx } = assembleLegionBattle(battleDef, {
+      gameState: this.gameState, strategicSystem: this.sys('StrategicSystem'), cardManager: this.sys('CardManager'),
+    });
+    this._legionStrategyCtx = strategyCtx;
+    this.sys('LegionWarfareSystem').startBattle(this.gameState, def);
   }
 
   /** 军团战启动后的处理：开场叙述 + 按 combatMode 分派 */
@@ -736,34 +698,14 @@ export class GameSession {
       ? `⚔ 此役我军获胜！（歼敌约 ${s.enemyLosses ?? '?'}，我军折损约 ${s.playerLosses ?? '?'}）`
       : `⚔ 此役我军败退。（我军折损约 ${s.playerLosses ?? '?'}）`);
 
-    // 深耦合（Phase 33）：drawFromStrategy 的战役结算回国库
-    const ctx = this._legionStrategyCtx;
-    this._legionStrategyCtx = null;
-    if (ctx && this.gameState.strategicState) {
-      const ss = this.sys('StrategicSystem');
-      const survivors = Math.max(0, s.playerTroops || 0);
-      ss.returnTroops(this.gameState, ctx.fid, survivors); // 残部归队
-      const me = ss.getFactionState(this.gameState, ctx.fid);
-      if (me) {
-        if (won) { me.gold += 50; me.order = Math.min(100, me.order + 6); } // 战利与振奋
-        else { me.order = Math.max(0, me.order - 10); }                      // 败绩挫民心
-      }
-      if (ctx.enemyFid && this.gameState.strategicState.factions[ctx.enemyFid]) {
-        const delta = won ? -10 : 6;
-        const cur = ss.relationOf(this.gameState, ctx.fid, ctx.enemyFid);
-        ss._setRelationSym(this.gameState.strategicState.factions, ctx.fid, ctx.enemyFid, cur.relation + delta);
-      }
-    }
-
-    // 战役级连战（Phase 38）：领土后果 + 连战标志
+    // 战略结算（drawFromStrategy 归队/资源/民心/关系）+ 战役领土后果（Phase 33/38，共享编排）
+    const ctx = this._legionStrategyCtx; this._legionStrategyCtx = null;
     const bdef = this._legionBattleDef; this._legionBattleDef = null;
-    if (bdef && this.gameState.strategicState) {
-      const ss = this.sys('StrategicSystem');
-      const oc = ss.recordBattleOutcome(this.gameState, bdef, won);
-      this.gameState.worldFlags ||= {};
-      for (const fl of (oc.flags || [])) this.gameState.worldFlags[fl] = true;
-      if (oc.narrative) this.gameState.addNarrative('system', `🏯 ${oc.narrative}`);
-    }
+    const { narratives } = settleLegionBattle({
+      gameState: this.gameState, strategicSystem: this.sys('StrategicSystem'),
+      strategyCtx: ctx, battleDef: bdef, won, summary: s,
+    });
+    for (const n of narratives) this.gameState.addNarrative('system', n);
 
     try {
       await this.sys('AIGMEngine').processGameAction('narrate_legion_result', { won, summary: s }, this.gameState);

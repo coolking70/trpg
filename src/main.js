@@ -21,6 +21,7 @@ import { MapSystem } from './systems/MapSystem.js';
 import { CombatSystem } from './systems/CombatSystem.js';
 import { LegionWarfareSystem } from './systems/LegionWarfareSystem.js';
 import { StrategicSystem } from './systems/StrategicSystem.js';
+import { assembleLegionBattle, settleLegionBattle } from './systems/legionOrchestration.js';
 import { TurnManager } from './systems/TurnManager.js';
 import { AIGMEngine } from './systems/AIGMEngine.js';
 import { ImportExportSystem } from './systems/ImportExportSystem.js';
@@ -1501,42 +1502,12 @@ class TRPGApp {
   _startLegionBattle(battleDef) {
     if (!this.gameState || !battleDef || !Array.isArray(battleDef.units) || battleDef.units.length === 0) return;
     const lw = this.engine.getSystem('LegionWarfareSystem');
-    const cm = this.engine.getSystem('CardManager');
-    const ss = this.engine.getSystem('StrategicSystem');
-    let def = { ...battleDef, units: battleDef.units.map(u => ({ ...u })) };
-    this._legionStrategyCtx = null;
     this._legionBattleDef = battleDef; // 战后领土结算（Phase 38）
-
-    const st = this.gameState.strategicState;
-    if (battleDef.drawFromStrategy && st && ss) {
-      const fid = battleDef.playerFactionId || st.playerFactionId;
-      const playerUnits = def.units.filter(u => u.side !== 'enemy');
-      const requested = playerUnits.reduce((s, u) => s + (Number(u.troops) || 0), 0) || (ss.getFactionState(this.gameState, fid)?.troops || 0);
-      const mobilized = ss.mobilize(this.gameState, fid, requested);
-      const scale = requested > 0 ? mobilized / requested : 1;
-      for (const u of playerUnits) u.troops = Math.max(1, Math.round((Number(u.troops) || 0) * scale));
-      const f = ss.getFactionState(this.gameState, fid);
-      def.supply = def.supply || {};
-      if (def.supply.player == null && f) { const carried = Math.floor((f.food || 0) * 0.5); def.supply.player = carried; f.food = Math.max(0, (f.food || 0) - carried); }
-      if (battleDef.allyFactionId) {
-        const ally = ss.getFactionState(this.gameState, battleDef.allyFactionId);
-        const rel = ss.relationOf(this.gameState, fid, battleDef.allyFactionId);
-        if (ally && rel.stance === 'ally') {
-          const aid = ss.mobilize(this.gameState, battleDef.allyFactionId, Math.round((ally.troops || 0) * 0.4));
-          if (aid > 0) def.units.push({ id: `ally_${battleDef.allyFactionId}`, side: 'player', unitType: 'infantry', troops: aid, name: `${ally.name}援军` });
-        }
-      }
-      this._legionStrategyCtx = { fid, mobilized, enemyFid: battleDef.enemyFactionId || null };
-    }
-
-    const generals = { ...(def.generals || {}) };
-    for (const u of def.units) {
-      if (u.generalId && !generals[u.generalId]) {
-        const card = cm ? cm.getCard(u.generalId) : null;
-        if (card) generals[u.generalId] = { name: card.name, warfare: card.warfare || null };
-      }
-    }
-    lw.startBattle(this.gameState, { ...def, generals });
+    const { def, strategyCtx } = assembleLegionBattle(battleDef, {
+      gameState: this.gameState, strategicSystem: this.engine.getSystem('StrategicSystem'), cardManager: this.engine.getSystem('CardManager'),
+    });
+    this._legionStrategyCtx = strategyCtx;
+    lw.startBattle(this.gameState, def);
     this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
 
     const aiEngine = this.engine.getSystem('AIGMEngine');
@@ -1643,26 +1614,14 @@ class TRPGApp {
     this.gameState.addNarrative('system', won
       ? `⚔ 此役我军获胜！（歼敌约 ${s.enemyLosses ?? '?'}，我军折损约 ${s.playerLosses ?? '?'}）`
       : `⚔ 此役我军败退。（我军折损约 ${s.playerLosses ?? '?'}）`);
+    // 战略结算 + 战役领土后果（Phase 33/38，共享编排）
     const ctx = this._legionStrategyCtx; this._legionStrategyCtx = null;
-    if (ctx && this.gameState.strategicState) {
-      const ss = this.engine.getSystem('StrategicSystem');
-      ss.returnTroops(this.gameState, ctx.fid, Math.max(0, s.playerTroops || 0));
-      const me = ss.getFactionState(this.gameState, ctx.fid);
-      if (me) { if (won) { me.gold += 50; me.order = Math.min(100, me.order + 6); } else { me.order = Math.max(0, me.order - 10); } }
-      if (ctx.enemyFid && this.gameState.strategicState.factions[ctx.enemyFid]) {
-        const cur = ss.relationOf(this.gameState, ctx.fid, ctx.enemyFid);
-        ss._setRelationSym(this.gameState.strategicState.factions, ctx.fid, ctx.enemyFid, cur.relation + (won ? -10 : 6));
-      }
-    }
-    // 战役级连战（Phase 38）：领土后果 + 连战标志
     const bdef = this._legionBattleDef; this._legionBattleDef = null;
-    if (bdef && this.gameState.strategicState) {
-      const ss2 = this.engine.getSystem('StrategicSystem');
-      const oc = ss2.recordBattleOutcome(this.gameState, bdef, won);
-      this.gameState.worldFlags ||= {};
-      for (const fl of (oc.flags || [])) this.gameState.worldFlags[fl] = true;
-      if (oc.narrative) this.gameState.addNarrative('system', `🏯 ${oc.narrative}`);
-    }
+    const { narratives } = settleLegionBattle({
+      gameState: this.gameState, strategicSystem: this.engine.getSystem('StrategicSystem'),
+      strategyCtx: ctx, battleDef: bdef, won, summary: s,
+    });
+    for (const n of narratives) this.gameState.addNarrative('system', n);
     this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
     const aiEngine = this.engine.getSystem('AIGMEngine');
     try { await aiEngine.processGameAction('narrate_legion_result', { won, summary: s }, this.gameState); } catch { /* */ }
