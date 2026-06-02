@@ -92,7 +92,7 @@ const chapters = [
   { id: 'nanjun', title: '取南郡·借荆州', beat: '赤壁战后争夺荆襄。',
     main: { title: '智取南郡', summary: '诸葛亮三气周瑜，坐收荆州。' },
     branch: ['趁势夺取南郡城', '与东吴暂修盟好'],
-    legion: [{ name: '南郡攻城', battleType: 'siege', supply: { player: 150, enemy: 100 },
+    legion: [{ name: '南郡攻城', battleType: 'siege', supply: { player: 150, enemy: 100 }, enemyFactionId: 'wei', attackerFactionId: 'shu', defenderFactionId: 'wei', objectiveHoldingId: 'guandu', campaignKey: '南郡',
       our: [U('siege', 1800, 'zhaoyun', { machines: ['catapult', 'ram'] }), U('infantry', 6000, 'zhangfei'), U('archer', 3000, 'guanyu')],
       enemy: [U('spearman', 5000, 'caocao'), U('archer', 3000, 'caocao')] }] },
 
@@ -106,7 +106,7 @@ const chapters = [
   { id: 'fancheng', title: '水淹七军·围樊城', beat: '关羽北伐，威震华夏。',
     main: { title: '水淹七军', summary: '关羽决堤灌军，进围樊城。' },
     branch: ['乘水势猛攻樊城', '稳扎稳打围而后取'],
-    legion: [{ name: '围攻樊城', battleType: 'siege', supply: { player: 160, enemy: 70 },
+    legion: [{ name: '围攻樊城', battleType: 'siege', supply: { player: 160, enemy: 70 }, drawFromStrategy: true, enemyFactionId: 'wei', attackerFactionId: 'shu', defenderFactionId: 'wei', objectiveHoldingId: 'hefei', campaignKey: '樊城',
       our: [U('siege', 2000, 'guanyu', { machines: ['ram', 'catapult'] }), U('infantry', 8000, 'guanyu'), U('archer', 4000, 'guanyu')],
       enemy: [U('spearman', 6500, 'zhangliao'), U('infantry', 4000, 'zhangliao'), U('archer', 4000, 'caocao')] }] },
 
@@ -181,6 +181,10 @@ const blueprint = {
       ...(lg.drawFromStrategy ? { drawFromStrategy: true } : {}),
       ...(lg.enemyFactionId ? { enemyFactionId: lg.enemyFactionId } : {}),
       ...(lg.allyFactionId ? { allyFactionId: lg.allyFactionId } : {}),
+      ...(lg.attackerFactionId ? { attackerFactionId: lg.attackerFactionId } : {}),
+      ...(lg.defenderFactionId ? { defenderFactionId: lg.defenderFactionId } : {}),
+      ...(lg.objectiveHoldingId ? { objectiveHoldingId: lg.objectiveHoldingId } : {}),
+      ...(lg.campaignKey ? { campaignKey: lg.campaignKey } : {}),
       ourForces: lg.our.map(u => ({ unitType: u.unitType, troops: u.troops, generalRef: u.generalRef, ...(u.formation ? { formation: u.formation } : {}), ...(u.machines ? { machines: u.machines } : {}) })),
       enemyForces: lg.enemy.map(u => ({ unitType: u.unitType, troops: u.troops, generalRef: u.generalRef, ...(u.formation ? { formation: u.formation } : {}), ...(u.machines ? { machines: u.machines } : {}) })),
     })),

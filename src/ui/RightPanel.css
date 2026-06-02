@@ -254,3 +254,6 @@
 .right-panel__city-type { font-size: 10px; color: #8a90a6; margin-left: 4px; }
 .right-panel__city-stat { color: #9aa0b5; }
 .right-panel__city-gov { color: #86c5a0; }
+
+/* 战局一行（Phase 38 连战）*/
+.right-panel__strategy-campaign { font-size: 11px; color: #d0a86a; }

@@ -1505,6 +1505,7 @@ class TRPGApp {
     const ss = this.engine.getSystem('StrategicSystem');
     let def = { ...battleDef, units: battleDef.units.map(u => ({ ...u })) };
     this._legionStrategyCtx = null;
+    this._legionBattleDef = battleDef; // 战后领土结算（Phase 38）
 
     const st = this.gameState.strategicState;
     if (battleDef.drawFromStrategy && st && ss) {
@@ -1625,6 +1626,12 @@ class TRPGApp {
         else if (ev.against === st.playerFactionId && ev.type === 'attack_intent') { this.gameState.worldFlags[`invasion_from_${ev.by}`] = true; this.gameState.addNarrative('system', `⚠ ${st.factions[ev.by]?.name || ev.by} 大军压境，意图来犯！`); }
       }
       try { await ai.processGameAction('narrate_governance', { kind: 'season', season, events, player: ss.getPlayerState(this.gameState) }, this.gameState); } catch { /* */ }
+      // 战役级连战（Phase 38）：敌国来犯 → 立刻一场守城战
+      const invasion = (events || []).find(e => e.type === 'attack_intent' && e.against === st.playerFactionId);
+      if (invasion) {
+        const battle = ss.buildInvasionBattle(this.gameState, invasion.by, st.playerFactionId);
+        if (battle) { this._startLegionBattle(battle); return; } // 进入军团战，面板接管
+      }
     }
     this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
   }
@@ -1646,6 +1653,15 @@ class TRPGApp {
         const cur = ss.relationOf(this.gameState, ctx.fid, ctx.enemyFid);
         ss._setRelationSym(this.gameState.strategicState.factions, ctx.fid, ctx.enemyFid, cur.relation + (won ? -10 : 6));
       }
+    }
+    // 战役级连战（Phase 38）：领土后果 + 连战标志
+    const bdef = this._legionBattleDef; this._legionBattleDef = null;
+    if (bdef && this.gameState.strategicState) {
+      const ss2 = this.engine.getSystem('StrategicSystem');
+      const oc = ss2.recordBattleOutcome(this.gameState, bdef, won);
+      this.gameState.worldFlags ||= {};
+      for (const fl of (oc.flags || [])) this.gameState.worldFlags[fl] = true;
+      if (oc.narrative) this.gameState.addNarrative('system', `🏯 ${oc.narrative}`);
     }
     this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
     const aiEngine = this.engine.getSystem('AIGMEngine');

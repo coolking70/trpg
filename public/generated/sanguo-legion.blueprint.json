@@ -601,6 +601,11 @@
             "player": 150,
             "enemy": 100
           },
+          "enemyFactionId": "wei",
+          "attackerFactionId": "shu",
+          "defenderFactionId": "wei",
+          "objectiveHoldingId": "guandu",
+          "campaignKey": "南郡",
           "ourForces": [
             {
               "unitType": "siege",
@@ -756,6 +761,12 @@
             "player": 160,
             "enemy": 70
           },
+          "drawFromStrategy": true,
+          "enemyFactionId": "wei",
+          "attackerFactionId": "shu",
+          "defenderFactionId": "wei",
+          "objectiveHoldingId": "hefei",
+          "campaignKey": "樊城",
           "ourForces": [
             {
               "unitType": "siege",

@@ -15,6 +15,7 @@ import {
   seasonProduction, applyPolicyPure, applyDiplomacyPure, decideEnemyStrategy, factionPower,
   HOLDING_TYPES, governorBonusFromWarfare, holdingEffectiveDev, holdingEffectiveSecurity,
 } from '../data/governance.js';
+import { battleTerritoryOutcome } from '../data/campaign.js';
 
 const clamp200 = (v) => Math.max(0, Math.min(200, Math.round(v)));
 
@@ -276,6 +277,51 @@ export class StrategicSystem extends GameSystem {
   returnTroops(gameState, factionId, amount) {
     const f = this.getFactionState(gameState, factionId);
     if (f) f.troops = (f.troops || 0) + Math.max(0, Math.round(amount || 0));
+  }
+
+  /**
+   * 战役级连战（Phase 38）：一场军团战的领土后果。
+   * battleDef 可带 attackerFactionId/defenderFactionId/objectiveHoldingId/campaignKey。
+   * 返回 { flags[], narrative? }，由调用方落 worldFlags + 叙述。
+   */
+  recordBattleOutcome(gameState, battleDef, won) {
+    const r = battleTerritoryOutcome(battleDef, won);
+    let narrative = '';
+    const atk = battleDef.attackerFactionId, def = battleDef.defenderFactionId;
+    if (r.captureHoldingId && atk && def) {
+      const t = this.transferHolding(gameState, def, atk, r.captureHoldingId);
+      if (t.ok) narrative = `${this.getFactionState(gameState, atk)?.name || atk} 攻取 ${t.name}！`;
+    } else if (r.loseHoldingId && atk && def) {
+      const t = this.transferHolding(gameState, def, atk, r.loseHoldingId);
+      if (t.ok) narrative = `${t.name} 失守，落入 ${this.getFactionState(gameState, atk)?.name || atk} 之手。`;
+    }
+    return { flags: r.flags, narrative };
+  }
+
+  /**
+   * 构建一场敌国来犯的守城战（drawFromStrategy）：敌方为攻、玩家某城为守。
+   * 返回可交 _startLegionBattle 的 battleDef；无合适目标返回 null。
+   */
+  buildInvasionBattle(gameState, attackerId, defenderId) {
+    const atk = this.getFactionState(gameState, attackerId);
+    const def = this.getFactionState(gameState, defenderId);
+    if (!atk || !def) return null;
+    const target = (def.holdings || []).slice().sort((a, b) => (a.security + (a.dev || 0)) - (b.security + (b.dev || 0)))[0]; // 挑最弱的城
+    const atkTroops = Math.max(2000, Math.round((atk.troops || 0) * 0.5));
+    return {
+      battleType: 'defense', objectiveName: `${atk.name}来犯·${target?.name || '边城'}`,
+      campaignKey: `invasion_${attackerId}`,
+      drawFromStrategy: true, enemyFactionId: attackerId,
+      attackerFactionId: attackerId, defenderFactionId: defenderId,
+      objectiveHoldingId: target?.id || null,
+      supply: { player: 9999, enemy: Math.max(40, Math.round((atk.food || 0) * 0.4)) },
+      units: [
+        { id: 'def_main', side: 'player', unitType: 'spearman', troops: Math.max(1, def.troops || 1) },
+        { id: 'def_arch', side: 'player', unitType: 'archer', troops: Math.round((def.troops || 0) * 0.4) || 1 },
+        { id: 'inv_main', side: 'enemy', unitType: 'infantry', troops: atkTroops },
+        { id: 'inv_cav', side: 'enemy', unitType: 'cavalry', troops: Math.round(atkTroops * 0.4) || 1 },
+      ],
+    };
   }
 
   // ============================================================

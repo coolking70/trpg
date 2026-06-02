@@ -604,6 +604,7 @@ export class GameSession {
     const cm = this.sys('CardManager');
     let def = { ...battleDef, units: battleDef.units.map(u => ({ ...u })) };
     this._legionStrategyCtx = null;
+    this._legionBattleDef = battleDef; // 留作战后领土结算（Phase 38）
 
     // 深耦合（Phase 33）：drawFromStrategy → 我方兵力/粮草从玩家势力国库取并扣减
     const st = this.gameState.strategicState;
@@ -754,6 +755,16 @@ export class GameSession {
       }
     }
 
+    // 战役级连战（Phase 38）：领土后果 + 连战标志
+    const bdef = this._legionBattleDef; this._legionBattleDef = null;
+    if (bdef && this.gameState.strategicState) {
+      const ss = this.sys('StrategicSystem');
+      const oc = ss.recordBattleOutcome(this.gameState, bdef, won);
+      this.gameState.worldFlags ||= {};
+      for (const fl of (oc.flags || [])) this.gameState.worldFlags[fl] = true;
+      if (oc.narrative) this.gameState.addNarrative('system', `🏯 ${oc.narrative}`);
+    }
+
     try {
       await this.sys('AIGMEngine').processGameAction('narrate_legion_result', { won, summary: s }, this.gameState);
     } catch { /* */ }
@@ -815,6 +826,13 @@ export class GameSession {
       }
     }
     try { await this.sys('AIGMEngine').processGameAction('narrate_governance', { kind: 'season', season, events, player: ss.getPlayerState(this.gameState) }, this.gameState); } catch { /* */ }
+    // 战役级连战（Phase 38）：敌国来犯 → 立刻一场守城战（取首个 attack_intent）
+    const pid = this.gameState.strategicState.playerFactionId;
+    const invasion = (events || []).find(e => e.type === 'attack_intent' && e.against === pid);
+    if (invasion) {
+      const battle = ss.buildInvasionBattle(this.gameState, invasion.by, pid);
+      if (battle) { this._startLegionBattle(battle); if (this.gameState.activeLegionBattle) { await this._enterLegionBattle(); return; } }
+    }
     await this._scanAfter(TRIGGER_MOMENTS.SCENE_ENTER);
   }
 

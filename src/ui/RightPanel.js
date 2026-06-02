@@ -5,6 +5,7 @@
 
 import { CardRenderer } from '../rendering/CardRenderer.js';
 import { POLICIES, DIPLOMACY_ACTIONS, HOLDING_TYPES } from '../data/governance.js';
+import { campaignStatus } from '../data/campaign.js';
 
 const STANCE_LABEL = { ally: '盟', trade: '睦', neutral: '中', rival: '隙', war: '战', vassal: '附' };
 
@@ -76,6 +77,15 @@ export class RightPanel {
       + `<span title="兵力">🪖${me.troops}</span><span title="民心">❤${me.order}</span>`
       + `<span class="right-panel__strategy-season">第${st.season}季</span>`;
     this._strategyEl.appendChild(res);
+
+    // 战局一行（极简）—— 据城数 / 交战方 / 势力位次
+    const camp = campaignStatus(st, st.playerFactionId);
+    if (camp) {
+      const cEl = document.createElement('div');
+      cEl.className = 'right-panel__strategy-campaign';
+      cEl.textContent = camp;
+      this._strategyEl.appendChild(cEl);
+    }
 
     // 外交立场小标
     const dip = Object.entries(me.diplomacy || {});

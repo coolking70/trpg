@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
-  "presetId": "preset_mpw7i7g0",
+  "presetId": "preset_mpwbcuoe",
   "name": "三国演义·群雄逐鹿",
   "author": "",
-  "createdAt": "2026-06-02T05:38:12.912Z",
+  "createdAt": "2026-06-02T07:26:01.550Z",
   "description": "",
   "lore": {
     "worldName": "汉末三国",
@@ -2036,7 +2036,12 @@
                       "player": 150,
                       "enemy": 100
                     },
-                    "objectiveName": "南郡攻城"
+                    "objectiveName": "南郡攻城",
+                    "enemyFactionId": "wei",
+                    "attackerFactionId": "shu",
+                    "defenderFactionId": "wei",
+                    "objectiveHoldingId": "guandu",
+                    "campaignKey": "南郡"
                   }
                 }
               ]
@@ -2467,7 +2472,13 @@
                       "player": 160,
                       "enemy": 70
                     },
-                    "objectiveName": "围攻樊城"
+                    "objectiveName": "围攻樊城",
+                    "drawFromStrategy": true,
+                    "enemyFactionId": "wei",
+                    "attackerFactionId": "shu",
+                    "defenderFactionId": "wei",
+                    "objectiveHoldingId": "hefei",
+                    "campaignKey": "樊城"
                   }
                 }
               ]

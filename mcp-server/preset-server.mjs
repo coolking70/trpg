@@ -990,6 +990,11 @@ async function buildPresetFromBlueprint(blueprint, digest) {
         ...(plan.drawFromStrategy ? { drawFromStrategy: true } : {}),
         ...(plan.enemyFactionId ? { enemyFactionId: plan.enemyFactionId } : {}),
         ...(plan.allyFactionId ? { allyFactionId: plan.allyFactionId } : {}),
+        // 战役级连战（Phase 38）：可选——攻守方/争夺城池 → 战后领土易主
+        ...(plan.attackerFactionId ? { attackerFactionId: plan.attackerFactionId } : {}),
+        ...(plan.defenderFactionId ? { defenderFactionId: plan.defenderFactionId } : {}),
+        ...(plan.objectiveHoldingId ? { objectiveHoldingId: plan.objectiveHoldingId } : {}),
+        ...(plan.campaignKey ? { campaignKey: plan.campaignKey } : {}),
       };
       // 校验编制（器械携带上限/兵种/阵型/主将引用）；不合法则跳过并告警，避免产出坏战斗
       const errs = validateLegionBattle(battle, Object.keys(generals));

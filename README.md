@@ -3,7 +3,7 @@
 > 基于 AI 的 TRPG 浏览器跑团游戏。AI 担任 Game Master，玩家通过卡牌、地图和文本交互推进冒险。
 
 [![CI](https://github.com/USERNAME/REPONAME/actions/workflows/ci.yml/badge.svg)](https://github.com/USERNAME/REPONAME/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-663%2F663-brightgreen)](./__tests__)
+[![Tests](https://img.shields.io/badge/tests-669%2F669-brightgreen)](./__tests__)
 [![MCP](https://img.shields.io/badge/mcp_tests-45%2F45-brightgreen)](./mcp-server)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
@@ -156,7 +156,7 @@ docs/                 # 创作者手册 + AI 集成手册 + 接手指南
 
 ```bash
 npm test
-# 663 tests across 44 suites
+# 669 tests across 45 suites
 
 # MCP 工具端到端烟雾测试
 npm run test:mcp

@@ -4,6 +4,19 @@
 
 ## [Unreleased]
 
+### Phase 38 — 战役级连战（campaign meta）⚔️🔗
+
+把孤立单场军团战串成"会战争霸弧"：战役有领土后果、敌国主动来犯、战局态可呈现/驱动剧情。
+
+**Added**
+- `src/data/campaign.js`（纯函数）：`battleTerritoryOutcome`（攻城胜→夺城/守城败→失城 + 胜负 flags）、`campaignStatus`（极简战局一行：据城数/交战方/势力位次）。
+- `StrategicSystem`：`recordBattleOutcome`（战后领土易主 → `transferHolding` + worldFlags）、`buildInvasionBattle`（敌国来犯 → 守城战 def，玩家 drawFromStrategy 守最弱城）。
+- 军团战 def 支持 `attackerFactionId`/`defenderFactionId`/`objectiveHoldingId`/`campaignKey`；`_endLegionBattle`（GameSession + main.js）战后调 `recordBattleOutcome` 落领土 + 连战标志。
+- **敌国入侵成实战**：`advanceSeason` 的 `attack_intent` 针对玩家 → 立刻 `buildInvasionBattle` + 进入军团战（GameSession 与浏览器一致）。
+- `RightPanel` 国势条加**战局一行**；builder 透传连战字段；三国 `樊城`/`南郡` 标为夺城战（胜则取魏城）。
+
+**验证**：jest 669/669（campaign 6 测：领土纯函数/夺城失地/入侵战构建/攻城夺城集成）+ MCP 45/45 + build。headless 实测三国：处理政务 → 魏国来犯 → 守城战自动结算获胜（歼敌 1.6 万）→ `won_invasion_wei`、蜀守住 4 城、残部归队。
+
 ### Phase 37 — 逐城经营（角色本位）🏯
 
 把势力从"单一聚合 `agg`"细化为**多座活城池**，但交互仍极简 + 自由进谏（不做城池管理仪表盘）。
