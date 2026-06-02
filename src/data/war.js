@@ -90,19 +90,23 @@ export function siegeTick(siege) {
   const mp = Math.max(0, siege.machinePower || 0); // 器械加成（投石/攻城锤）
   let d;
   if (m === 'assault') {
-    // 强攻：城防伤大、攻方重耗、守方中耗、攻方耗粮、久攻士气挫
-    const gateDmg = 14 + Math.round(mp * 0.4) + Math.round(atk.troops / 1500);
+    // 强攻：城防伤随兵力/器械（强攻城军速破门），攻方重耗（守军 + 城防致伤，攻坚弱旅未破门先溃退），
+    //       守方中耗、攻方耗粮、久攻士气挫。
+    const gateDmg = 12 + Math.round(mp * 0.45) + Math.round(atk.troops / 1400);
+    // 攻方每旬折损 = 基数 + 守军反击（守军越多越能杀伤） + 自身规模损耗
+    const atkLoss = Math.round(150 + def.troops * 0.06 + atk.troops * 0.02);
     d = {
       works: { gate: -gateDmg, wall: -Math.round(gateDmg * 0.3) },
-      atk: { troops: -Math.round(atk.troops * 0.05 + 200), morale: -3, supply: -8 },
-      def: { troops: -Math.round(def.troops * 0.035 + 120), morale: -2, supply: -4 },
+      atk: { troops: -atkLoss, morale: -3, supply: -8 },
+      def: { troops: -Math.round(def.troops * 0.03 + 120), morale: -2, supply: -4 },
     };
   } else {
-    // 围困：城防伤极小、断守方粮（大）、双方缓慢减员、攻方久围士气/粮亦降
+    // 围困：城防伤极小、双方缓慢减员；断粮 = 攻守皆耗存粮，比拼谁先粮尽。
+    //   守方存粮足够时可"坚守待敌粮尽/士气崩而退"，而非必先饿死。
     d = {
       works: { gate: -2, wall: 0 },
-      atk: { troops: -Math.round(atk.troops * 0.01 + 30), morale: -2, supply: -10 },
-      def: { troops: -Math.round(def.troops * 0.015 + 40), morale: -3, supply: -Math.round(20 + def.troops / 400) },
+      atk: { troops: -Math.round(atk.troops * 0.008 + 25), morale: -2, supply: -Math.round(8 + atk.troops / 1400) },
+      def: { troops: -Math.round(def.troops * 0.01 + 30), morale: -1, supply: -Math.round(6 + def.troops / 1200) },
     };
   }
   // 应用
@@ -126,9 +130,12 @@ export function siegeTick(siege) {
 export function siegeOutcome(siege) {
   const { atk, def, works } = siege;
   if (def.troops <= 0) return { type: 'fallen' };
+  // 攻方兵力耗尽 / 粮尽 / 士气崩 → 退兵；兵力退兵先于破城判定：
+  // 纵然攻破城门，若残兵不足以入城巷战（< 守军四成）亦只能顿兵而退。
+  if (atk.troops <= Math.max(300, def.troops * 0.4)) return { type: 'retreat' };
   if (def.supply <= 0) return { type: 'surrender' };
   if ((works.gate || 0) <= 0) return { type: 'breach' };
-  if (atk.supply <= 0 || atk.morale <= 15 || atk.troops <= Math.max(300, def.troops * 0.4)) return { type: 'retreat' };
+  if (atk.supply <= 0 || atk.morale <= 15) return { type: 'retreat' };
   return null;
 }
 
