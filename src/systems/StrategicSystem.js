@@ -17,6 +17,7 @@ import {
 } from '../data/governance.js';
 import { battleTerritoryOutcome } from '../data/campaign.js';
 import { XUN_PER_SEASON, MARCH_BASE_ETA, MARCH_POSTURES, regionDistance, marchEta, marchDetectChance, siegeTick, siegeOutcome, postureMoraleMod } from '../data/war.js';
+import { resolveSchema } from '../data/strategySchema.js';
 
 const clamp200 = (v) => Math.max(0, Math.min(200, Math.round(v)));
 
@@ -39,6 +40,8 @@ export class StrategicSystem extends GameSystem {
   // ============================================================
   initFromPreset(gameState, preset) {
     if (!preset) return null;
+    // 战略主题 Schema（Phase 42 T3）：始终解析并挂到 gameState，供战术/战略/UI/叙述层读取（缺省=三国）
+    gameState.strategySchema = resolveSchema(preset);
     const setup = preset.strategicSetup || null;
     const layer = preset.strategicLayer || null;
     if (!setup && !layer) { gameState.strategicState = null; return null; }

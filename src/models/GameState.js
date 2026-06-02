@@ -30,6 +30,8 @@ export class GameState {
 
     // 战略层状态（Phase 33，内政外交；无战略剧本为 null）
     this.strategicState = data.strategicState || null;
+    // 战略主题 Schema（Phase 42 T3，题材换皮数据；缺省由 schemaOf 回退三国默认）
+    this.strategySchema = data.strategySchema || null;
 
     // 当前活跃事件
     this.activeEvent = data.activeEvent || null;
@@ -255,6 +257,7 @@ export class GameState {
       activeCombat: this.activeCombat,
       activeLegionBattle: this.activeLegionBattle,
       strategicState: this.strategicState,
+      strategySchema: this.strategySchema,
       activeEvent: this.activeEvent,
       mapState: this.mapState,
       completedEventIds: this.completedEventIds,

@@ -70,11 +70,18 @@ export class RightPanel {
     const me = st.factions?.[st.playerFactionId];
     if (!me) return;
 
-    // 国势条：金/粮/兵/民心
+    // 国势条：资源标签取自题材 Schema（缺省=三国 金/粮/兵/民心）
+    const rs = (this.gameState?.strategySchema?.resources) || {};
+    const rlabel = (k, fallbackName, fallbackIcon) => {
+      const r = rs[k] || {};
+      return { name: r.name || fallbackName, icon: r.icon || fallbackIcon };
+    };
+    const rg = rlabel('gold', '金', '💰'), rf = rlabel('food', '粮', '🌾');
+    const rt = rlabel('troops', '兵力', '🪖'), ro = rlabel('order', '民心', '❤');
     const res = document.createElement('div');
     res.className = 'right-panel__strategy-res';
-    res.innerHTML = `<span title="金">💰${me.gold}</span><span title="粮">🌾${me.food}</span>`
-      + `<span title="兵力">🪖${me.troops}</span><span title="民心">❤${me.order}</span>`
+    res.innerHTML = `<span title="${rg.name}">${rg.icon}${me.gold}</span><span title="${rf.name}">${rf.icon}${me.food}</span>`
+      + `<span title="${rt.name}">${rt.icon}${me.troops}</span><span title="${ro.name}">${ro.icon}${me.order}</span>`
       + `<span class="right-panel__strategy-season">第${st.season}季</span>`;
     this._strategyEl.appendChild(res);
 
