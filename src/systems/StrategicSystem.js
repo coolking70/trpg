@@ -407,7 +407,11 @@ export class StrategicSystem extends GameSystem {
     }
     for (const m of arrived) {
       s.marches = s.marches.filter(x => x !== m);
-      if (m.defender === pid) {
+      if (m.reliefFor) {
+        // 救援行军抵达 → 里应外合解围
+        const r = this.applyRelief(gameState, m);
+        events.push({ type: 'relief_arrived', relief: m, result: r });
+      } else if (m.defender === pid) {
         events.push({ type: 'army_arrived', march: m, playerEngagement: true }); // 玩家守方 → 待玩家抉择
       } else {
         // AI 守方：自动闭城固守（建围城，后续旬推进结算）
@@ -465,6 +469,95 @@ export class StrategicSystem extends GameSystem {
   }
 
   _factionName(gameState, id) { return gameState.strategicState?.factions?.[id]?.name || id; }
+
+  // ============================================================
+  // 围城状态机（Phase 41 W4）
+  // ============================================================
+  /** 玩家参与的围城（守方或攻方），无则 null */
+  playerSiege(gameState) {
+    const s = gameState.strategicState;
+    const pid = s?.playerFactionId;
+    return (s?.sieges || []).find(sg => !sg._resolved && (sg.attacker === pid || sg.defender === pid)) || null;
+  }
+
+  /**
+   * 围城下令并推进一旬（Phase 41 W4）。order：
+   *   hold 坚守 / sortie 强攻反击(守) / relief 求援(守,召盟友) / assault 强攻(攻) / blockade 围困(攻)
+   * 返回 { narrative, outcome }（outcome 由 advanceWarXun 的 siegeTick 之外，这里立即再判一次）。
+   */
+  siegeOrder(gameState, siege, order, opts = {}) {
+    let narrative = '';
+    if (order === 'assault' || order === 'blockade') { siege.mode = order; narrative = order === 'assault' ? '攻方擂鼓强攻。' : '攻方深沟高垒，围而不攻，断我粮道。'; }
+    else if (order === 'sortie') {
+      // 守方出城反击：以小股精锐袭扰，挫敌兵力士气，自身亦有损
+      const hit = Math.round(siege.atk.troops * 0.06 + 300);
+      siege.atk.troops = Math.max(0, siege.atk.troops - hit);
+      siege.atk.morale = Math.max(0, siege.atk.morale - 6);
+      siege.def.troops = Math.max(0, siege.def.troops - Math.round(siege.def.troops * 0.03 + 100));
+      narrative = `守军开城突袭，斩敌约 ${hit}，挫其锐气。`;
+    } else if (order === 'relief') {
+      const allyId = opts.allyId;
+      if (allyId) { this._launchRelief(gameState, siege, allyId); narrative = `急召 ${this._factionName(gameState, allyId)} 发兵来援。`; }
+      else narrative = '环顾四邻，无盟可援。';
+    } else { narrative = '坚壁清野，凭城死守。'; }
+    // 推进一旬（围城 tick + 全局行军/其它围城）
+    const events = this.advanceWarXun(gameState);
+    const oc = siege._resolved ? { type: siege._resolved } : siegeOutcome(siege);
+    if (oc && !siege._resolved) siege._resolved = oc.type;
+    return { narrative, outcome: oc, events };
+  }
+
+  /** 求援：从盟友城发一支救援行军，抵达后触发解围（abstract relief） */
+  _launchRelief(gameState, siege, allyId) {
+    const ally = this.getFactionState(gameState, allyId);
+    if (!ally) return null;
+    const troops = this.mobilize(gameState, allyId, Math.round((ally.troops || 0) * 0.5));
+    if (troops <= 0) return null;
+    const dist = this._distanceToHolding(gameState, allyId, siege.holdingId);
+    const march = {
+      id: `relief_${allyId}_${siege.holdingId}_${gameState.strategicState.warXun}`,
+      attacker: allyId, defender: siege.attacker, targetHoldingId: siege.holdingId, posture: 'open',
+      army: { troops, supply: Math.floor((ally.food || 0) * 0.3), generalIds: [] },
+      etaXun: marchEta(dist, 'open'), detected: false, detectedAtXun: null, reliefFor: siege.id,
+    };
+    gameState.strategicState.marches.push(march);
+    return march;
+  }
+
+  /** 救援行军抵达：里应外合，重创围城方（可能逼退） */
+  applyRelief(gameState, reliefMarch) {
+    const s = gameState.strategicState;
+    const siege = (s.sieges || []).find(sg => sg.id === reliefMarch.reliefFor && !sg._resolved);
+    if (!siege) { this.returnTroops(gameState, reliefMarch.attacker, reliefMarch.army.troops); return null; }
+    const hit = Math.round(reliefMarch.army.troops * 0.8);
+    siege.atk.troops = Math.max(0, siege.atk.troops - hit);
+    siege.atk.morale = Math.max(0, siege.atk.morale - 20);
+    // 援军入城助守
+    siege.def.troops += Math.round(reliefMarch.army.troops * 0.5);
+    const oc = siegeOutcome(siege);
+    if (oc) siege._resolved = oc.type;
+    return { hit, outcome: oc };
+  }
+
+  /** 围城结局结算：城破/献城/城陷→攻方取城；退兵→守方解围。清理 siege。 */
+  resolveSiege(gameState, siege, outcomeType) {
+    const s = gameState.strategicState;
+    const attackerWins = outcomeType === 'breach' || outcomeType === 'surrender' || outcomeType === 'fallen';
+    if (attackerWins) {
+      this.transferHolding(gameState, siege.defender, siege.attacker, siege.holdingId);
+      this.returnTroops(gameState, siege.attacker, Math.round(siege.atk.troops * 0.8));
+      const def = this.getFactionState(gameState, siege.defender);
+      if (def) def.order = Math.max(0, def.order - 12);
+    } else { // retreat / lift：攻方退兵，守方残兵归队
+      this.returnTroops(gameState, siege.attacker, Math.round(siege.atk.troops * 0.7));
+      this.returnTroops(gameState, siege.defender, Math.round(siege.def.troops));
+      const def = this.getFactionState(gameState, siege.defender);
+      if (def) def.order = Math.min(100, def.order + 6);
+    }
+    s.sieges = s.sieges.filter(x => x !== siege);
+    this._publish('war:siegeEnd', { siege, outcomeType, attackerWins });
+    return { attackerWins };
+  }
 
   // ============================================================
   // 季度推进：全势力 upkeep + 敌国 AI + 事件产出

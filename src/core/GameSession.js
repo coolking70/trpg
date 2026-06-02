@@ -690,6 +690,16 @@ export class GameSession {
     });
     for (const n of narratives) this.gameState.addNarrative('system', n);
 
+    // 突围决战（Phase 41 W4）：玩家=守方，胜→解围(守住)，败→城陷
+    if (this._breakoutSiege) {
+      const sg = this._breakoutSiege; this._breakoutSiege = null;
+      const ss = this.sys('StrategicSystem');
+      const res = ss.resolveSiege(this.gameState, sg, won ? 'retreat' : 'fallen');
+      this.gameState.addNarrative('system', won
+        ? `🎉 突围得手，敌军溃退，${this._holdingName(sg.holdingId)} 之围遂解！`
+        : `🏯 突围失利，${this._holdingName(sg.holdingId)} 终告陷落，落入 ${this._factionName(sg.attacker)} 之手。`);
+    }
+
     try {
       await this.sys('AIGMEngine').processGameAction('narrate_legion_result', { won, summary: s }, this.gameState);
     } catch { /* */ }
@@ -766,6 +776,86 @@ export class GameSession {
     const st = this.gameState.strategicState;
     for (const f of Object.values(st?.factions || {})) { const h = (f.holdings || []).find(x => x.id === id); if (h) return h.name; }
     return id;
+  }
+
+  _buildSiegeSnapshot(gs, sg) {
+    const pid = gs.strategicState.playerFactionId;
+    return {
+      holding: this._holdingName(sg.holdingId), mode: sg.mode, xun: sg.xun,
+      asAttacker: sg.attacker === pid,
+      atk: { faction: this._factionName(sg.attacker), ...sg.atk }, def: { faction: this._factionName(sg.defender), ...sg.def },
+      works: sg.works,
+    };
+  }
+
+  /** 围城操作选项：守方 坚守/反击/求援/突围；攻方 强攻/围困/退兵 */
+  _appendSiegeOptions(gs, sg, options) {
+    const pid = gs.strategicState.playerFactionId;
+    let n = 0;
+    if (sg.defender === pid) {
+      options.push({ n: ++n, type: 'siege_order', order: 'hold', text: '坚守（凭城消耗，待敌粮尽士衰）' });
+      options.push({ n: ++n, type: 'siege_order', order: 'sortie', text: '强攻反击（开城突袭，挫敌兵锐）' });
+      const ally = this._bestAlly(gs, pid);
+      if (ally) options.push({ n: ++n, type: 'siege_order', order: 'relief', allyId: ally, text: `求援（急召 ${this._factionName(ally)} 来援）` });
+      options.push({ n: ++n, type: 'siege_order', order: 'breakout', text: '突围（倾力出城决战）' });
+    } else { // 玩家为攻方
+      options.push({ n: ++n, type: 'siege_order', order: 'assault', text: '强攻（破门夺城，伤亡大）' });
+      options.push({ n: ++n, type: 'siege_order', order: 'blockade', text: '围困（断粮相持，待其献城）' });
+      options.push({ n: ++n, type: 'siege_order', order: 'lift', text: '退兵（解围撤还）' });
+    }
+  }
+
+  _bestAlly(gs, fid) {
+    const me = gs.strategicState.factions[fid];
+    let best = null, bestRel = 39; // 需 ally/高关系
+    for (const [tid, rel] of Object.entries(me?.diplomacy || {})) {
+      if ((rel.stance === 'ally' || rel.relation >= 40) && rel.relation > bestRel) { bestRel = rel.relation; best = tid; }
+    }
+    return best;
+  }
+
+  /** 围城下令（Phase 41 W4）：推进一旬并按结局收尾 */
+  async _siegeOrder(action) {
+    const ss = this.sys('StrategicSystem');
+    const sg = ss.playerSiege(this.gameState);
+    if (!sg) return;
+    if (action.order === 'breakout') {
+      // 突围：以守军倾力出城野战；胜→解围，败→城陷（经领土结算）
+      this._breakoutSiege = sg;
+      const def = sg.def, atk = sg.atk;
+      // 注：不带 objectiveHoldingId（领土由突围结果在 _endLegionBattle 显式结算，玩家是守方语义与攻方中心模型相反）
+      this._startLegionBattle({
+        battleType: 'field', enemyFactionId: sg.attacker,
+        objectiveName: `${this._holdingName(sg.holdingId)}·突围决战`, supply: { player: 9999, enemy: atk.supply },
+        units: [
+          { id: 'def_main', side: 'player', unitType: 'spearman', troops: Math.max(1, def.troops) },
+          { id: 'atk_main', side: 'enemy', unitType: 'infantry', troops: Math.max(1, atk.troops) },
+        ],
+      });
+      this.gameState.addNarrative('system', `🐎 ${this._holdingName(sg.holdingId)} 守军大开城门，倾力突围！`);
+      if (this.gameState.activeLegionBattle) { await this._enterLegionBattle(); }
+      return;
+    }
+    if (action.order === 'lift') {
+      ss.resolveSiege(this.gameState, sg, 'retreat');
+      this.gameState.addNarrative('system', `🏳 我军解围撤还，${this._holdingName(sg.holdingId)} 之围遂解。`);
+      await this._scanAfter(TRIGGER_MOMENTS.SCENE_ENTER);
+      return;
+    }
+    const r = ss.siegeOrder(this.gameState, sg, action.order, { allyId: action.allyId });
+    this.gameState.addNarrative('system', `🏯 ${r.narrative}`);
+    for (const ev of (r.events || [])) {
+      if (ev.type === 'relief_arrived' && ev.result) this.gameState.addNarrative('system', `🚩 援军驰至，里应外合，重创围城之敌（歼约 ${ev.result.hit}）！`);
+    }
+    try { await this.sys('AIGMEngine').processGameAction('narrate_legion_result', { won: false, summary: {}, siege: true }, this.gameState); } catch { /* */ }
+    if (r.outcome) {
+      const res = ss.resolveSiege(this.gameState, sg, r.outcome.type);
+      const verb = { breach: '城门告破', surrender: '粮尽献城', fallen: '城陷', retreat: '攻方退兵' }[r.outcome.type] || r.outcome.type;
+      this.gameState.addNarrative('system', res.attackerWins
+        ? `🏯 ${this._holdingName(sg.holdingId)} ${verb}，落入 ${this._factionName(sg.attacker)} 之手。`
+        : `🎉 ${verb}，${this._holdingName(sg.holdingId)} 之围得解！`);
+      await this._scanAfter(TRIGGER_MOMENTS.SCENE_ENTER);
+    }
   }
 
   /** 接敌抉择（Phase 41 W3）：sally 出城迎击→野战；hold 闭城固守→围城 */
@@ -877,6 +967,9 @@ export class GameSession {
       case 'engage':
         await this._resolveEngagement(action.choice || 'hold');
         break;
+      case 'siege_order':
+        await this._siegeOrder(action);
+        break;
       default:
         this.gameState.addNarrative('system', `（未知动作类型：${action.type}）`);
     }
@@ -978,9 +1071,17 @@ export class GameSession {
     }
 
     // 战略层：始终给概要；位于「理政」场景时进入 governance 态并给出内政外交动作
+    let siege = null;
     if (gs.strategicState) {
       strategy = this._buildStrategySnapshot(gs);
-      if (situation === 'travel' && current && (current.tags || []).includes('governance')) {
+      // 围城进行中（无激战/事件时）→ siege 态 + 围城操作（Phase 41 W4）
+      const sg = (situation === 'travel' || situation === 'governance') ? this.sys('StrategicSystem').playerSiege(gs) : null;
+      if (sg) {
+        situation = 'siege';
+        options = [];
+        siege = this._buildSiegeSnapshot(gs, sg);
+        this._appendSiegeOptions(gs, sg, options);
+      } else if (situation === 'travel' && current && (current.tags || []).includes('governance')) {
         situation = 'governance';
         this._appendGovernanceOptions(gs, options);
       }
@@ -998,6 +1099,7 @@ export class GameSession {
       combat,
       legion,
       strategy,
+      siege,
       options: (situation === 'combat' || situation === 'legion') ? options : options.filter(o => o.type !== 'travel' || o.reachable),
       party,
       usableItems,
