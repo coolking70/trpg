@@ -22,6 +22,7 @@ import { CombatSystem } from './systems/CombatSystem.js';
 import { LegionWarfareSystem } from './systems/LegionWarfareSystem.js';
 import { StrategicSystem } from './systems/StrategicSystem.js';
 import { assembleLegionBattle, settleLegionBattle } from './systems/legionOrchestration.js';
+import { applyStrategyEffect, applySeasonEvents } from './systems/strategyOrchestration.js';
 import { TurnManager } from './systems/TurnManager.js';
 import { AIGMEngine } from './systems/AIGMEngine.js';
 import { ImportExportSystem } from './systems/ImportExportSystem.js';
@@ -1250,28 +1251,11 @@ class TRPGApp {
         this._startLegionBattle(effect.battle || effect.battleDef || effect);
         return { ok: true, type: effect.type, message: `进入军团战` };
       }
-      case 'set_diplomacy': {
-        const ss = this.engine.getSystem('StrategicSystem');
-        const st = this.gameState.strategicState;
-        if (ss && st && effect.factionId && effect.targetId && st.factions[effect.factionId] && st.factions[effect.targetId]) {
-          const cur = ss.relationOf(this.gameState, effect.factionId, effect.targetId);
-          const relation = effect.relation != null ? effect.relation : (cur.relation || 0) + (effect.relationDelta || 0);
-          ss._setRelationSym(st.factions, effect.factionId, effect.targetId, relation, effect.stance || null);
-        }
-        return { ok: true, type: effect.type, message: `外交立场变化` };
-      }
-      case 'adjust_resource': {
-        const ss = this.engine.getSystem('StrategicSystem');
-        const fid = effect.factionId || this.gameState.strategicState?.playerFactionId;
-        const f = ss ? ss.getFactionState(this.gameState, fid) : null;
-        if (f) ss._applyDeltas(f, { gold: effect.gold || 0, food: effect.food || 0, troops: effect.troops || 0, order: effect.order || 0 });
-        return { ok: true, type: effect.type, message: `国库变化` };
-      }
+      case 'set_diplomacy':
+      case 'adjust_resource':
       case 'mobilize': {
-        const ss = this.engine.getSystem('StrategicSystem');
-        const fid = effect.factionId || this.gameState.strategicState?.playerFactionId;
-        if (ss && fid) ss.mobilize(this.gameState, fid, effect.value || effect.amount || 0);
-        return { ok: true, type: effect.type, message: `征调兵力` };
+        applyStrategyEffect(effect, { gameState: this.gameState, strategicSystem: this.engine.getSystem('StrategicSystem') });
+        return { ok: true, type: effect.type, message: `战略态变化` };
       }
       case 'set_variable': {
         // 用于事件分支写状态机
@@ -1591,17 +1575,14 @@ class TRPGApp {
     } else if (data.kind === 'season') {
       const { events, season } = ss.advanceSeason(this.gameState);
       this.gameState.addNarrative('system', `🗓 政务推进，时序入第 ${season} 季。`);
-      this.gameState.worldFlags ||= {};
-      for (const ev of (events || [])) {
-        if (ev.against === st.playerFactionId && ev.type === 'war_declared') { this.gameState.worldFlags[`war_with_${ev.by}`] = true; this.gameState.addNarrative('system', `⚠ ${st.factions[ev.by]?.name || ev.by} 向我方宣战！`); }
-        else if (ev.against === st.playerFactionId && ev.type === 'attack_intent') { this.gameState.worldFlags[`invasion_from_${ev.by}`] = true; this.gameState.addNarrative('system', `⚠ ${st.factions[ev.by]?.name || ev.by} 大军压境，意图来犯！`); }
-      }
+      // 敌国 AI 事件 → worldFlags + 叙述 + 入侵意图（共享编排）
+      const { narratives, invasion } = applySeasonEvents(this.gameState, events);
+      for (const n of narratives) this.gameState.addNarrative('system', n);
       try { await ai.processGameAction('narrate_governance', { kind: 'season', season, events, player: ss.getPlayerState(this.gameState) }, this.gameState); } catch { /* */ }
-      // 战役级连战（Phase 38）：敌国来犯 → 立刻一场守城战
-      const invasion = (events || []).find(e => e.type === 'attack_intent' && e.against === st.playerFactionId);
+      // 战役级连战（Phase 38）：敌国来犯 → 立刻一场守城战（面板接管）
       if (invasion) {
         const battle = ss.buildInvasionBattle(this.gameState, invasion.by, st.playerFactionId);
-        if (battle) { this._startLegionBattle(battle); return; } // 进入军团战，面板接管
+        if (battle) { this._startLegionBattle(battle); return; }
       }
     }
     this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });

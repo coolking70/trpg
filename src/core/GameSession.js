@@ -40,8 +40,9 @@ import { ContextRetriever } from '../systems/ContextRetriever.js';
 import { GamePreset } from '../models/GamePreset.js';
 import { GameState } from '../models/GameState.js';
 import { FORMATIONS, canUseFormation, generalHasTactic, TACTICS } from '../data/warfare.js';
-import { POLICIES, DIPLOMACY_ACTIONS, clampRelation, stanceFromRelation } from '../data/governance.js';
+import { POLICIES, DIPLOMACY_ACTIONS } from '../data/governance.js';
 import { assembleLegionBattle, settleLegionBattle } from '../systems/legionOrchestration.js';
+import { applyStrategyEffect, applySeasonEvents } from '../systems/strategyOrchestration.js';
 
 /** 默认战斗决策：有可用主动技能就用（集火最低血敌人），否则普攻 */
 function defaultDecideCombat(combatant, enemies) {
@@ -293,29 +294,11 @@ export class GameSession {
       }
       case 'start_combat': this._startCombat(eff.enemyIds || []); break;
       case 'start_legion_battle': this._startLegionBattle(eff.battle || eff.battleDef || eff); break;
-      case 'set_diplomacy': {
-        const ss = this.sys('StrategicSystem');
-        const st = gs.strategicState;
-        if (ss && st && eff.factionId && eff.targetId && st.factions[eff.factionId] && st.factions[eff.targetId]) {
-          const cur = ss.relationOf(gs, eff.factionId, eff.targetId);
-          const relation = eff.relation != null ? clampRelation(eff.relation) : clampRelation((cur.relation || 0) + (eff.relationDelta || 0));
-          ss._setRelationSym(st.factions, eff.factionId, eff.targetId, relation, eff.stance || null);
-        }
+      case 'set_diplomacy':
+      case 'adjust_resource':
+      case 'mobilize':
+        applyStrategyEffect(eff, { gameState: gs, strategicSystem: this.sys('StrategicSystem') });
         break;
-      }
-      case 'adjust_resource': {
-        const ss = this.sys('StrategicSystem');
-        const fid = eff.factionId || gs.strategicState?.playerFactionId;
-        const f = ss ? ss.getFactionState(gs, fid) : null;
-        if (f) ss._applyDeltas(f, { gold: eff.gold || 0, food: eff.food || 0, troops: eff.troops || 0, order: eff.order || 0 });
-        break;
-      }
-      case 'mobilize': {
-        const ss = this.sys('StrategicSystem');
-        const fid = eff.factionId || gs.strategicState?.playerFactionId;
-        if (ss && fid) ss.mobilize(gs, fid, eff.value || eff.amount || 0);
-        break;
-      }
       case 'heal': {
         const targets = eff.target === 'all' ? gs.activeCharacters : [gs.activeCharacters[0]];
         for (const c of targets) if (c) c.stats.hpCurrent = Math.min(c.stats.hp, c.stats.hpCurrent + (eff.value || 0));
@@ -754,25 +737,13 @@ export class GameSession {
     if (!this.gameState.strategicState) { this.gameState.addNarrative('system', '（当前剧本无战略层）'); return; }
     const { events, season } = ss.advanceSeason(this.gameState);
     this.gameState.addNarrative('system', `🗓 政务推进，时序入第 ${season} 季。`);
-    // 敌国 AI 事件 → 落 worldFlags + 叙述，供剧本触发器挂接
-    this.gameState.worldFlags ||= {};
-    for (const ev of (events || [])) {
-      if (ev.type === 'war_declared' && ev.against === this.gameState.strategicState.playerFactionId) {
-        this.gameState.worldFlags[`war_with_${ev.by}`] = true;
-        this.gameState.addNarrative('system', `⚠ ${this._factionName(ev.by)} 向我方宣战！`);
-      } else if (ev.type === 'attack_intent' && ev.against === this.gameState.strategicState.playerFactionId) {
-        this.gameState.worldFlags[`invasion_from_${ev.by}`] = true;
-        this.gameState.addNarrative('system', `⚠ ${this._factionName(ev.by)} 大军压境，意图来犯！`);
-      } else if (ev.type === 'famine') {
-        this.gameState.addNarrative('system', `（${this._factionName(ev.faction)} 粮荒，民心动荡）`);
-      }
-    }
+    // 敌国 AI 事件 → worldFlags + 叙述 + 入侵意图（共享编排）
+    const { narratives, invasion } = applySeasonEvents(this.gameState, events);
+    for (const n of narratives) this.gameState.addNarrative('system', n);
     try { await this.sys('AIGMEngine').processGameAction('narrate_governance', { kind: 'season', season, events, player: ss.getPlayerState(this.gameState) }, this.gameState); } catch { /* */ }
-    // 战役级连战（Phase 38）：敌国来犯 → 立刻一场守城战（取首个 attack_intent）
-    const pid = this.gameState.strategicState.playerFactionId;
-    const invasion = (events || []).find(e => e.type === 'attack_intent' && e.against === pid);
+    // 战役级连战（Phase 38）：敌国来犯 → 立刻一场守城战
     if (invasion) {
-      const battle = ss.buildInvasionBattle(this.gameState, invasion.by, pid);
+      const battle = ss.buildInvasionBattle(this.gameState, invasion.by, this.gameState.strategicState.playerFactionId);
       if (battle) { this._startLegionBattle(battle); if (this.gameState.activeLegionBattle) { await this._enterLegionBattle(); return; } }
     }
     await this._scanAfter(TRIGGER_MOMENTS.SCENE_ENTER);

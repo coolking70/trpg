@@ -4,6 +4,20 @@
 
 ## [Unreleased]
 
+### Phase 40 — 收敛阶段2：战略编排单一事实源 🧹
+
+延续 Phase 39，把 GameSession 与 main.js 仍各维护一份的**战略事件效果 + 季度事件分派**收敛到共享模块（渐进收敛，单一事实源；小步可回退）。
+
+**Added/Changed**
+- `src/systems/strategyOrchestration.js`：`applyStrategyEffect`（`set_diplomacy`/`adjust_resource`/`mobilize` 事件效果）+ `applySeasonEvents`（advanceSeason events → worldFlags + 叙述行 + 首个入侵意图）。
+- `GameSession` 与 `main.js` 的 `_applyEventEffect` 战略 case、季度事件循环均改调共享模块；清理 GameSession 因此空出的 `clampRelation`/`stanceFromRelation` 导入。
+
+**评估后暂缓**
+- **通用事件效果**（add_item/heal/damage/set_variable/recruit/kill_npc/teleport…）两端实现已**显著分歧**（main.js UI 耦合：返回 `{ok,type,message}`、发事件、含 `trigger_event`/`dismiss_companion`/关系传播，字段约定也不同）——抽取需大量 hook 且风险触及两条工作路径，价值低（老而稳定的代码）。按"能停则停"原则**不抽**。
+- **浏览器以 `getState()/applyAction()` 为权威态**的全量重写仍按计划暂缓。至此 Phase 31–38 引入的、真正高频改动的战略/军团战编排重复已全部消除。
+
+**验证**：jest 677/677（含 `strategyOrchestration` 契约单测 5）+ MCP 45/45 + `npm run build`；Claude Preview 浏览器实测三国——劝农生效、处理政务→魏来犯→军团战面板，与重构前一致。
+
 ### Phase 39 — main.js / GameSession 收敛（阶段1：抽共享编排）🧹
 
 `main.js`（浏览器）与 `GameSession`（headless/RPC）各有一套并行编排，军团战的"出征装配 + 战后结算"逻辑双份维护、易漂移。本期抽出共享纯模块去重。
