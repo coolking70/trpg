@@ -118,7 +118,7 @@ const chapters = [
   { id: 'yiling', title: '夷陵之战', beat: '刘备伐吴，陆逊火烧连营。',
     main: { title: '为弟复仇', summary: '刘备倾国之兵东征，连营七百里。' },
     branch: ['依山林扎连营持久', '集中兵力速取夷陵'],
-    legion: [{ name: '夷陵·火烧连营', battleType: 'field', supply: { player: 110, enemy: 130 },
+    legion: [{ name: '夷陵·火烧连营', battleType: 'field', supply: { player: 110, enemy: 130 }, drawFromStrategy: true, enemyFactionId: 'wu',
       our: [U('infantry', 9000, 'liubei', { formation: 'changshe' }), U('cavalry', 3000, 'zhaoyun'), U('archer', 3000, 'liubei')],
       enemy: [U('navy', 4000, 'luxun'), U('infantry', 7000, 'luxun', { formation: 'fangyuan' }), U('archer', 3000, 'luxun')] }] },
 
@@ -132,7 +132,7 @@ const chapters = [
   { id: 'jieting', title: '街亭之战', beat: '马谡失街亭，孔明挥泪。',
     main: { title: '北伐·街亭', summary: '街亭乃汉中咽喉，魏军张郃疾进。' },
     branch: ['当道下寨据险死守', '依山屯兵居高临下'],
-    legion: [{ name: '死守街亭', battleType: 'defense', supply: { player: 200, enemy: 100 },
+    legion: [{ name: '死守街亭', battleType: 'defense', supply: { player: 200, enemy: 100 }, drawFromStrategy: true, enemyFactionId: 'wei',
       our: [U('spearman', 5000, 'masu', { formation: 'fangyuan' }), U('archer', 4000, 'masu', { formation: 'yanxing' }), U('infantry', 4000, 'weiyan')],
       enemy: [U('cavalry', 5000, 'simayi'), U('infantry', 7000, 'simayi'), U('archer', 3000, 'simayi')] }],
     side: [{ type: 'vignette', name: '空城抚琴', summary: '孔明焚香操琴，退司马十五万兵。' }] },
@@ -178,6 +178,9 @@ const blueprint = {
     combatPlan: (ch.pcombat || []).map(pc => ({ enemyConcept: pc.enemyConcept, ecology: { biome: 'plains', creatureType: 'humanoid', tier: pc.difficulty >= 4 ? 'boss' : (pc.difficulty >= 3 ? 'elite' : 'common') }, count: pc.count || 1 })),
     legionBattlePlan: (ch.legion || []).map(lg => ({
       name: lg.name, battleType: lg.battleType, summary: ch.main.summary, supply: lg.supply,
+      ...(lg.drawFromStrategy ? { drawFromStrategy: true } : {}),
+      ...(lg.enemyFactionId ? { enemyFactionId: lg.enemyFactionId } : {}),
+      ...(lg.allyFactionId ? { allyFactionId: lg.allyFactionId } : {}),
       ourForces: lg.our.map(u => ({ unitType: u.unitType, troops: u.troops, generalRef: u.generalRef, ...(u.formation ? { formation: u.formation } : {}), ...(u.machines ? { machines: u.machines } : {}) })),
       enemyForces: lg.enemy.map(u => ({ unitType: u.unitType, troops: u.troops, generalRef: u.generalRef, ...(u.formation ? { formation: u.formation } : {}), ...(u.machines ? { machines: u.machines } : {}) })),
     })),
@@ -190,6 +193,17 @@ const blueprint = {
     { id: 'fall', name: '出师未捷', condition: '壮志难酬', summary: '出师未捷身先死，长使英雄泪满襟。', tone: '悲壮' },
   ],
   expansionNotes: ['军团战覆盖野战(官渡/博望/定军山/夷陵/南中)、水战(赤壁)、攻城(下邳/南郡/樊城)、守城(街亭)。', '个人战覆盖单挑(三英战吕布/白门楼)、突围逃脱(长坂坡/麦城)。'],
+  // 内政外交（Phase 33）：玩家=蜀汉；魏最强、吴次之、蜀弱、群雄散。蜀与魏交战、与吴可联、与群雄敌对。
+  strategicSetup: {
+    playerFactionId: 'shu',
+    factions: {
+      shu: { name: '蜀汉', gold: 200, food: 400, troops: 8000, order: 62, agg: { population: 40000, productionEfficiency: 100, security: 55 },
+        diplomacy: { wei: { stance: 'war', relation: -70 }, wu: { stance: 'neutral', relation: 15 }, qun: { stance: 'rival', relation: -30 } } },
+      wei: { name: '曹魏', gold: 500, food: 1200, troops: 40000, order: 72, agg: { population: 200000, productionEfficiency: 115, security: 65 } },
+      wu: { name: '东吴', gold: 300, food: 700, troops: 20000, order: 68, agg: { population: 100000, productionEfficiency: 108, security: 60 } },
+      qun: { name: '群雄', gold: 120, food: 250, troops: 9000, order: 50, agg: { population: 30000, productionEfficiency: 90, security: 45 } },
+    },
+  },
 };
 
 // 段①② 产物：手写 digest + blueprint（不调 LLM）；段③ 用 MCP preset_build_from_blueprint 确定性构建。

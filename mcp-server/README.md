@@ -34,7 +34,7 @@ npm run test:mcp
 }
 ```
 
-接入后 Claude 会看到 68 个工具，可以让它"写一份太空船难主题的剧本"，也可以通过**小说→预设三段管线**（概括 → 设计蓝图 → 确定性构建）把一部长篇小说改编成可玩剧本，并为敌人自动烘焙生态位掉落表。蓝图既能编排个人战（`combatPlan`），也能编排**军团战争**（`legionBattlePlan`：野战/攻城/守城/水战）。
+接入后 Claude 会看到 69 个工具，可以让它"写一份太空船难主题的剧本"，也可以通过**小说→预设三段管线**（概括 → 设计蓝图 → 确定性构建）把一部长篇小说改编成可玩剧本，并为敌人自动烘焙生态位掉落表。蓝图既能编排个人战（`combatPlan`）、**军团战争**（`legionBattlePlan`：野战/攻城/守城/水战），也能编排**内政外交战略层**（`strategicSetup`：势力级国库 + 外交立场 + 理政朝堂）。
 
 ## 暴露的工具一览
 
@@ -174,6 +174,26 @@ legionBattlePlan: [{
 - `generalRef` 指向 digest 角色 id；其 `warfare`（统率/武力/智力/阵法/战法）影响阵型与战局。
 - `buildPresetFromBlueprint` 编译为内联 `start_legion_battle` 事件，并以 `validateLegionBattle` 校验编制。
 - **`legion_simulate`**：对预设里所有军团战做 Monte Carlo，输出我方胜率/平均回合/双方损耗 + 平衡标志（😴白给 / ✓适中 / ⚠偏难 / ❌过难 / ☠不可胜）。CLI：`node scripts/legion-balance-check.mjs --preset <path>`。
+
+### 内政外交战略层（Phase 33）
+
+蓝图加 `strategicSetup` 即可让剧本带上可操作的内政外交：
+
+```jsonc
+strategicSetup: {
+  playerFactionId: 'shu',
+  factions: {
+    shu: { name: '蜀汉', gold: 200, food: 400, troops: 8000, order: 62,
+           agg: { population: 40000, productionEfficiency: 100, security: 55 },
+           diplomacy: { wei: { stance: 'war', relation: -70 }, wu: { stance: 'neutral', relation: 15 } } },
+    wei: { name: '曹魏', gold: 500, food: 1200, troops: 40000, order: 72, agg: { population: 200000, productionEfficiency: 115, security: 65 } }
+  }
+}
+```
+
+- `buildPresetFromBlueprint` 写入 `preset.strategicSetup` 并生成「理政朝堂」hub（`tags:['governance']`）。游戏中在该 hub 下政令（劝农/征税/征兵/筑城/赈灾/屯田）、外交（结盟/宣战/求和/朝贡/联姻/离间）、「处理政务」推进一季（敌国活跃 AI）。
+- 军团战 `legionBattlePlan` 可标 `drawFromStrategy`（兵粮取自国库）/ `enemyFactionId` / `allyFactionId`，串成「内政攒兵 → 外交定敌友 → 军团战」闭环。
+- **`strategy_simulate`**：模拟 N 季（玩家均衡策略 + 敌国 AI），报玩家资源/实力终值、对玩家宣战次数、势力排名 + 平衡标志（👑一家独大 / ✓稳健 / ⚠势弱 / ☠崩溃）。
 
 ## 使用模式：让 Claude 写一份完整剧本
 

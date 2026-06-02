@@ -4,6 +4,43 @@
 
 ## [Unreleased]
 
+### Phase 34 — 三国战略内容（内政外交）🀄
+
+给三国剧本接上内政外交战略层，与军团战形成「内政产兵粮 → 外交定敌友 → 军团战」闭环。
+
+**Added**
+- `scripts/generate-sanguo-preset.mjs` 加 `strategicSetup`：玩家=蜀汉，初始金/粮/兵/民心 + 城池聚合 + 对魏(war)/吴(neutral 可联)/群雄(rival) 的外交立场。
+- 重建 `public/generated/sanguo-legion-preset.json`：23 场景（含「理政朝堂」hub）、0 必修、全可达；夷陵/街亭两场军团战标记 `drawFromStrategy`（兵粮取自国库）。
+- `strategy_simulate` 平衡贴史实：蜀排第 3/4（⚠ 势弱待援），经济可持续、无粮荒——蜀最弱需联吴自保。
+
+**验证**
+- headless 跑通完整链路：入朝理政 → 征兵（兵 8000→11200）→ 联吴（朝贡×2 + 结盟，吴转 ally）→ 处理政务（季度推进、敌国 AI 决定魏国来犯置 `invasion_from_wei`）。
+- 真 GM 玩测待补：所给 deepseek-v4-flash key 网关返回 401（invalid api key），待提供可用 key 后补叙述抽样。
+
+### Phase 33 — 内政外交系统（战略层·势力级国库）🏛️
+
+把原本只用于"战略汇报"的描述性 `strategicLayer` 升级为**可操作的内政外交系统**，与军团战、剧情深耦合。
+
+**Added — 战略数据层**
+- `src/data/governance.js`（纯数据+纯函数，runtime/MCP 共享）：
+  - 资源 `RESOURCES`（金/粮/兵力/民心）；政令 `POLICIES`（劝农/征税/征兵/筑城/赈灾/屯田）；外交 `DIPLOMACY_ACTIONS`（结盟/宣战/求和/朝贡/联姻/离间）；立场 `STANCES` + `stanceFromRelation`。
+  - 纯函数 `seasonProduction`（季度产出/消耗/民心漂移）、`applyPolicyPure`、`applyDiplomacyPure`、`decideEnemyStrategy`（敌国 AI 启发式）、`validateStrategicSetup`、`factionPower`。
+
+**Added — 战略系统与接线**
+- `src/systems/StrategicSystem.js`：从 `preset.strategicSetup`/`strategicLayer` 初始化各势力活状态；`applyPolicy`/`applyDiplomacy`/`advanceSeason`（全势力 upkeep + 敌国 AI + 事件产出）/`mobilize`/`ranking`。
+- `GameSession`：`loadPreset` 初始化 → `GameState.strategicState`（+ 序列化）；`getState` 始终带 `strategy` 概要，位于 `governance` 场景时 `situation:'governance'` + 内政/外交/`advance_season` 选项；`applyAction` 加 `govern`/`diplomacy`/`advance_season`；事件效果 `set_diplomacy`/`adjust_resource`/`mobilize`；`narrate_governance`/`narrate_diplomacy` 叙述钩子。
+- `GamePreset` 现保留 `factions`/`strategicLayer`/`strategicSetup`（修复此前未透传的隐患）。
+
+**Added — 深耦合军团战**
+- `start_legion_battle` 支持 `drawFromStrategy`（我方兵力/粮草从玩家国库取并扣减，战后残部归队 + 民心/资源结算）、`allyFactionId`（盟友按外交关系出援军）、`enemyFactionId`（战后调整关系）。
+- 玩家宣战 / 敌国 AI 宣战或来犯 → 置 `worldFlags.war_with_<id>` / `invasion_from_<id>`，供剧本军团战触发器挂接。
+
+**Added — 管线编排与平衡器**
+- 蓝图 `strategicSetup` → `buildPresetFromBlueprint` 写入 `preset.strategicSetup` + 生成「理政朝堂」hub；`legionBattlePlan` 支持 `drawFromStrategy`/`enemyFactionId`/`allyFactionId`。
+- `src/systems/strategySimulator.js` + MCP `strategy_simulate`：模拟 N 季（玩家均衡策略 + 敌国 AI），报资源/实力轨迹、对玩家宣战次数、势力排名 + 平衡标志。
+
+**Tests** — governance 数据层 21、StrategicSystem 10、RPC 集成 + 深耦合 8、平衡模拟器 5。
+
 ### Phase 32 — 三国题材剧本（军团战示范）⚔️🀄
 
 用 Phase 31 的军团战系统 + 小说→预设管线，手写 `NovelDigest`/`PresetBlueprint`（不调 LLM）确定性生成的三国剧本。

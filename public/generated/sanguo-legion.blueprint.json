@@ -880,6 +880,8 @@
             "player": 110,
             "enemy": 130
           },
+          "drawFromStrategy": true,
+          "enemyFactionId": "wu",
           "ourForces": [
             {
               "unitType": "infantry",
@@ -1033,6 +1035,8 @@
             "player": 200,
             "enemy": 100
           },
+          "drawFromStrategy": true,
+          "enemyFactionId": "wei",
           "ourForces": [
             {
               "unitType": "spearman",
@@ -1121,5 +1125,72 @@
   "expansionNotes": [
     "军团战覆盖野战(官渡/博望/定军山/夷陵/南中)、水战(赤壁)、攻城(下邳/南郡/樊城)、守城(街亭)。",
     "个人战覆盖单挑(三英战吕布/白门楼)、突围逃脱(长坂坡/麦城)。"
-  ]
+  ],
+  "strategicSetup": {
+    "playerFactionId": "shu",
+    "factions": {
+      "shu": {
+        "name": "蜀汉",
+        "gold": 200,
+        "food": 400,
+        "troops": 8000,
+        "order": 62,
+        "agg": {
+          "population": 40000,
+          "productionEfficiency": 100,
+          "security": 55
+        },
+        "diplomacy": {
+          "wei": {
+            "stance": "war",
+            "relation": -70
+          },
+          "wu": {
+            "stance": "neutral",
+            "relation": 15
+          },
+          "qun": {
+            "stance": "rival",
+            "relation": -30
+          }
+        }
+      },
+      "wei": {
+        "name": "曹魏",
+        "gold": 500,
+        "food": 1200,
+        "troops": 40000,
+        "order": 72,
+        "agg": {
+          "population": 200000,
+          "productionEfficiency": 115,
+          "security": 65
+        }
+      },
+      "wu": {
+        "name": "东吴",
+        "gold": 300,
+        "food": 700,
+        "troops": 20000,
+        "order": 68,
+        "agg": {
+          "population": 100000,
+          "productionEfficiency": 108,
+          "security": 60
+        }
+      },
+      "qun": {
+        "name": "群雄",
+        "gold": 120,
+        "food": 250,
+        "troops": 9000,
+        "order": 50,
+        "agg": {
+          "population": 30000,
+          "productionEfficiency": 90,
+          "security": 45
+        }
+      }
+    }
+  }
 }

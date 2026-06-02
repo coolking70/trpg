@@ -66,6 +66,11 @@ export class GamePreset {
     // 地图（旧版格子地图，仍支持以保持向后兼容）
     this.map = data.map || null;
 
+    // 势力 + 战略层（Phase 27 描述数据 / Phase 33 内政外交活状态种子）
+    this.factions = [...(data.factions || [])];
+    this.strategicLayer = data.strategicLayer || null;
+    this.strategicSetup = data.strategicSetup || null;
+
     // 场景图（新版主路径）— 节点 + 连接，每个节点是一个有意义的场景
     // scenes 为空数组时回退到旧的格子地图触发机制
     this.scenes = [...(data.scenes || [])];
@@ -210,6 +215,9 @@ export class GamePreset {
       events: this.events,
       items: this.items,
       map: this.map,
+      factions: this.factions,
+      strategicLayer: this.strategicLayer,
+      strategicSetup: this.strategicSetup,
       scenes: this.scenes,
       startingSceneId: this.startingSceneId,
       displayMode: this.displayMode,

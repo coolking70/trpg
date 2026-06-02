@@ -271,6 +271,25 @@ export class AIPromptBuilder {
         break;
       }
 
+      case 'narrate_governance': {
+        const p = actionData.player || {};
+        const r = p.resources || p;
+        parts.push(`【理政】${actionData.kind === 'season' ? `推进至第 ${actionData.season} 季` : `施行政令: ${actionData.policyId}`}`);
+        if (r.gold != null) parts.push(`国势: 金${r.gold} 粮${r.food} 兵${r.troops} 民心${r.order}`);
+        if (Array.isArray(actionData.events) && actionData.events.length) {
+          parts.push(`本季要闻: ${actionData.events.map(e => e.type).join('、')}`);
+        }
+        parts.push('用 2-3 句叙述府衙理政的气象与国势变化（半文半白、有三国史诗感）。不要编造未发生的战事或外交结果，只渲染内政治理本身。');
+        break;
+      }
+
+      case 'narrate_diplomacy': {
+        parts.push(`【外交】动作: ${actionData.action}，对象势力: ${actionData.targetId}`);
+        if (actionData.result?.setStance) parts.push(`新立场: ${actionData.result.setStance}`);
+        parts.push('用 2-3 句叙述这场外交斡旋（遣使、谈判、缔约或决裂）。严格按上面的动作与新立场写，不要改写结果。');
+        break;
+      }
+
       default:
         parts.push(`操作: ${actionType}`);
         if (actionData.text) parts.push(actionData.text);

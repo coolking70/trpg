@@ -56,6 +56,7 @@ function createEmptyPreset() {
     scenes: [],
     npcs: [],                       // Phase 19B
     strategicLayer: null,           // Phase 27: faction holdings / resources / governance, played through TRPG briefings
+    strategicSetup: null,           // Phase 33: 内政外交活状态种子（玩家势力资源 + 外交立场）
     startingOptions: null,          // Phase 19A
     startingSceneRules: [],         // Phase 19A
     combatMode: 'party',            // Phase 19
@@ -865,6 +866,7 @@ const TIER_STATS = {
 async function buildPresetFromBlueprint(blueprint, digest) {
   const { resolveLootTable } = await import('../src/data/ecology.js');
   const { validateLegionBattle, DEFAULT_GENERAL_WARFARE, BATTLE_TYPES } = await import('../src/data/warfare.js');
+  const { validateStrategicSetup } = await import('../src/data/governance.js');
   const p = createEmptyPreset();
   p.name = blueprint.title || digest.title || '未命名';
   p.lore = { worldName: digest.world?.name || '', era: '', background: digest.world?.setting || '', rules: '', gmStyle: blueprint.tone || digest.tone || '' };
@@ -984,6 +986,10 @@ async function buildPresetFromBlueprint(blueprint, digest) {
         battleType, units, generals,
         supply: plan.supply || { player: 9999, enemy: 9999 },
         objectiveName: plan.name || BATTLE_TYPES[battleType].name,
+        // 战略深耦合（Phase 33）：可选——我方兵粮从国库取、按外交定敌友
+        ...(plan.drawFromStrategy ? { drawFromStrategy: true } : {}),
+        ...(plan.enemyFactionId ? { enemyFactionId: plan.enemyFactionId } : {}),
+        ...(plan.allyFactionId ? { allyFactionId: plan.allyFactionId } : {}),
       };
       // 校验编制（器械携带上限/兵种/阵型/主将引用）；不合法则跳过并告警，避免产出坏战斗
       const errs = validateLegionBattle(battle, Object.keys(generals));
@@ -1035,6 +1041,27 @@ async function buildPresetFromBlueprint(blueprint, digest) {
       })),
     });
     finale.events.push(finaleEvId);
+  }
+
+  // 战略层（Phase 33）：blueprint.strategicSetup → preset.strategicSetup + 「理政朝堂」hub
+  if (blueprint.strategicSetup) {
+    const factionIds = new Set((p.factions || []).map(f => f.id));
+    const sErrs = validateStrategicSetup(blueprint.strategicSetup, [...factionIds]);
+    if (sErrs.length) console.error(`[build] strategicSetup 警告: ${sErrs.join('; ')}`);
+    p.strategicSetup = blueprint.strategicSetup;
+    const courtId = 'scene_court';
+    const court = {
+      id: courtId, name: '理政朝堂', type: 'settlement', icon: '🏛',
+      coords: { x: -2, y: 0 }, tags: ['governance', 'safe'],
+      description: '正堂之上，群僚议政，内政外交皆决于此。', connections: [], events: [],
+      vignettes: ['府衙内外吏员奔走，案牍如山，运筹于帷幄之间。'],
+    };
+    const firstHub = p.scenes.find(s => (s.tags || []).includes('spawn')) || p.scenes[0];
+    if (firstHub) {
+      firstHub.connections.push({ to: courtId, label: '入朝理政' });
+      court.connections.push({ to: firstHub.id, label: `返回 ${firstHub.name}` });
+    }
+    p.scenes.push(court);
   }
 
   p.startingSceneId = p.scenes[0]?.id || null;
@@ -4300,6 +4327,33 @@ tools.legion_simulate = {
       lines.push(`  平均回合 ${r.avgRounds}  我军损耗 ${(r.avgPlayerLoss * 100).toFixed(0)}%  敌军损耗 ${(r.avgEnemyLoss * 100).toFixed(0)}%${r.timeouts ? `  (超时 ${r.timeouts})` : ''}`);
       lines.push('');
     }
+    return ok(lines.join('\n'));
+  },
+};
+
+// ============================================================
+tools.strategy_simulate = {
+  title: '战略平衡模拟（内政外交·无 AI 调用）',
+  description: `对当前预设的 strategicSetup/strategicLayer 跑 N 季：玩家用均衡内政策略 + 敌国活跃 AI，
+报玩家势力资源/实力终值、对玩家宣战次数、势力排名与平衡标志（👑一家独大 / ✓稳健 / ⚠势弱 / ☠崩溃）。`,
+  schema: {
+    seasons: z.number().min(1).max(200).default(20),
+    seed: z.number().default(12345),
+    playerActs: z.boolean().default(true).describe('false=玩家不行动，仅看敌国 AI 与 upkeep'),
+  },
+  handler: async (args) => {
+    if (!preset.strategicSetup && !preset.strategicLayer) return err('当前预设无 strategicSetup/strategicLayer');
+    const { simulateSeasons } = await import('../src/systems/strategySimulator.js');
+    const r = simulateSeasons(preset, { seasons: args.seasons, seed: args.seed, playerActs: args.playerActs });
+    if (!r.ok) return err(r.reason);
+    const lines = [
+      `战略模拟 ${r.seasons} 季（玩家势力 ${r.playerFactionId}）  ${r.flag}`,
+      `终值: 金${r.final.gold} 粮${r.final.food} 兵${r.final.troops} 民心${r.final.order}`,
+      `势力排名: 第 ${r.playerRank}/${r.totalFactions}；对我宣战/来犯 ${r.warsOnPlayer} 次；粮荒 ${r.faminesOnPlayer} 次`,
+      '',
+      '势力实力榜:',
+      ...r.ranking.map((x, i) => `  ${i + 1}. ${x.name}  兵${x.troops}  实力${x.power}`),
+    ];
     return ok(lines.join('\n'));
   },
 };

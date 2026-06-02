@@ -1042,6 +1042,14 @@ async function main() {
         branchPoints: [], sideContent: [],
       }],
       endings: [{ id: 'win', name: '北方一统', condition: '胜', summary: '袁军溃败。', tone: '雄浑' }],
+      strategicSetup: {
+        playerFactionId: 'shu',
+        factions: {
+          shu: { gold: 200, food: 300, troops: 5000, order: 60, agg: { population: 30000, productionEfficiency: 100, security: 50 },
+            diplomacy: { wei: { stance: 'war', relation: -70 } } },
+          wei: { gold: 400, food: 800, troops: 25000, order: 70, agg: { population: 90000, productionEfficiency: 110, security: 60 } },
+        },
+      },
     };
     const digestPath = path.join(os.tmpdir(), `trpg-mcp-sg-digest-${Date.now()}.json`);
     const bpPath = path.join(os.tmpdir(), `trpg-mcp-sg-bp-${Date.now()}.json`);
@@ -1072,6 +1080,12 @@ async function main() {
     const sim = await client.call('legion_simulate', { runs: 200 });
     assert(/胜率/.test(sim), `legion_simulate 应输出胜率，实际：${sim.slice(0, 120)}`);
     assert(/官渡决战/.test(sim), 'legion_simulate 应覆盖到军团战事件');
+
+    // 战略层（Phase 33）：strategicSetup 写入 + 理政朝堂 hub 生成
+    assert(exported.strategicSetup?.playerFactionId === 'shu', '应写入 strategicSetup');
+    assert(exported.scenes.some(s => (s.tags || []).includes('governance')), '应生成「理政朝堂」hub');
+    const ssim = await client.call('strategy_simulate', { seasons: 12 });
+    assert(/战略模拟/.test(ssim) && /势力实力榜/.test(ssim), `strategy_simulate 输出异常：${ssim.slice(0, 120)}`);
 
     fs.unlinkSync(digestPath); fs.unlinkSync(bpPath);
   });

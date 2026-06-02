@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
-  "presetId": "preset_mpvxf1s6",
+  "presetId": "preset_mpw31r8t",
   "name": "三国演义·群雄逐鹿",
   "author": "",
-  "createdAt": "2026-06-02T00:55:49.446Z",
+  "createdAt": "2026-06-02T03:33:26.957Z",
   "description": "",
   "lore": {
     "worldName": "汉末三国",
@@ -2791,7 +2791,9 @@
                       "player": 110,
                       "enemy": 130
                     },
-                    "objectiveName": "夷陵·火烧连营"
+                    "objectiveName": "夷陵·火烧连营",
+                    "drawFromStrategy": true,
+                    "enemyFactionId": "wu"
                   }
                 }
               ]
@@ -3213,7 +3215,9 @@
                       "player": 200,
                       "enemy": 100
                     },
-                    "objectiveName": "死守街亭"
+                    "objectiveName": "死守街亭",
+                    "drawFromStrategy": true,
+                    "enemyFactionId": "wei"
                   }
                 }
               ]
@@ -3344,6 +3348,10 @@
         {
           "to": "scene_hulao",
           "label": "前往 虎牢关·三英战吕布"
+        },
+        {
+          "to": "scene_court",
+          "label": "入朝理政"
         }
       ],
       "events": [
@@ -3948,10 +3956,103 @@
       ],
       "vignettes": [],
       "image": "/assets/library/scenes/dawn-altar-epilogue.png"
+    },
+    {
+      "id": "scene_court",
+      "name": "理政朝堂",
+      "type": "settlement",
+      "icon": "🏛",
+      "coords": {
+        "x": -2,
+        "y": 0
+      },
+      "tags": [
+        "governance",
+        "safe"
+      ],
+      "description": "正堂之上，群僚议政，内政外交皆决于此。",
+      "connections": [
+        {
+          "to": "scene_taoyuan",
+          "label": "返回 桃园结义"
+        }
+      ],
+      "events": [],
+      "vignettes": [
+        "府衙内外吏员奔走，案牍如山，运筹于帷幄之间。"
+      ],
+      "image": "/assets/library/scenes/state-tavern-normal-day-clear.png"
     }
   ],
   "npcs": [],
   "strategicLayer": null,
+  "strategicSetup": {
+    "playerFactionId": "shu",
+    "factions": {
+      "shu": {
+        "name": "蜀汉",
+        "gold": 200,
+        "food": 400,
+        "troops": 8000,
+        "order": 62,
+        "agg": {
+          "population": 40000,
+          "productionEfficiency": 100,
+          "security": 55
+        },
+        "diplomacy": {
+          "wei": {
+            "stance": "war",
+            "relation": -70
+          },
+          "wu": {
+            "stance": "neutral",
+            "relation": 15
+          },
+          "qun": {
+            "stance": "rival",
+            "relation": -30
+          }
+        }
+      },
+      "wei": {
+        "name": "曹魏",
+        "gold": 500,
+        "food": 1200,
+        "troops": 40000,
+        "order": 72,
+        "agg": {
+          "population": 200000,
+          "productionEfficiency": 115,
+          "security": 65
+        }
+      },
+      "wu": {
+        "name": "东吴",
+        "gold": 300,
+        "food": 700,
+        "troops": 20000,
+        "order": 68,
+        "agg": {
+          "population": 100000,
+          "productionEfficiency": 108,
+          "security": 60
+        }
+      },
+      "qun": {
+        "name": "群雄",
+        "gold": 120,
+        "food": 250,
+        "troops": 9000,
+        "order": 50,
+        "agg": {
+          "population": 30000,
+          "productionEfficiency": 90,
+          "security": 45
+        }
+      }
+    }
+  },
   "startingOptions": null,
   "startingSceneRules": [],
   "combatMode": "party",

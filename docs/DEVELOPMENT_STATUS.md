@@ -11,11 +11,11 @@
 - **是什么**：浏览器端 AI GM TRPG，AI 担任游戏主持人，玩家通过卡牌/**场景节点图**/文本推进冒险
 - **技术**：原生 ES Modules + Vite + Three.js (3D 骰子) + Canvas2D，无前端框架
 - **AI 接口**：OpenAI 兼容 `/chat/completions` **及 `/responses`**（hy3 等），默认本地 `qwen/qwen3.6-35b-a3b @ http://127.0.0.1:1234/v1`
-- **当前状态**：Phase 16-32 完成、**Jest 598 / MCP 45 全过**、场景图作为主架构、生产就绪
-- **已验证规模**：bundled 最大 **101 节点 / 87 事件 / 22 NPC**；小说→预设三段管线从真实 5MB 小说生成 **17 场景（0 必修、全可达）**；三国军团战剧本 **22 场景 / 30 事件 / 10 场军团战 + 4 场个人战**，均经真 GM 玩测通过
-- **核心能力栈**：场景图 + 快速旅行 + 角色创建 4 轴 + NPC schedule/关系图 + 故事时间 + 营地交互 + worldFlags AI 注入 + 隐藏路径 + IndexedDB + 跨周目元进度 + AI 本地权威状态/相关性检索 + AI Hooks gate(4 tier) + AI 参与度阶梯(L0–L4) + 个人战 buff/AOE/phases/escape + **军团战争系统(单位栈战术制·野战/攻城/守城/水战)** + 生态位动态掉落 + 数值 Monte Carlo 模拟器(个人战 + 军团战) + 小说→预设三段确定性管线
-- **MCP 服务器**：68 个工具（小说→预设三段管线 `novel_digest`/`blueprint_draft`/`blueprint_validate`/`preset_build_from_blueprint`（蓝图可编排 `combatPlan` 个人战 + `legionBattlePlan` 军团战）、`combat_simulate`/`legion_simulate` 平衡模拟、战略层生成/审稿、enemy_assign_ecology 等）
-- **下一步候选**：军团战浏览器对战面板（LegionBattlePanel UI）/ 战役级连战元层 / 编辑器场景图可视化编辑 / 部署+真人玩测反馈 / 多语言
+- **当前状态**：Phase 16-34 完成、**Jest 642 / MCP 45 全过**、场景图作为主架构、生产就绪
+- **已验证规模**：bundled 最大 **101 节点 / 87 事件 / 22 NPC**；三国剧本 **23 场景 / 30 事件 / 10 场军团战 + 4 场个人战 + 内政外交战略层**（0 必修、全可达，军团战经真 GM 玩测、内政外交链路 headless 验证）
+- **核心能力栈**：场景图 + 快速旅行 + 角色创建 4 轴 + NPC schedule/关系图 + 故事时间 + 营地交互 + worldFlags + 隐藏路径 + IndexedDB + 跨周目元进度 + AI 本地权威状态/相关性检索 + AI Hooks gate(4 tier) + AI 参与度阶梯(L0–L4) + 个人战 buff/AOE/phases/escape + **军团战争系统(单位栈战术制·四战型)** + **内政外交系统(势力级国库 + 理政朝堂 + 敌国活跃 AI，与军团战深耦合)** + 生态位动态掉落 + Monte Carlo 模拟器(个人战/军团战/战略) + 小说→预设三段确定性管线
+- **MCP 服务器**：69 个工具（小说→预设三段管线，蓝图可编排 `combatPlan` 个人战 / `legionBattlePlan` 军团战 / `strategicSetup` 内政外交；`combat_simulate`/`legion_simulate`/`strategy_simulate` 平衡模拟、战略层生成/审稿、enemy_assign_ecology 等）
+- **下一步候选**：军团战 + 理政朝堂浏览器 UI（LegionBattlePanel / GovernanceModal）/ 逐城经营 / 战役级连战元层 / 部署+真人玩测
 
 ---
 
@@ -23,7 +23,7 @@
 
 ```bash
 npm install
-npm test          # 598 tests in 39 suites
+npm test          # 642 tests in 42 suites
 npm run dev       # localhost:3000
 npm run build     # 生产构建到 dist/
 npm run test:mcp  # 45 MCP smoke tests
@@ -88,6 +88,8 @@ git show <commit> --stat
 | _(unreleased)_ | **Phase 30 小说→预设三段管线 📖→🎲** | 删 `novel_build_mega_preset`；新增 `novel_digest`（概括）→ `blueprint_draft`/`blueprint_validate`（设计，人工可确认）→ `preset_build_from_blueprint`（确定性构建，复用 normalize/ecology/validate）；`callOpenAICompatible`+`AIGMEngine` 支持 `/responses` 风格；tier 限敌人数 + 过滤占位 combatPlan |
 | _(unreleased)_ | **Phase 31 军团战争系统 ⚔️** | `src/data/warfare.js`（兵种/克制/阵型/器械/战型/战法 + 纯结算）+ `LegionWarfareSystem.js`（单位栈战术制，与个人战零耦合）；GameSession 接 `start_legion_battle`/`legion` 动作/`legion` 快照；蓝图 `legionBattlePlan` → builder 内联军团战；`legionSimulator.js` + `legion_simulate` 平衡模拟；`narrate_legion_*` 叙述 + `_sanitizeNarrative` 修复 |
 | _(unreleased)_ | **Phase 32 三国剧本 🀄** | 手写 digest/blueprint → `generate-sanguo-preset.mjs`；`public/generated/sanguo-legion-preset.json`（10 场军团战覆盖四战型 + 4 场个人战）；balance 贴史实（夷陵/街亭为难局）；hy3 真 GM 玩测通过 |
+| _(unreleased)_ | **Phase 33 内政外交系统 🏛️** | `src/data/governance.js`（资源/政令/外交/敌国 AI + 纯函数）+ `StrategicSystem.js`（势力活状态、政令、外交、季度推进）；GameSession `situation:'governance'` + `govern`/`diplomacy`/`advance_season` + `strategy` 快照；深耦合军团战 `drawFromStrategy`/`allyFactionId`；`strategySimulator.js` + `strategy_simulate`；`GamePreset` 保留 factions/strategicLayer/strategicSetup |
+| _(unreleased)_ | **Phase 34 三国战略内容 🀄** | 三国生成器加 `strategicSetup`（蜀视角内政外交）+ 理政朝堂 hub；夷陵/街亭 `drawFromStrategy`；strategy_simulate 蜀第 3/4 贴史实；内政外交链路 headless 验证（真 GM 待可用 key） |
 
 详细 bug 见第 5 章。
 
@@ -389,6 +391,19 @@ ecology = { biome: 'swamp', creatureType: 'beast', tier: 'elite' }
 - **叙述** `narrate_legion_start` / `narrate_legion_result` 钩子（AIGMEngine + AIPromptBuilder）；`_sanitizeNarrative` 兜底清洗 Responses-API 偶发的 JSON 片段泄漏。
 - **个人战保留** 单挑/切磋/暗杀/逃脱仍走 `start_combat`（个人战）；剧本编排层决定某节点调哪套。
 - **下一步** 浏览器军团战对战面板 `LegionBattlePanel`（按 `CombatPanel.js` 范式）尚未做。
+
+### 4.17 内政外交系统（Phase 33）
+
+把原本只用于"战略汇报"的描述性 `strategicLayer` 升级为可操作的战略层，与军团战、剧情深耦合：
+
+- **数据层** `src/data/governance.js`（纯数据+纯函数）：资源（金/粮/兵/民心）、政令 `POLICIES`、外交 `DIPLOMACY_ACTIONS`、立场 `STANCES`；纯函数 `seasonProduction`/`applyPolicyPure`/`applyDiplomacyPure`/`decideEnemyStrategy`（敌国 AI）/`validateStrategicSetup`。
+- **系统** `src/systems/StrategicSystem.js`：从 `preset.strategicSetup`（活状态种子，优先）或 `strategicLayer`（描述数据）初始化各势力活状态（金/粮/兵/民心 + holdings 聚合 + 对称外交关系）；`applyPolicy`/`applyDiplomacy`/`advanceSeason`（全势力 upkeep + 敌国 AI + 事件产出）/`mobilize`/`ranking`。状态存 `gameState.strategicState`。
+- **接线** `GameSession`：`loadPreset` 调 `initFromPreset`；`getState` 始终带 `strategy` 概要，位于 `tags` 含 `governance` 的场景时 `situation:'governance'` + 内政/外交/`advance_season` 选项；`applyAction` 加 `govern`/`diplomacy`/`advance_season`；事件效果 `set_diplomacy`/`adjust_resource`/`mobilize`；`narrate_governance`/`narrate_diplomacy` 钩子。
+- **深耦合军团战** `start_legion_battle` 的 `drawFromStrategy`：我方兵粮从玩家国库取并扣减，战后残部归队 + 民心/资源/关系结算；`allyFactionId` 盟友按外交出援军；玩家/敌国宣战或来犯 → 置 `worldFlags.war_with_<id>`/`invasion_from_<id>`，供剧本军团战触发器挂接。
+- **管线** 蓝图 `strategicSetup` → `buildPresetFromBlueprint` 写 `preset.strategicSetup` + 生成「理政朝堂」hub；`legionBattlePlan` 支持 `drawFromStrategy`/`enemyFactionId`/`allyFactionId`。
+- **平衡** `src/systems/strategySimulator.js` + MCP `strategy_simulate`：模拟 N 季报势力消长/经济可持续性。
+- **重要修复** `GamePreset` 此前未保留 `factions`/`strategicLayer`/`strategicSetup`（被构造函数丢弃），现已补上。
+- **下一步** 浏览器「理政朝堂」面板 `GovernanceModal`（按 `CampModal.js` 范式）+ 逐城经营，尚未做。
 
 ---
 

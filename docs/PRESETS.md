@@ -67,6 +67,14 @@
 
 复现：`node scripts/generate-sanguo-preset.mjs`（写 digest/blueprint）→ MCP `preset_build_from_blueprint`（段③确定性构建）→ `legion_simulate` 平衡。
 
+## 内政外交战略层（Phase 33/34）
+
+蓝图可加 `strategicSetup`（玩家势力初始 金/粮/兵/民心 + 城池聚合 + 对各势力外交立场），`buildPresetFromBlueprint` 写入 `preset.strategicSetup` 并生成「理政朝堂」hub（`tags:['governance']`）。在该 hub `getState` 进入 `situation:'governance'`，可下达政令（劝农/征税/征兵/筑城/赈灾/屯田）、外交（结盟/宣战/求和/朝贡/联姻/离间）、「处理政务」推进一季（敌国活跃 AI）。
+
+军团战 `legionBattlePlan` 可标 `drawFromStrategy`（兵粮取自国库）/ `enemyFactionId` / `allyFactionId`，形成「内政攒兵 → 外交定敌友 → 军团战」闭环。`strategy_simulate` 模拟 N 季校验平衡。
+
+**三国示例**：蜀汉视角，初始与魏(war)/吴(neutral 可联)/群雄(rival)；夷陵、街亭两役兵粮取自国库。`strategy_simulate` 显示蜀排第 3/4（势弱待援，需联吴自保），贴合史实。
+
 ## 跨题材机制复用验证
 
 **所有 4 个预设共享同一套引擎**：

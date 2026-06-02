@@ -28,6 +28,9 @@ export class GameState {
     // 当前军团战状态（Phase 31，与 activeCombat 互斥；单位栈战术制）
     this.activeLegionBattle = data.activeLegionBattle || null;
 
+    // 战略层状态（Phase 33，内政外交；无战略剧本为 null）
+    this.strategicState = data.strategicState || null;
+
     // 当前活跃事件
     this.activeEvent = data.activeEvent || null;
 
@@ -251,6 +254,7 @@ export class GameState {
       activeCharacters: this.activeCharacters,
       activeCombat: this.activeCombat,
       activeLegionBattle: this.activeLegionBattle,
+      strategicState: this.strategicState,
       activeEvent: this.activeEvent,
       mapState: this.mapState,
       completedEventIds: this.completedEventIds,

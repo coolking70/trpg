@@ -383,6 +383,7 @@ export class AIGMEngine extends GameSystem {
       const NARRATE_ACTIONS = new Set([
         'narrate_event', 'narrate_scene_arrival', 'narrate_combat',
         'narrate_legion_start', 'narrate_legion_result',
+        'narrate_governance', 'narrate_diplomacy',
         'narrate_npc_dialogue', 'narrate_vignette', 'narrate_world_ripple',
       ]);
       const antiRepetition = NARRATE_ACTIONS.has(actionType)
@@ -417,6 +418,7 @@ export class AIGMEngine extends GameSystem {
       const NARRATION_ONLY = new Set([
         'narrate_event', 'narrate_scene_arrival', 'narrate_combat',
         'narrate_legion_start', 'narrate_legion_result',
+        'narrate_governance', 'narrate_diplomacy',
         'narrate_npc_dialogue', 'narrate_vignette', 'narrate_world_ripple',
       ]);
       const authLevel = clampAuthority(gameState?.aiAuthority);
@@ -1274,6 +1276,20 @@ export class AIGMEngine extends GameSystem {
         narrative = actionData.won
           ? '鼓角声渐歇，敌阵土崩瓦解，残兵败将四散奔逃。我军将士欢声雷动，旌旗指处，尽是降幡。'
           : '阵脚终究没能稳住，我军且战且退，丢盔弃甲。残部退入暮色，喘息未定，徒留满地狼藉。';
+        break;
+      }
+
+      case 'narrate_governance': {
+        if (actionData.kind === 'season') {
+          narrative = '政务既毕，时序更迭。府库账册重新誊抄，田亩兵籍各归其位，新一季的筹谋已悄然铺开。';
+        } else {
+          narrative = '号令既下，吏员奔走传达，府衙内外各司其职，治下气象为之一新。';
+        }
+        break;
+      }
+
+      case 'narrate_diplomacy': {
+        narrative = '使者持节往来，帷帐之中言辞机锋。一番斡旋之后，两家邦交的天平已悄然挪移。';
         break;
       }
 
