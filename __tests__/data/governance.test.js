@@ -7,6 +7,7 @@ import {
   seasonProduction, POLICIES, POLICY_KEYS, applyPolicyPure,
   DIPLOMACY_ACTIONS, DIPLOMACY_KEYS, applyDiplomacyPure,
   decideEnemyStrategy, validateStrategicSetup, factionPower,
+  HOLDING_TYPES, HOLDING_TYPE_KEYS, governorBonusFromWarfare, holdingEffectiveDev, holdingEffectiveSecurity,
 } from '../../src/data/governance.js';
 
 const mkState = (over = {}) => ({
@@ -126,6 +127,29 @@ describe('decideEnemyStrategy — 敌国 AI', () => {
     const d = decideEnemyStrategy(wei, world([wei, shu]));
     expect(d.type).toBe('attack');
     expect(d.targetId).toBe('shu');
+  });
+});
+
+describe('holdings — 逐城经营数据层（Phase 37）', () => {
+  test('城池类型表 + 都城产出权重最高', () => {
+    expect(HOLDING_TYPE_KEYS).toEqual(expect.arrayContaining(['capital', 'city', 'fortress', 'port', 'granary', 'pasture']));
+    expect(HOLDING_TYPES.capital.prod).toBeGreaterThan(HOLDING_TYPES.fortress.prod);
+    expect(HOLDING_TYPES.fortress.def).toBeGreaterThan(HOLDING_TYPES.capital.def);
+  });
+  test('太守加成：智力↑产能、统率↑治安、武力↑募兵', () => {
+    const b = governorBonusFromWarfare({ command: 90, might: 60, intellect: 100 });
+    expect(b.prod).toBeGreaterThan(1);
+    expect(b.security).toBeGreaterThan(0);
+    expect(b.recruit).toBeGreaterThan(1);
+    expect(governorBonusFromWarfare(null)).toEqual({ prod: 1, security: 0, recruit: 1 });
+  });
+  test('有效营建度随类型与太守提升；有效治安夹 0–100', () => {
+    const base = holdingEffectiveDev({ type: 'city', dev: 100 });
+    const cap = holdingEffectiveDev({ type: 'capital', dev: 100 });
+    expect(cap).toBeGreaterThan(base); // 都城产出权重更高
+    const withGov = holdingEffectiveDev({ type: 'city', dev: 100, governorBonus: { prod: 1.3 } });
+    expect(withGov).toBeGreaterThan(base);
+    expect(holdingEffectiveSecurity({ security: 95, governorBonus: { security: 20 } })).toBe(100);
   });
 });
 

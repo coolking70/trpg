@@ -432,7 +432,7 @@ export class AIGMEngine extends GameSystem {
         if (allowed.length > 0) {
           // 引擎级动作（spawn_event / scale_difficulty / recruit_companion / change_affection）
           // 需要引擎系统支撑，由 _applyEngineActions 处理；其余简单状态改动交 responseParser。
-          const ENGINE_ACTION_TYPES = new Set(['spawn_event', 'scale_difficulty', 'recruit_companion', 'change_affection', 'govern', 'diplomacy', 'mobilize']);
+          const ENGINE_ACTION_TYPES = new Set(['spawn_event', 'scale_difficulty', 'recruit_companion', 'change_affection', 'govern', 'diplomacy', 'mobilize', 'appoint_governor']);
           // L4 创世：改写世界结构/结局，走带护栏（校验/快照/可撤销/审计）的专用通道
           const WORLDSMITH_ACTION_TYPES = new Set(['rewrite_scene', 'edit_connection', 'author_ending', 'override_outcome', 'kill_npc']);
           const worldsmithActions = allowed.filter(a => WORLDSMITH_ACTION_TYPES.has(a.type));
@@ -811,9 +811,13 @@ export class AIGMEngine extends GameSystem {
         lines.push(`【国势】${me.name}：金${me.gold} 粮${me.food} 兵${me.troops} 民心${me.order}（第${st.season}季）`);
         const dip = Object.entries(me.diplomacy || {}).map(([id, r]) => `${st.factions[id]?.name || id}:${r.stance}(${r.relation})`).join('，');
         if (dip) lines.push(`【外交】${dip}`);
-        lines.push('【可用战略动作】govern{policyId: farming劝农|tax征税|conscript征兵|fortify筑城|relief赈灾|develop屯田}；'
-          + 'diplomacy{action: alliance结盟|declare_war宣战|sue_peace求和|tribute朝贡|marriage联姻, targetId}；mobilize{value}。'
-          + '仅当玩家明确提出相应内政/外交主张、且你的权限足够时才发出这些动作；否则只叙述、不擅改国势。');
+        if (Array.isArray(me.holdings) && me.holdings.length) {
+          lines.push(`【城池】${me.holdings.map(h => `${h.name}(${h.id}${h.governorName ? '·守:' + h.governorName : ''})`).join('，')}`);
+        }
+        lines.push('【可用战略动作】govern{policyId: farming劝农|tax征税|conscript征兵|fortify筑城|relief赈灾|develop屯田, targetHoldingId?城id(可选,限指定城)}；'
+          + 'diplomacy{action: alliance结盟|declare_war宣战|sue_peace求和|tribute朝贡|marriage联姻, targetId}；'
+          + 'appoint_governor{holdingId城id, charId武将id}（委任太守）；mobilize{value}。'
+          + '仅当玩家明确提出相应内政/外交/人事主张、且你的权限足够时才发出这些动作；否则只叙述、不擅改国势。');
       }
     }
 
@@ -982,8 +986,21 @@ export class AIGMEngine extends GameSystem {
             const ss = this.gameEngine?.getSystem('StrategicSystem');
             const st = gameState.strategicState;
             if (ss && st && action.policyId) {
-              const r = ss.applyPolicy(gameState, action.factionId || st.playerFactionId, action.policyId);
+              const r = ss.applyPolicy(gameState, action.factionId || st.playerFactionId, action.policyId, { targetHoldingId: action.targetHoldingId });
               if (r.ok) gameState.addNarrative('system', `📜 ${r.narrative}`);
+            }
+            break;
+          }
+          case 'appoint_governor': {
+            const ss = this.gameEngine?.getSystem('StrategicSystem');
+            const cm = this.gameEngine?.getSystem('CardManager');
+            const st = gameState.strategicState;
+            if (ss && st && action.holdingId && action.charId) {
+              const card = cm?.getCard(action.charId);
+              const char = card ? { id: card.id, name: card.name, warfare: card.warfare }
+                : { id: action.charId, name: action.charName || action.charId, warfare: null };
+              const r = ss.appointGovernor(gameState, action.factionId || st.playerFactionId, action.holdingId, char);
+              if (r.ok) gameState.addNarrative('system', `🏯 ${r.narrative}`);
             }
             break;
           }

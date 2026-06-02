@@ -241,3 +241,16 @@
 .right-panel__strategy-acts { display: flex; flex-wrap: wrap; gap: 5px; }
 .right-panel__strategy-btn { font-size: 12px; padding: 5px 9px; cursor: pointer; }
 .right-panel__strategy-hint { font-size: 11px; color: #c0985a; }
+
+/* 城池列表（Phase 37 逐城经营，极简可折叠）*/
+.right-panel__cities { font-size: 12px; color: #cfd2e0; }
+.right-panel__cities summary { cursor: pointer; color: #c0985a; padding: 2px 0; }
+.right-panel__city {
+  display: flex; justify-content: space-between; gap: 6px;
+  padding: 3px 6px; border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04); margin-top: 3px;
+}
+.right-panel__city-name { font-weight: 600; }
+.right-panel__city-type { font-size: 10px; color: #8a90a6; margin-left: 4px; }
+.right-panel__city-stat { color: #9aa0b5; }
+.right-panel__city-gov { color: #86c5a0; }

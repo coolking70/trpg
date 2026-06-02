@@ -56,6 +56,7 @@ export const ACTION_AUTHORITY = Object.freeze({
   govern: AI_AUTHORITY.COAUTHOR,
   diplomacy: AI_AUTHORITY.COAUTHOR,
   mobilize: AI_AUTHORITY.COAUTHOR,
+  appoint_governor: AI_AUTHORITY.COAUTHOR,
   // —— L4 创世：改写世界结构/结局 ——
   rewrite_scene: AI_AUTHORITY.WORLDSMITH,
   edit_connection: AI_AUTHORITY.WORLDSMITH,

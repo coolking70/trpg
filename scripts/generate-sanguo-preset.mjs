@@ -193,17 +193,46 @@ const blueprint = {
     { id: 'fall', name: '出师未捷', condition: '壮志难酬', summary: '出师未捷身先死，长使英雄泪满襟。', tone: '悲壮' },
   ],
   expansionNotes: ['军团战覆盖野战(官渡/博望/定军山/夷陵/南中)、水战(赤壁)、攻城(下邳/南郡/樊城)、守城(街亭)。', '个人战覆盖单挑(三英战吕布/白门楼)、突围逃脱(长坂坡/麦城)。'],
-  // 内政外交（Phase 33）：玩家=蜀汉；魏最强、吴次之、蜀弱、群雄散。蜀与魏交战、与吴可联、与群雄敌对。
-  strategicSetup: {
-    playerFactionId: 'shu',
-    factions: {
-      shu: { name: '蜀汉', gold: 200, food: 400, troops: 8000, order: 62, agg: { population: 40000, productionEfficiency: 100, security: 55 },
-        diplomacy: { wei: { stance: 'war', relation: -70 }, wu: { stance: 'neutral', relation: 15 }, qun: { stance: 'rival', relation: -30 } } },
-      wei: { name: '曹魏', gold: 500, food: 1200, troops: 40000, order: 72, agg: { population: 200000, productionEfficiency: 115, security: 65 } },
-      wu: { name: '东吴', gold: 300, food: 700, troops: 20000, order: 68, agg: { population: 100000, productionEfficiency: 108, security: 60 } },
-      qun: { name: '群雄', gold: 120, food: 250, troops: 9000, order: 50, agg: { population: 30000, productionEfficiency: 90, security: 45 } },
-    },
-  },
+  // 内政外交（Phase 33）+ 逐城经营（Phase 37）：玩家=蜀汉；魏最强、吴次之、蜀弱、群雄散。
+  strategicSetup: (() => {
+    const warOf = Object.fromEntries(chars.map(c => [c.id, c.warfare]));
+    // H(id,name,type,人口,营建度,治安,守将id?)
+    const H = (id, name, type, pop, dev, sec, gov) => ({
+      id, name, type, population: pop, dev, security: sec,
+      ...(gov ? { governorId: gov, governorName: chars.find(c => c.id === gov)?.name, governorWarfare: warOf[gov] } : {}),
+    });
+    return {
+      playerFactionId: 'shu',
+      factions: {
+        shu: { name: '蜀汉', gold: 200, food: 400, troops: 8000, order: 62,
+          diplomacy: { wei: { stance: 'war', relation: -70 }, wu: { stance: 'neutral', relation: 15 }, qun: { stance: 'rival', relation: -30 } },
+          holdings: [
+            H('chengdu', '成都', 'capital', 18000, 100, 60, 'zhugeliang'),
+            H('hanzhong', '汉中', 'fortress', 9000, 90, 55, 'weiyan'),
+            H('jiangzhou', '江州', 'port', 7000, 95, 55),
+            H('jingzhou', '荆州', 'city', 6000, 95, 50, 'guanyu'),
+          ] },
+        wei: { name: '曹魏', gold: 500, food: 1200, troops: 40000, order: 72,
+          holdings: [
+            H('xuchang', '许昌', 'capital', 90000, 115, 70, 'caocao'),
+            H('yecheng', '邺城', 'city', 60000, 110, 65),
+            H('guandu', '官渡', 'fortress', 30000, 95, 60),
+            H('hefei', '合肥', 'fortress', 20000, 90, 60, 'zhangliao'),
+          ] },
+        wu: { name: '东吴', gold: 300, food: 700, troops: 20000, order: 68,
+          holdings: [
+            H('jianye', '建业', 'capital', 50000, 108, 65, 'sunquan'),
+            H('chaisang', '柴桑', 'port', 30000, 105, 60, 'zhouyu'),
+            H('jiangling', '江陵', 'city', 20000, 100, 55),
+          ] },
+        qun: { name: '群雄', gold: 120, food: 250, troops: 9000, order: 50,
+          holdings: [
+            H('xiapi_city', '下邳', 'city', 18000, 90, 45, 'lvbu'),
+            H('nanzhong_city', '南中', 'city', 12000, 85, 40, 'menghuo'),
+          ] },
+      },
+    };
+  })(),
 };
 
 // 段①② 产物：手写 digest + blueprint（不调 LLM）；段③ 用 MCP preset_build_from_blueprint 确定性构建。

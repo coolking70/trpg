@@ -11,7 +11,7 @@
 - **是什么**：浏览器端 AI GM TRPG，AI 担任游戏主持人，玩家通过卡牌/**场景节点图**/文本推进冒险
 - **技术**：原生 ES Modules + Vite + Three.js (3D 骰子) + Canvas2D，无前端框架
 - **AI 接口**：OpenAI 兼容 `/chat/completions` **及 `/responses`**（hy3 等），默认本地 `qwen/qwen3.6-35b-a3b @ http://127.0.0.1:1234/v1`
-- **当前状态**：Phase 16-36 完成、**Jest 653 / MCP 45 全过**、场景图作为主架构、生产就绪
+- **当前状态**：Phase 16-37 完成、**Jest 663 / MCP 45 全过**、场景图作为主架构、生产就绪
 - **已验证规模**：bundled 最大 **101 节点 / 87 事件 / 22 NPC**；三国剧本 **23 场景 / 30 事件 / 10 场军团战 + 4 场个人战 + 内政外交战略层**（0 必修、全可达，军团战经真 GM 玩测、内政外交链路 headless 验证）
 - **核心能力栈**：场景图 + 快速旅行 + 角色创建 4 轴 + NPC schedule/关系图 + 故事时间 + 营地交互 + worldFlags + 隐藏路径 + IndexedDB + 跨周目元进度 + AI 本地权威状态/相关性检索 + AI Hooks gate(4 tier) + AI 参与度阶梯(L0–L4) + 个人战 buff/AOE/phases/escape + **军团战争系统(单位栈战术制·四战型)** + **内政外交系统(势力级国库 + 理政朝堂 + 敌国活跃 AI，与军团战深耦合)** + 生态位动态掉落 + Monte Carlo 模拟器(个人战/军团战/战略) + 小说→预设三段确定性管线
 - **MCP 服务器**：69 个工具（小说→预设三段管线，蓝图可编排 `combatPlan` 个人战 / `legionBattlePlan` 军团战 / `strategicSetup` 内政外交；`combat_simulate`/`legion_simulate`/`strategy_simulate` 平衡模拟、战略层生成/审稿、enemy_assign_ecology 等）
@@ -23,7 +23,7 @@
 
 ```bash
 npm install
-npm test          # 653 tests in 44 suites
+npm test          # 663 tests in 44 suites
 npm run dev       # localhost:3000
 npm run build     # 生产构建到 dist/
 npm run test:mcp  # 45 MCP smoke tests

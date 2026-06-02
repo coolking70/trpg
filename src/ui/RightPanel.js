@@ -4,7 +4,7 @@
  */
 
 import { CardRenderer } from '../rendering/CardRenderer.js';
-import { POLICIES, DIPLOMACY_ACTIONS } from '../data/governance.js';
+import { POLICIES, DIPLOMACY_ACTIONS, HOLDING_TYPES } from '../data/governance.js';
 
 const STANCE_LABEL = { ally: '盟', trade: '睦', neutral: '中', rival: '隙', war: '战', vassal: '附' };
 
@@ -90,6 +90,27 @@ export class RightPanel {
         drow.appendChild(chip);
       }
       this._strategyEl.appendChild(drow);
+    }
+
+    // 城池列表（极简，可折叠）—— 仅当有城池
+    if (Array.isArray(me.holdings) && me.holdings.length) {
+      const det = document.createElement('details');
+      det.className = 'right-panel__cities';
+      if (this._citiesOpen) det.open = true;
+      det.addEventListener('toggle', () => { this._citiesOpen = det.open; });
+      const sum = document.createElement('summary');
+      sum.textContent = `城池 ${me.holdings.length}`;
+      det.appendChild(sum);
+      for (const h of me.holdings) {
+        const row = document.createElement('div');
+        row.className = 'right-panel__city';
+        const tName = HOLDING_TYPES[h.type]?.name || h.type;
+        row.innerHTML = `<span class="right-panel__city-name">${h.name}<span class="right-panel__city-type">${tName}</span></span>`
+          + `<span class="right-panel__city-stat">众${(h.population / 10000).toFixed(1)}万 治${h.security}</span>`
+          + `<span class="right-panel__city-gov">${h.governorName ? '守·' + h.governorName : '（无守将）'}</span>`;
+        det.appendChild(row);
+      }
+      this._strategyEl.appendChild(det);
     }
 
     // 情境选项：仅当处于「理政」场景（scene.tags 含 governance）

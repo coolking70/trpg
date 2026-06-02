@@ -95,6 +95,68 @@ describe('StrategicSystem — 内政/外交动作', () => {
   });
 });
 
+describe('StrategicSystem — 逐城经营（Phase 37）', () => {
+  const presetCities = () => ({
+    factions: [{ id: 'shu', name: '蜀' }, { id: 'wei', name: '魏' }],
+    strategicSetup: {
+      playerFactionId: 'shu',
+      factions: {
+        shu: { gold: 200, food: 300, troops: 4000, order: 60,
+          holdings: [
+            { id: 'chengdu', name: '成都', type: 'capital', population: 30000, dev: 100, security: 60 },
+            { id: 'hanzhong', name: '汉中', type: 'fortress', population: 10000, dev: 90, security: 50 },
+          ],
+          diplomacy: { wei: { stance: 'war', relation: -70 } } },
+        wei: { gold: 400, food: 800, troops: 20000, order: 70,
+          holdings: [{ id: 'xuchang', name: '许昌', type: 'capital', population: 80000, dev: 110, security: 65 }] },
+      },
+    },
+  });
+
+  test('从城池派生 agg（人口加权产能）', () => {
+    const sys = makeSys(); const gs = {};
+    sys.initFromPreset(gs, presetCities());
+    const shu = sys.getFactionState(gs, 'shu');
+    expect(shu.holdings.length).toBe(2);
+    expect(shu.agg.population).toBe(40000);          // 30000 + 10000
+    expect(shu.agg.holdingCount).toBe(2);
+    expect(shu.agg.productionEfficiency).toBeGreaterThan(0);
+  });
+
+  test('委任太守提升所辖城产能/治安 → agg 上升', () => {
+    const sys = makeSys(); const gs = {};
+    sys.initFromPreset(gs, presetCities());
+    const before = sys.getFactionState(gs, 'shu').agg.productionEfficiency;
+    const r = sys.appointGovernor(gs, 'shu', 'chengdu', { id: 'zhugeliang', name: '诸葛亮', warfare: { command: 92, might: 42, intellect: 100 } });
+    expect(r.ok).toBe(true);
+    expect(sys.getFactionState(gs, 'shu').holdings.find(h => h.id === 'chengdu').governorName).toBe('诸葛亮');
+    expect(sys.getFactionState(gs, 'shu').agg.productionEfficiency).toBeGreaterThan(before);
+  });
+
+  test('政令可指定目标城（屯田只增该城 dev）', () => {
+    const sys = makeSys(); const gs = {};
+    sys.initFromPreset(gs, presetCities());
+    const hzBefore = sys.getFactionState(gs, 'shu').holdings.find(h => h.id === 'hanzhong').dev;
+    const cdBefore = sys.getFactionState(gs, 'shu').holdings.find(h => h.id === 'chengdu').dev;
+    sys.applyPolicy(gs, 'shu', 'develop', { targetHoldingId: 'hanzhong' });
+    const shu = sys.getFactionState(gs, 'shu');
+    expect(shu.holdings.find(h => h.id === 'hanzhong').dev).toBeGreaterThan(hzBefore);
+    expect(shu.holdings.find(h => h.id === 'chengdu').dev).toBe(cdBefore); // 成都不变
+  });
+
+  test('城池易主：失地方失城、得地方得城，太守去职', () => {
+    const sys = makeSys(); const gs = {};
+    sys.initFromPreset(gs, presetCities());
+    sys.appointGovernor(gs, 'shu', 'hanzhong', { id: 'weiyan', name: '魏延', warfare: { command: 80, might: 88, intellect: 60 } });
+    const r = sys.transferHolding(gs, 'shu', 'wei', 'hanzhong');
+    expect(r.ok).toBe(true);
+    expect(sys.getFactionState(gs, 'shu').holdings.some(h => h.id === 'hanzhong')).toBe(false);
+    const won = sys.getFactionState(gs, 'wei').holdings.find(h => h.id === 'hanzhong');
+    expect(won).toBeTruthy();
+    expect(won.governorName).toBeNull(); // 易主后太守去职
+  });
+});
+
 describe('StrategicSystem — 季度推进', () => {
   test('upkeep 产金、季度自增', () => {
     const sys = makeSys(); const gs = {}; sys.initFromPreset(gs, presetWithSetup());

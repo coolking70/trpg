@@ -103,6 +103,43 @@ export function applyPolicyPure(state, policyId) {
 }
 
 // ============================================================
+// 城池（HOLDINGS，Phase 37 逐城经营）—— 每城含类型/人口/营建度 dev/治安 security/太守
+//   类型给产出/防御/募兵权重；势力级聚合 agg 由各城派生（见 StrategicSystem.recomputeAgg）
+// ============================================================
+export const HOLDING_TYPES = {
+  capital:  { name: '都城', prod: 1.3, def: 1.2, recruit: 1.3 },
+  city:     { name: '郡城', prod: 1.1, def: 1.0, recruit: 1.1 },
+  fortress: { name: '关隘', prod: 0.6, def: 1.6, recruit: 0.9 },
+  port:     { name: '港口', prod: 1.2, def: 0.9, recruit: 0.8 },
+  granary:  { name: '粮仓', prod: 1.4, def: 0.8, recruit: 0.7 },
+  pasture:  { name: '牧场', prod: 0.9, def: 0.8, recruit: 1.2 },
+};
+export const HOLDING_TYPE_KEYS = Object.keys(HOLDING_TYPES);
+
+/** 主将武备 → 太守加成 { prod 产能乘子, security 治安加值, recruit 募兵乘子 } */
+export function governorBonusFromWarfare(w) {
+  if (!w) return { prod: 1, security: 0, recruit: 1 };
+  return {
+    prod: +(1 + (w.intellect || 0) / 300).toFixed(3),
+    security: Math.round((w.command || 0) / 12),
+    recruit: +(1 + (w.might || 0) / 300).toFixed(3),
+  };
+}
+
+/** 一座城的有效营建度（dev × 类型产出权重 × 太守产能加成） */
+export function holdingEffectiveDev(h) {
+  const t = HOLDING_TYPES[h.type] || HOLDING_TYPES.city;
+  const gb = h.governorBonus || { prod: 1 };
+  return (h.dev ?? 100) * t.prod * (gb.prod || 1);
+}
+
+/** 一座城的有效治安（security + 太守治安加值，夹 0–100） */
+export function holdingEffectiveSecurity(h) {
+  const gb = h.governorBonus || { security: 0 };
+  return clampOrder((h.security ?? 50) + (gb.security || 0));
+}
+
+// ============================================================
 // 外交动作：对 src→target 的 stance/relation 影响（纯函数）
 //   返回 { ok, reason, srcDeltas{gold,food}, relationDelta, setStance(双向)?, narrative }
 // ============================================================

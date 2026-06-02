@@ -1135,11 +1135,6 @@
         "food": 400,
         "troops": 8000,
         "order": 62,
-        "agg": {
-          "population": 40000,
-          "productionEfficiency": 100,
-          "security": 55
-        },
         "diplomacy": {
           "wei": {
             "stance": "war",
@@ -1153,7 +1148,78 @@
             "stance": "rival",
             "relation": -30
           }
-        }
+        },
+        "holdings": [
+          {
+            "id": "chengdu",
+            "name": "成都",
+            "type": "capital",
+            "population": 18000,
+            "dev": 100,
+            "security": 60,
+            "governorId": "zhugeliang",
+            "governorName": "诸葛亮",
+            "governorWarfare": {
+              "command": 92,
+              "might": 42,
+              "intellect": 100,
+              "tactics": 3,
+              "abilities": [
+                "fire",
+                "ambush",
+                "rally"
+              ]
+            }
+          },
+          {
+            "id": "hanzhong",
+            "name": "汉中",
+            "type": "fortress",
+            "population": 9000,
+            "dev": 90,
+            "security": 55,
+            "governorId": "weiyan",
+            "governorName": "魏延",
+            "governorWarfare": {
+              "command": 80,
+              "might": 88,
+              "intellect": 62,
+              "tactics": 2,
+              "abilities": [
+                "charge",
+                "ambush"
+              ]
+            }
+          },
+          {
+            "id": "jiangzhou",
+            "name": "江州",
+            "type": "port",
+            "population": 7000,
+            "dev": 95,
+            "security": 55
+          },
+          {
+            "id": "jingzhou",
+            "name": "荆州",
+            "type": "city",
+            "population": 6000,
+            "dev": 95,
+            "security": 50,
+            "governorId": "guanyu",
+            "governorName": "关羽",
+            "governorWarfare": {
+              "command": 90,
+              "might": 97,
+              "intellect": 75,
+              "tactics": 2,
+              "abilities": [
+                "charge",
+                "rally"
+              ]
+            }
+          }
+        ]
       },
       "wei": {
         "name": "曹魏",
@@ -1161,11 +1227,65 @@
         "food": 1200,
         "troops": 40000,
         "order": 72,
-        "agg": {
-          "population": 200000,
-          "productionEfficiency": 115,
-          "security": 65
-        }
+        "holdings": [
+          {
+            "id": "xuchang",
+            "name": "许昌",
+            "type": "capital",
+            "population": 90000,
+            "dev": 115,
+            "security": 70,
+            "governorId": "caocao",
+            "governorName": "曹操",
+            "governorWarfare": {
+              "command": 96,
+              "might": 72,
+              "intellect": 91,
+              "tactics": 3,
+              "abilities": [
+                "fire",
+                "ambush",
+                "rally"
+              ]
+            }
+          },
+          {
+            "id": "yecheng",
+            "name": "邺城",
+            "type": "city",
+            "population": 60000,
+            "dev": 110,
+            "security": 65
+          },
+          {
+            "id": "guandu",
+            "name": "官渡",
+            "type": "fortress",
+            "population": 30000,
+            "dev": 95,
+            "security": 60
+          },
+          {
+            "id": "hefei",
+            "name": "合肥",
+            "type": "fortress",
+            "population": 20000,
+            "dev": 90,
+            "security": 60,
+            "governorId": "zhangliao",
+            "governorName": "张辽",
+            "governorWarfare": {
+              "command": 90,
+              "might": 92,
+              "intellect": 78,
+              "tactics": 2,
+              "abilities": [
+                "charge",
+                "ambush"
+              ]
+            }
+          }
+        ]
       },
       "wu": {
         "name": "东吴",
@@ -1173,11 +1293,56 @@
         "food": 700,
         "troops": 20000,
         "order": 68,
-        "agg": {
-          "population": 100000,
-          "productionEfficiency": 108,
-          "security": 60
-        }
+        "holdings": [
+          {
+            "id": "jianye",
+            "name": "建业",
+            "type": "capital",
+            "population": 50000,
+            "dev": 108,
+            "security": 65,
+            "governorId": "sunquan",
+            "governorName": "孙权",
+            "governorWarfare": {
+              "command": 80,
+              "might": 68,
+              "intellect": 80,
+              "tactics": 2,
+              "abilities": [
+                "rally"
+              ]
+            }
+          },
+          {
+            "id": "chaisang",
+            "name": "柴桑",
+            "type": "port",
+            "population": 30000,
+            "dev": 105,
+            "security": 60,
+            "governorId": "zhouyu",
+            "governorName": "周瑜",
+            "governorWarfare": {
+              "command": 94,
+              "might": 70,
+              "intellect": 96,
+              "tactics": 3,
+              "abilities": [
+                "fire",
+                "ambush",
+                "rally"
+              ]
+            }
+          },
+          {
+            "id": "jiangling",
+            "name": "江陵",
+            "type": "city",
+            "population": 20000,
+            "dev": 100,
+            "security": 55
+          }
+        ]
       },
       "qun": {
         "name": "群雄",
@@ -1185,11 +1350,46 @@
         "food": 250,
         "troops": 9000,
         "order": 50,
-        "agg": {
-          "population": 30000,
-          "productionEfficiency": 90,
-          "security": 45
-        }
+        "holdings": [
+          {
+            "id": "xiapi_city",
+            "name": "下邳",
+            "type": "city",
+            "population": 18000,
+            "dev": 90,
+            "security": 45,
+            "governorId": "lvbu",
+            "governorName": "吕布",
+            "governorWarfare": {
+              "command": 75,
+              "might": 100,
+              "intellect": 55,
+              "tactics": 1,
+              "abilities": [
+                "charge"
+              ]
+            }
+          },
+          {
+            "id": "nanzhong_city",
+            "name": "南中",
+            "type": "city",
+            "population": 12000,
+            "dev": 85,
+            "security": 40,
+            "governorId": "menghuo",
+            "governorName": "孟获",
+            "governorWarfare": {
+              "command": 70,
+              "might": 82,
+              "intellect": 46,
+              "tactics": 1,
+              "abilities": [
+                "charge"
+              ]
+            }
+          }
+        ]
       }
     }
   }

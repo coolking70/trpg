@@ -4,6 +4,23 @@
 
 ## [Unreleased]
 
+### Phase 37 — 逐城经营（角色本位）🏯
+
+把势力从"单一聚合 `agg`"细化为**多座活城池**，但交互仍极简 + 自由进谏（不做城池管理仪表盘）。
+
+**Added — 数据/系统**
+- `governance.js`：`HOLDING_TYPES`（都城/郡城/关隘/港口/粮仓/牧场，各有产出/防御/募兵权重）；`governorBonusFromWarfare`（智力↑产能、统率↑治安、武力↑募兵）；`holdingEffectiveDev`/`holdingEffectiveSecurity`。
+- `StrategicSystem`：`factionState.holdings[]`（活城池：类型/人口/营建度 dev/治安/太守）；`recomputeAgg`（由各城人口加权派生势力级 agg，季度推进与每次内政后刷新）；`applyPolicy(…, {targetHoldingId})`（政令可只作用某城，无目标=全境）；`appointGovernor`（委任太守，主将武备加成该城）；`transferHolding`（攻城得手/失地 → 城池易主，太守去职）。
+- 向后兼容：无城池的剧本保持聚合 agg 路径不变。
+
+**Added — AI 进谏 + UI**
+- `AIGMEngine._applyEngineActions`：`govern` 支持 `targetHoldingId`；新增 `appoint_governor`（L3，经 CardManager 解析武将）；digest 注入【城池】摘要 + 动作说明。`ACTION_AUTHORITY` 加 `appoint_governor`。玩家说"命赵云镇守汉中、在成都屯田" → AI 落为 appoint_governor + govern(develop, 成都)。
+- `RightPanel`：国势条下加**可折叠「城池」列表**（每城名/类型/人口/治安/太守，仅必要数值，display-only）；经营靠情境选项 + 自由进谏。
+
+**三国内容**：`generate-sanguo-preset.mjs` 每势力补 2–4 座城 + 初始太守（蜀：成都·诸葛亮/汉中·魏延/江州/荆州·关羽；魏吴群同理）。
+
+**验证**：jest 663/663（governance/StrategicSystem/governanceAI 新增逐城测试）+ MCP 45/45 + `npm run build`；Claude Preview 浏览器实测三国——城池列表正确渲染（成都·都城·诸葛亮…），国势条/进谏提示正常；`strategy_simulate` 蜀仍第 3/4 贴史实。
+
 ### Phase 36 — 前端：军团战面板 + 极简战略呈现 🖥️
 
 把军团战（Phase 31/32）与内政外交（Phase 33/34/35）接进**浏览器编排**（`src/main.js` 此前不走 GameSession、未注册这两套系统），并按"角色本位、不切战略 UI"原则补 UI。

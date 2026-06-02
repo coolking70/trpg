@@ -67,6 +67,46 @@ describe('Phase 35 — _applyEngineActions 落实战略动作', () => {
   });
 });
 
+describe('Phase 37 — 逐城进谏桥（appoint_governor / govern targetHoldingId）', () => {
+  function setupCities() {
+    const gs = { addNarrative() {} };
+    const ss = new StrategicSystem(); ss.eventSystem = null;
+    ss.initFromPreset(gs, {
+      factions: [{ id: 'shu', name: '蜀' }],
+      strategicSetup: { playerFactionId: 'shu', factions: { shu: {
+        gold: 200, food: 300, troops: 4000, order: 60,
+        holdings: [
+          { id: 'chengdu', name: '成都', type: 'capital', population: 30000, dev: 100, security: 60 },
+          { id: 'hanzhong', name: '汉中', type: 'fortress', population: 10000, dev: 90, security: 50 },
+        ],
+      } } },
+    });
+    const cards = { zhugeliang: { id: 'zhugeliang', name: '诸葛亮', warfare: { command: 92, might: 42, intellect: 100 } } };
+    const ai = new AIGMEngine();
+    ai.gameEngine = { getSystem: (n) => (n === 'StrategicSystem' ? ss : n === 'CardManager' ? { getCard: (id) => cards[id] || null } : null) };
+    return { gs, ss, ai };
+  }
+
+  test('appoint_governor 经卡牌解析武将并委任', () => {
+    const { gs, ss, ai } = setupCities();
+    ai._applyEngineActions([{ type: 'appoint_governor', holdingId: 'chengdu', charId: 'zhugeliang' }], gs, AI_AUTHORITY.COAUTHOR);
+    expect(ss.getFactionState(gs, 'shu').holdings.find(h => h.id === 'chengdu').governorName).toBe('诸葛亮');
+  });
+
+  test('govern 带 targetHoldingId 只增该城营建度', () => {
+    const { gs, ss, ai } = setupCities();
+    const cdBefore = ss.getFactionState(gs, 'shu').holdings.find(h => h.id === 'chengdu').dev;
+    ai._applyEngineActions([{ type: 'govern', policyId: 'develop', targetHoldingId: 'hanzhong' }], gs, AI_AUTHORITY.COAUTHOR);
+    const shu = ss.getFactionState(gs, 'shu');
+    expect(shu.holdings.find(h => h.id === 'hanzhong').dev).toBeGreaterThan(90);
+    expect(shu.holdings.find(h => h.id === 'chengdu').dev).toBe(cdBefore);
+  });
+
+  test('低权限(L2) appoint_governor 被拦', () => {
+    expect(requiredAuthority('appoint_governor')).toBe(AI_AUTHORITY.COAUTHOR);
+  });
+});
+
 describe('Phase 35 — say 路由 AI + 进言提示', () => {
   let sess, origRandom;
   beforeEach(async () => {
