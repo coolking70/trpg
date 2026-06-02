@@ -16,6 +16,7 @@ import {
   HOLDING_TYPES, governorBonusFromWarfare, holdingEffectiveDev, holdingEffectiveSecurity,
 } from '../data/governance.js';
 import { battleTerritoryOutcome } from '../data/campaign.js';
+import { XUN_PER_SEASON, MARCH_BASE_ETA, regionDistance, marchEta, marchDetectChance, siegeTick, siegeOutcome } from '../data/war.js';
 
 const clamp200 = (v) => Math.max(0, Math.min(200, Math.round(v)));
 
@@ -93,7 +94,9 @@ export class StrategicSystem extends GameSystem {
     const playerFactionId = setup?.playerFactionId || layer?.playerFactionId || ids[0];
     if (factions[playerFactionId]) factions[playerFactionId].isPlayer = true;
 
-    gameState.strategicState = { season: 1, playerFactionId, factions };
+    // 作战层（Phase 41）：区域图 + 旬时钟 + 行军/围城状态（无 regions 则作战层不激活，走旧路径）
+    const regions = setup?.regions || layer?.regions || null;
+    gameState.strategicState = { season: 1, warXun: 0, playerFactionId, factions, regions, marches: [], sieges: [] };
     return gameState.strategicState;
   }
 
@@ -325,6 +328,99 @@ export class StrategicSystem extends GameSystem {
   }
 
   // ============================================================
+  // 作战层（Phase 41）：行军 / 情报 / 旬推进 / 围城 tick
+  // ============================================================
+  _holdingOwner(gameState, holdingId) {
+    const s = gameState.strategicState;
+    for (const f of Object.values(s.factions)) if ((f.holdings || []).some(h => h.id === holdingId)) return f.factionId;
+    return null;
+  }
+  _holdingRegion(gameState, holdingId) {
+    const s = gameState.strategicState;
+    for (const f of Object.values(s.factions)) { const h = (f.holdings || []).find(x => x.id === holdingId); if (h) return h.region || null; }
+    return null;
+  }
+  /** 攻方任一城池到目标城的最短区域距离 */
+  _distanceToHolding(gameState, attackerId, targetHoldingId) {
+    const s = gameState.strategicState;
+    if (!s.regions) return 3;
+    const target = this._holdingRegion(gameState, targetHoldingId);
+    const atk = this.getFactionState(gameState, attackerId);
+    let best = Infinity;
+    for (const h of (atk?.holdings || [])) { const d = regionDistance(s.regions, h.region, target); if (d < best) best = d; }
+    return Number.isFinite(best) ? best : 3;
+  }
+  /** 守城主将（目标城太守的武备，用于情报半径） */
+  _holdingGeneral(gameState, holdingId) {
+    const s = gameState.strategicState;
+    for (const f of Object.values(s.factions)) { const h = (f.holdings || []).find(x => x.id === holdingId); if (h && h.governorWarfare) return { warfare: h.governorWarfare }; }
+    return null;
+  }
+
+  /** 发起行军（Phase 41）：扣兵粮组军 + 计 ETA。返回 march 或 null。 */
+  launchMarch(gameState, attackerId, targetHoldingId, { posture = 'open', troops = null, generalIds = [] } = {}) {
+    const s = gameState.strategicState;
+    if (!s) return null;
+    const atk = this.getFactionState(gameState, attackerId);
+    const defenderId = this._holdingOwner(gameState, targetHoldingId);
+    if (!atk || !defenderId) return null;
+    const want = troops != null ? troops : Math.round((atk.troops || 0) * 0.6);
+    const mobilized = this.mobilize(gameState, attackerId, want);
+    if (mobilized <= 0) return null;
+    const supply = Math.floor((atk.food || 0) * 0.4);
+    atk.food = Math.max(0, (atk.food || 0) - supply);
+    const dist = this._distanceToHolding(gameState, attackerId, targetHoldingId);
+    const march = {
+      id: `march_${attackerId}_${targetHoldingId}_${s.warXun}`,
+      attacker: attackerId, defender: defenderId, targetHoldingId, posture,
+      army: { troops: mobilized, supply, generalIds }, etaXun: marchEta(dist, posture),
+      detected: false, detectedAtXun: null,
+    };
+    s.marches.push(march);
+    this._publish('war:marchLaunched', { march });
+    return march;
+  }
+
+  /** 推进一旬（Phase 41）：行军 tick + 情报揭示 + 抵达接敌 + 围城 tick。返回 events[]。 */
+  advanceWarXun(gameState) {
+    const s = gameState.strategicState;
+    if (!s) return [];
+    s.warXun = (s.warXun || 0) + 1;
+    const events = [];
+    const pid = s.playerFactionId;
+
+    // 行军推进
+    const arrived = [];
+    for (const m of s.marches) {
+      m.etaXun -= 1;
+      // 情报：仅守方视角（这里关注对玩家的可见性；守方为玩家时才提示）
+      if (!m.detected) {
+        const remainHops = Math.max(0, Math.ceil(m.etaXun / MARCH_BASE_ETA));
+        const defGen = this._holdingGeneral(gameState, m.targetHoldingId);
+        const chance = marchDetectChance(remainHops, defGen, m.posture);
+        if (chance > 0 && this.rng() < chance) {
+          m.detected = true; m.detectedAtXun = s.warXun;
+          if (m.defender === pid) events.push({ type: 'march_detected', march: m });
+        }
+      }
+      if (m.etaXun <= 0) arrived.push(m);
+    }
+    for (const m of arrived) {
+      s.marches = s.marches.filter(x => x !== m);
+      events.push({ type: 'army_arrived', march: m });
+    }
+
+    // 围城推进
+    for (const sg of [...s.sieges]) {
+      siegeTick(sg);
+      const oc = siegeOutcome(sg);
+      events.push({ type: 'siege_tick', siege: sg, outcome: oc });
+      if (oc) { sg._resolved = oc.type; events.push({ type: 'siege_' + oc.type, siege: sg }); }
+    }
+    return events;
+  }
+
+  // ============================================================
   // 季度推进：全势力 upkeep + 敌国 AI + 事件产出
   // ============================================================
   advanceSeason(gameState) {
@@ -354,7 +450,24 @@ export class StrategicSystem extends GameSystem {
           events.push({ type: 'war_declared', by: f.factionId, against: d.targetId });
         }
       } else if (d.type === 'attack') {
-        events.push({ type: 'attack_intent', by: f.factionId, against: d.targetId });
+        if (s.regions) {
+          // 作战层：发起行军（取目标势力最弱的城；强敌公开讨伐、弱敌秘密突袭）
+          const tgt = this.getFactionState(gameState, d.targetId);
+          const weakest = (tgt?.holdings || []).slice().sort((a, b) => (a.security + (a.dev || 0)) - (b.security + (b.dev || 0)))[0];
+          if (weakest) {
+            const posture = (f.troops || 0) > (tgt?.troops || 0) * 1.5 ? 'open' : 'raid';
+            this.launchMarch(gameState, f.factionId, weakest.id, { posture });
+          }
+        } else {
+          events.push({ type: 'attack_intent', by: f.factionId, against: d.targetId });
+        }
+      }
+    }
+
+    // 作战层：一季 = XUN_PER_SEASON 旬，逐旬推进行军/围城
+    if (s.regions) {
+      for (let i = 0; i < XUN_PER_SEASON; i++) {
+        for (const ev of this.advanceWarXun(gameState)) events.push(ev);
       }
     }
 
