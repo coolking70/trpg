@@ -183,6 +183,12 @@ export class AIPromptBuilder {
         if (actionData.moved) parts.push('（玩家已在地图上移动到新位置）');
         // 明确告知：普通移动/对话/观察不需要骰子判定，只有明确挑战性行动才需要
         parts.push('请用2-3句叙述这个行动的场景效果。如果行动仅为移动、观察或交谈，diceRequests必须为空数组。');
+        // 战略层（Phase 35）：玩家以所扮角色身份"进谏/下令"内政外交时，权限允许则落实为战略动作
+        if (gameState.strategicState) {
+          parts.push('若玩家此言是在以其身份提出内政/外交主张（如劝农屯田、征兵、与某势力结盟/宣战/求和），'
+            + '且你的权限足够，可发出对应的 govern / diplomacy / mobilize 动作落实（见【可用战略动作】），并叙述群臣或使节的反应；'
+            + '权限不足或玩家并非在议政时，只叙述、不要擅改国势。');
+        }
         break;
       }
 

@@ -4,6 +4,23 @@
 
 ## [Unreleased]
 
+### Phase 35 — 战略交互 AI 化（自由进谏，角色本位）🗣️
+
+确立设计原则：这是 **AI 驱动的 TRPG**，战略层是**底层数据支持**而非主玩法；玩家始终以所扮角色"下令/进谏/决策"，**不切换成战略游戏 UI**。据此把内政外交的主交互从"操作面板"改为"角色本位 + 自由进谏"。
+
+**Added — 战略动作接入参与度阶梯**
+- `AIAuthority.ACTION_AUTHORITY`：`govern` / `diplomacy` / `mobilize` 列为 **L3 编剧**档动作（高权限特性）。
+- `AIGMEngine`：`ENGINE_ACTION_TYPES` + `_applyEngineActions` 新增这三类——AI 据玩家进谏调 `StrategicSystem` 落实（有界，自带成本/条件校验；宣战自动置 `worldFlags.war_with_<id>`）。
+- `GameSession.applyAction('say')` **路由到 AI**（`player_action`）：玩家用自然语言以角色身份发言/进谏，AI GM 裁决并按权限落地动作 + 叙述。这是"AI 驱动"而非"切 UI"的核心。
+- `_buildLocalStateDigest` + `player_action` 提示：注入玩家势力国势/外交摘要 + 可用战略动作清单，并约束"仅当玩家明确议政、权限足够时才落实，否则只叙述"。
+
+**Changed — 极简呈现**
+- `getState().strategy` 快照保持极简（资源 + 外交几项），并在 ≥L3 时给出 `hint`：提示玩家可直接进言。`situation:'governance'` 理政朝堂降级为"可选的简化决策场景"，主交互改走情境选项 + 自由进谏。
+
+**验证**
+- 单测：govern/diplomacy/mobilize 需 L3，L2 拦截/L3 放行；`_applyEngineActions` 正确落实（征兵增兵、宣战置 flag、动员扣兵）；`say` 路由 AI；高/低权限的进言提示。
+- deepseek-v4-flash 真 GM：玩家进言"传令劝课农桑、扩募新军；遣使江东结好孙权"→ AI 解析为 `govern(farming)`+`govern(conscript)` 落地（粮↑兵↑），结盟因关系未达标被正确拒绝、叙述为"东吴已有联意"。
+
 ### Phase 34 — 三国战略内容（内政外交）🀄
 
 给三国剧本接上内政外交战略层，与军团战形成「内政产兵粮 → 外交定敌友 → 军团战」闭环。

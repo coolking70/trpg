@@ -888,7 +888,14 @@ export class GameSession {
         });
         break;
       case 'say':
-        if (action.text) this.gameState.addNarrative('player', action.text);
+        // 玩家以所扮角色的身份自由发言/行动/进谏 → 交 AI GM 裁决（按参与度阶梯过滤其落地动作）。
+        // 这是"AI 驱动 TRPG"的核心：玩家始终是"那个人在做那件事"，高权限下可用自然语言提出内政外交主张。
+        if (action.text) {
+          this.gameState.addNarrative('player', action.text);
+          try {
+            await this.sys('AIGMEngine').processGameAction('player_action', { text: action.text, moved: false }, this.gameState);
+          } catch { /* AI 不可用时静默：玩家发言已记录 */ }
+        }
         break;
       case 'govern':
         await this._doGovern(action.policyId);
@@ -1091,6 +1098,8 @@ export class GameSession {
     const diplomacy = Object.entries(me.diplomacy || {}).map(([id, rel]) => ({
       factionId: id, name: this._factionName(id), stance: rel.stance, relation: rel.relation,
     }));
+    // 暗示：高参与度(≥L3)下，玩家可直接用自然语言向主公/军师进言，由 AI 落实为内政外交动作
+    const canPropose = (gs.aiAuthority ?? 2) >= 3;
     return {
       season: st.season,
       playerFactionId: st.playerFactionId,
@@ -1098,6 +1107,8 @@ export class GameSession {
       productionEfficiency: me.agg?.productionEfficiency,
       diplomacy,
       ranking: ss.ranking(gs),
+      // 极简呈现：UI 只需取 resources + diplomacy 几项；hint 提示自由进谏入口
+      hint: canPropose ? '可直接进言：说出你的内政或外交主张（如「劝课农桑、遣使结好东吴」），自会有人去办。' : null,
     };
   }
 

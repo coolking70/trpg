@@ -52,6 +52,10 @@ export const ACTION_AUTHORITY = Object.freeze({
   recruit_companion: AI_AUTHORITY.COAUTHOR,
   scale_difficulty: AI_AUTHORITY.COAUTHOR,
   spawn_event: AI_AUTHORITY.COAUTHOR,
+  // 战略层（Phase 35）：玩家高权限下用自然语言进谏，AI 落为内政外交动作（有界，由 StrategicSystem 校验）
+  govern: AI_AUTHORITY.COAUTHOR,
+  diplomacy: AI_AUTHORITY.COAUTHOR,
+  mobilize: AI_AUTHORITY.COAUTHOR,
   // —— L4 创世：改写世界结构/结局 ——
   rewrite_scene: AI_AUTHORITY.WORLDSMITH,
   edit_connection: AI_AUTHORITY.WORLDSMITH,

@@ -432,7 +432,7 @@ export class AIGMEngine extends GameSystem {
         if (allowed.length > 0) {
           // 引擎级动作（spawn_event / scale_difficulty / recruit_companion / change_affection）
           // 需要引擎系统支撑，由 _applyEngineActions 处理；其余简单状态改动交 responseParser。
-          const ENGINE_ACTION_TYPES = new Set(['spawn_event', 'scale_difficulty', 'recruit_companion', 'change_affection']);
+          const ENGINE_ACTION_TYPES = new Set(['spawn_event', 'scale_difficulty', 'recruit_companion', 'change_affection', 'govern', 'diplomacy', 'mobilize']);
           // L4 创世：改写世界结构/结局，走带护栏（校验/快照/可撤销/审计）的专用通道
           const WORLDSMITH_ACTION_TYPES = new Set(['rewrite_scene', 'edit_connection', 'author_ending', 'override_outcome', 'kill_npc']);
           const worldsmithActions = allowed.filter(a => WORLDSMITH_ACTION_TYPES.has(a.type));
@@ -801,6 +801,22 @@ export class AIGMEngine extends GameSystem {
       lines.push(`当前事件:${activeEvent.name}(${activeEvent.id})`);
       if (activeEvent.description) lines.push(`事件事实:${activeEvent.description}`);
     }
+
+    // 战略层（Phase 35）：注入玩家势力国势 + 外交，供 AI 据玩家进谏落实内政外交动作
+    const st = gameState.strategicState;
+    if (st) {
+      const ss = this.gameEngine?.getSystem('StrategicSystem');
+      const me = ss ? ss.getPlayerState(gameState) : st.factions?.[st.playerFactionId];
+      if (me) {
+        lines.push(`【国势】${me.name}：金${me.gold} 粮${me.food} 兵${me.troops} 民心${me.order}（第${st.season}季）`);
+        const dip = Object.entries(me.diplomacy || {}).map(([id, r]) => `${st.factions[id]?.name || id}:${r.stance}(${r.relation})`).join('，');
+        if (dip) lines.push(`【外交】${dip}`);
+        lines.push('【可用战略动作】govern{policyId: farming劝农|tax征税|conscript征兵|fortify筑城|relief赈灾|develop屯田}；'
+          + 'diplomacy{action: alliance结盟|declare_war宣战|sue_peace求和|tribute朝贡|marriage联姻, targetId}；mobilize{value}。'
+          + '仅当玩家明确提出相应内政/外交主张、且你的权限足够时才发出这些动作；否则只叙述、不擅改国势。');
+      }
+    }
+
     lines.push(`当前请求类型:${actionType}`);
     return lines.join('\n');
   }
@@ -959,6 +975,37 @@ export class AIGMEngine extends GameSystem {
           case 'change_affection': {
             const ns = this.gameEngine?.getSystem('NPCSystem');
             if (ns && action.npcId !== undefined) ns.changeAffection(gameState, action.npcId, Number(action.value) || 0);
+            break;
+          }
+          // 战略层（Phase 35）：AI 据玩家进谏落实内政外交（有界，StrategicSystem 自带校验/成本）
+          case 'govern': {
+            const ss = this.gameEngine?.getSystem('StrategicSystem');
+            const st = gameState.strategicState;
+            if (ss && st && action.policyId) {
+              const r = ss.applyPolicy(gameState, action.factionId || st.playerFactionId, action.policyId);
+              if (r.ok) gameState.addNarrative('system', `📜 ${r.narrative}`);
+            }
+            break;
+          }
+          case 'diplomacy': {
+            const ss = this.gameEngine?.getSystem('StrategicSystem');
+            const st = gameState.strategicState;
+            if (ss && st && action.action && action.targetId) {
+              const before = ss.relationOf(gameState, st.playerFactionId, action.targetId).stance;
+              const r = ss.applyDiplomacy(gameState, action.factionId || st.playerFactionId, action.action, action.targetId, action.otherId || null);
+              if (r.ok) {
+                gameState.addNarrative('system', `🤝 ${r.narrative}`);
+                if (action.action === 'declare_war' && before !== 'war') {
+                  (gameState.worldFlags ||= {})[`war_with_${action.targetId}`] = true;
+                }
+              }
+            }
+            break;
+          }
+          case 'mobilize': {
+            const ss = this.gameEngine?.getSystem('StrategicSystem');
+            const st = gameState.strategicState;
+            if (ss && st) ss.mobilize(gameState, action.factionId || st.playerFactionId, Number(action.value || action.amount) || 0);
             break;
           }
         }
