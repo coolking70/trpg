@@ -57,6 +57,10 @@ export const ACTION_AUTHORITY = Object.freeze({
   diplomacy: AI_AUTHORITY.COAUTHOR,
   mobilize: AI_AUTHORITY.COAUTHOR,
   appoint_governor: AI_AUTHORITY.COAUTHOR,
+  // 作战层（Phase 42）：玩家进谏出兵/接敌/围城下令，AI 落为作战动作（有界，由 StrategicSystem 校验）
+  launch_march: AI_AUTHORITY.COAUTHOR,
+  engage: AI_AUTHORITY.COAUTHOR,
+  siege_order: AI_AUTHORITY.COAUTHOR,
   // —— L4 创世：改写世界结构/结局 ——
   rewrite_scene: AI_AUTHORITY.WORLDSMITH,
   edit_connection: AI_AUTHORITY.WORLDSMITH,

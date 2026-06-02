@@ -432,7 +432,7 @@ export class AIGMEngine extends GameSystem {
         if (allowed.length > 0) {
           // 引擎级动作（spawn_event / scale_difficulty / recruit_companion / change_affection）
           // 需要引擎系统支撑，由 _applyEngineActions 处理；其余简单状态改动交 responseParser。
-          const ENGINE_ACTION_TYPES = new Set(['spawn_event', 'scale_difficulty', 'recruit_companion', 'change_affection', 'govern', 'diplomacy', 'mobilize', 'appoint_governor']);
+          const ENGINE_ACTION_TYPES = new Set(['spawn_event', 'scale_difficulty', 'recruit_companion', 'change_affection', 'govern', 'diplomacy', 'mobilize', 'appoint_governor', 'launch_march', 'engage', 'siege_order']);
           // L4 创世：改写世界结构/结局，走带护栏（校验/快照/可撤销/审计）的专用通道
           const WORLDSMITH_ACTION_TYPES = new Set(['rewrite_scene', 'edit_connection', 'author_ending', 'override_outcome', 'kill_npc']);
           const worldsmithActions = allowed.filter(a => WORLDSMITH_ACTION_TYPES.has(a.type));
@@ -818,6 +818,34 @@ export class AIGMEngine extends GameSystem {
           + 'diplomacy{action: alliance结盟|declare_war宣战|sue_peace求和|tribute朝贡|marriage联姻, targetId}；'
           + 'appoint_governor{holdingId城id, charId武将id}（委任太守）；mobilize{value}。'
           + '仅当玩家明确提出相应内政/外交/人事主张、且你的权限足够时才发出这些动作；否则只叙述、不擅改国势。');
+
+        // 作战层（Phase 42）：仅当作战地理(regions)启用时注入军情 + 可用作战动作
+        if (st.regions) {
+          const targets = [];
+          for (const [fid, f] of Object.entries(st.factions || {})) {
+            if (fid === st.playerFactionId) continue;
+            for (const h of (f.holdings || [])) targets.push(`${h.name}(${h.id},属${f.name})`);
+          }
+          if (targets.length) lines.push(`【可征讨城池】${targets.slice(0, 12).join('，')}`);
+          const myMarches = (st.marches || []).filter(m => m.attacker === st.playerFactionId && !m._done);
+          if (myMarches.length) lines.push(`【我军在途】${myMarches.map(m => `→${this._stratHoldingName(gameState, m.targetHoldingId)}(余${m.etaXun}旬)`).join('，')}`);
+          const incoming = (st.marches || []).filter(m => m.detected && m.defender === st.playerFactionId && !m._done);
+          if (incoming.length) lines.push(`【探报·敌军来犯】${incoming.map(m => `${this._stratFactionName(gameState, m.attacker)}→${this._stratHoldingName(gameState, m.targetHoldingId)}(${m.posture === 'raid' ? '隐秘' : '公开'},约${m.etaXun}旬)`).join('，')}`);
+          const ss2 = this.gameEngine?.getSystem('StrategicSystem');
+          if (gameState._pendingEngagement) {
+            const m = gameState._pendingEngagement;
+            lines.push(`【兵临城下】${this._stratFactionName(gameState, m.attacker)}大军已抵 ${this._stratHoldingName(gameState, m.targetHoldingId)} 城下，待抉择：engage{choice: sally出城迎击 | hold闭城固守}`);
+          }
+          const sg = ss2?.playerSiege?.(gameState);
+          if (sg) {
+            const asAtk = sg.attacker === st.playerFactionId;
+            lines.push(`【围城中】${this._stratHoldingName(gameState, sg.holdingId)}（${sg.mode === 'blockade' ? '围困' : '强攻'}，第${sg.xun}旬；攻${sg.atk.troops}/守${sg.def.troops}/门${sg.works?.gate}）。`
+              + (asAtk ? '我为攻方：siege_order{order: assault强攻 | blockade围困 | lift退兵}'
+                       : '我为守方：siege_order{order: hold坚守 | sortie强攻反击 | relief求援(可带allyId) | breakout突围}'));
+          }
+          lines.push('【可用作战动作】launch_march{target:城名或城id, posture: raid密遣奇袭(敌不及备防,无盟援) | open公开讨伐(传檄召盟友响应,士气高但守方预警), generalIds?:[武将id]}。'
+            + '仅当玩家明确提出出兵/接敌/围城主张、且权限足够时才发出作战动作；行军费时、非即时抵达。');
+        }
       }
     }
 
@@ -1025,11 +1053,72 @@ export class AIGMEngine extends GameSystem {
             if (ss && st) ss.mobilize(gameState, action.factionId || st.playerFactionId, Number(action.value || action.amount) || 0);
             break;
           }
+          // 作战层（Phase 42）：AI 据玩家进谏落实出兵/接敌/围城下令
+          //   launch_march 即时入列一支行军（费时抵达，无即时战斗）；
+          //   engage / siege_order 需起野战/建围城/结算，落为待执行作战令，由运行时收尾。
+          case 'launch_march': {
+            const ss = this.gameEngine?.getSystem('StrategicSystem');
+            const st = gameState.strategicState;
+            const holdingId = this._resolveWarTarget(gameState, action.target || action.targetHoldingId);
+            if (ss && st && holdingId) {
+              const posture = action.posture === 'raid' ? 'raid' : 'open';
+              const march = ss.launchMarch(gameState, action.factionId || st.playerFactionId, holdingId, {
+                posture, generalIds: action.generalIds || [], troops: action.troops != null ? Number(action.troops) : null,
+              });
+              if (march) {
+                const tag = posture === 'raid' ? '密遣轻兵奇袭' : '传檄旗号、公开进讨';
+                gameState.addNarrative('system', `🚩 ${this._stratFactionName(gameState, march.attacker)}起兵${march.army.troops.toLocaleString()}，${tag} ${this._stratHoldingName(gameState, holdingId)}（预计 ${march.etaXun} 旬可抵）。`);
+              } else {
+                gameState.addNarrative('system', '（兵力或粮草不足，难以发兵。）');
+              }
+            }
+            break;
+          }
+          case 'engage': {
+            if (gameState._pendingEngagement) {
+              gameState._pendingWarOrder = { kind: 'engage', choice: action.choice === 'sally' ? 'sally' : 'hold' };
+            }
+            break;
+          }
+          case 'siege_order': {
+            const ss = this.gameEngine?.getSystem('StrategicSystem');
+            if (ss && ss.playerSiege && ss.playerSiege(gameState)) {
+              gameState._pendingWarOrder = { kind: 'siege_order', order: action.order, allyId: action.allyId };
+            }
+            break;
+          }
         }
       } catch (e) {
         console.error('应用 L3 引擎动作失败:', action, e);
       }
     }
+  }
+
+  /** 把 AI 给的作战目标（城池 id / 名称）解析为 holdingId（跨所有势力的领地） */
+  _resolveWarTarget(gameState, target) {
+    if (!target) return null;
+    const st = gameState.strategicState;
+    if (!st) return null;
+    const norm = String(target).trim();
+    for (const f of Object.values(st.factions || {})) {
+      for (const h of (f.holdings || [])) {
+        if (h.id === norm || h.name === norm) return h.id;
+      }
+    }
+    // 宽松匹配：名称包含
+    for (const f of Object.values(st.factions || {})) {
+      for (const h of (f.holdings || [])) {
+        if (h.name && (h.name.includes(norm) || norm.includes(h.name))) return h.id;
+      }
+    }
+    return null;
+  }
+
+  _stratFactionName(gameState, id) { return gameState.strategicState?.factions?.[id]?.name || id; }
+  _stratHoldingName(gameState, id) {
+    const st = gameState.strategicState;
+    for (const f of Object.values(st?.factions || {})) { const h = (f.holdings || []).find(x => x.id === id); if (h) return h.name; }
+    return id;
   }
 
   /**

@@ -876,6 +876,15 @@ export class GameSession {
     await this._scanAfter(TRIGGER_MOMENTS.SCENE_ENTER);
   }
 
+  /** 收尾 AI 落地的待执行作战令（Phase 42 作战自由进谏） */
+  async _drainWarOrder() {
+    const wo = this.gameState._pendingWarOrder;
+    if (!wo) return;
+    this.gameState._pendingWarOrder = null;
+    if (wo.kind === 'engage') await this._resolveEngagement(wo.choice);
+    else if (wo.kind === 'siege_order') await this._siegeOrder(wo);
+  }
+
   _factionName(id) {
     return this.gameState.strategicState?.factions?.[id]?.name || id;
   }
@@ -953,6 +962,8 @@ export class GameSession {
           try {
             await this.sys('AIGMEngine').processGameAction('player_action', { text: action.text, moved: false }, this.gameState);
           } catch { /* AI 不可用时静默：玩家发言已记录 */ }
+          // 作战自由进谏（Phase 42）：AI 把"出城迎击/闭城固守/围城下令"落为待执行作战令 → 此处收尾（起战/建围/结算）
+          await this._drainWarOrder();
         }
         break;
       case 'govern':

@@ -304,7 +304,7 @@ class TRPGApp {
 
       // 发送给AI GM处理（传入是否已移动，让AI进行场景叙事）
       const aiEngine = this.engine.getSystem('AIGMEngine');
-      aiEngine.processGameAction('player_action', { text, moved }, this.gameState).then((result) => {
+      aiEngine.processGameAction('player_action', { text, moved }, this.gameState).then(async (result) => {
         es.publish('game:stateChanged', { gameState: this.gameState });
         if (result.diceResults && result.diceResults.length > 0) {
           for (const dr of result.diceResults) {
@@ -313,6 +313,9 @@ class TRPGApp {
             }
           }
         }
+        // 作战自由进谏（Phase 42）：AI 把接敌/围城下令落为待执行作战令 → 经现有编排收尾
+        const wo = this.gameState._pendingWarOrder;
+        if (wo) { this.gameState._pendingWarOrder = null; await this._handleStrategyUiAction({ kind: wo.kind, choice: wo.choice, order: wo.order, allyId: wo.allyId }); }
         this._advanceTurnCounter();
         this._unlockActions();
       }).catch(() => {
