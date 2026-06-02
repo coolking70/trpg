@@ -43,9 +43,9 @@ export const COUNTER_MATRIX = {
   navy:     { infantry: 1.3, cavalry: 1.5, archer: 1.2, spearman: 1.3, siege: 1.3 }, // 仅水战地形生效
 };
 
-/** 攻方→守方克制倍率（缺省 1.0） */
-export function counterMultiplier(attackerType, defenderType) {
-  return COUNTER_MATRIX[attackerType]?.[defenderType] ?? 1.0;
+/** 攻方→守方克制倍率（缺省 1.0）。matrix 可由题材 Schema 覆盖。 */
+export function counterMultiplier(attackerType, defenderType, matrix = COUNTER_MATRIX) {
+  return matrix[attackerType]?.[defenderType] ?? 1.0;
 }
 
 // ============================================================
@@ -63,9 +63,9 @@ export const FORMATIONS = {
 
 export const FORMATION_KEYS = Object.keys(FORMATIONS);
 
-/** 主将阵法等级是否足以使用该阵型（无主将按 tactics=0） */
-export function canUseFormation(general, formationKey) {
-  const f = FORMATIONS[formationKey];
+/** 主将阵法等级是否足以使用该阵型（无主将按 tactics=0）。formations 可由题材覆盖。 */
+export function canUseFormation(general, formationKey, formations = FORMATIONS) {
+  const f = formations[formationKey];
   if (!f) return false;
   const tactics = general?.warfare?.tactics ?? 0;
   return tactics >= (f.requiresTactics || 0);
@@ -98,14 +98,14 @@ export const BATTLE_TYPES = {
     terrain: 'plain', // 不偏向特定兵种
   },
   siege: {
-    name: '攻城', zones: ['城外', '城门', '城墙', '城内'],
+    name: '攻城', zones: ['城外', '城门', '城墙', '城内'], gateZone: '城门',
     victory: { type: 'breach', target: 'gate', rounds: 12 }, // 攻方需在 rounds 内破门，否则攻方失败
     machineLimits: { catapult: 2, ram: 1, ballista: 2 },
     terrain: 'wall', // 守方在城墙享防御加成
     defenseWorks: { gate: 200, wall: 300 },
   },
   defense: {
-    name: '守城', zones: ['城外', '城门', '城墙', '城内'],
+    name: '守城', zones: ['城外', '城门', '城墙', '城内'], gateZone: '城门',
     victory: { type: 'hold', rounds: 10 }, // 守方守满 rounds 即胜；攻方破门或歼灭守方则攻方胜
     machineLimits: { catapult: 2, ballista: 3 },
     terrain: 'wall',
@@ -121,16 +121,16 @@ export const BATTLE_TYPES = {
 
 export const BATTLE_TYPE_KEYS = Object.keys(BATTLE_TYPES);
 
-/** 某战型下某器械的携带上限（不允许=0） */
-export function machineCarryLimit(battleType, machineKey) {
-  return BATTLE_TYPES[battleType]?.machineLimits?.[machineKey] ?? 0;
+/** 某战型下某器械的携带上限（不允许=0）。battleTypes 可由题材覆盖。 */
+export function machineCarryLimit(battleType, machineKey, battleTypes = BATTLE_TYPES) {
+  return battleTypes[battleType]?.machineLimits?.[machineKey] ?? 0;
 }
 
-/** 地形对某兵种的战力系数（水战非水军受罚；城墙不改兵种但影响守方工事，另计） */
-export function terrainUnitFactor(battleType, unitType) {
-  const terrain = BATTLE_TYPES[battleType]?.terrain;
+/** 地形对某兵种的战力系数（water 地形非水栖兵种受罚）。battleTypes/unitTypes 可由题材覆盖。 */
+export function terrainUnitFactor(battleType, unitType, battleTypes = BATTLE_TYPES, unitTypes = UNIT_TYPES) {
+  const terrain = battleTypes[battleType]?.terrain;
   if (terrain === 'water') {
-    return UNIT_TYPES[unitType]?.water ?? 1.0;
+    return unitTypes[unitType]?.water ?? 1.0;
   }
   return 1.0;
 }
@@ -147,9 +147,9 @@ export const TACTICS = {
 
 export const TACTIC_KEYS = Object.keys(TACTICS);
 
-/** 战法成功率：基准 + 主将对应属性/100，封顶 0.95 */
-export function tacticSuccessChance(general, tacticKey) {
-  const t = TACTICS[tacticKey];
+/** 战法成功率：基准 + 主将对应属性/100，封顶 0.95。tactics 可由题材覆盖。 */
+export function tacticSuccessChance(general, tacticKey, tactics = TACTICS) {
+  const t = tactics[tacticKey];
   if (!t) return 0;
   const statVal = general?.warfare?.[t.stat] ?? 0;
   return Math.max(0.05, Math.min(0.95, t.baseChance + statVal / 100));
@@ -166,9 +166,9 @@ export function generalHasTactic(general, tacticKey) {
 export const MORALE_MAX = 100;
 export const MORALE_BREAK = 25; // 低于此值该栈溃退
 
-/** 阵型/主将对某结算属性的乘性修正（atk/def/range/speed/charge/morale） */
-function formationMod(unit, stat) {
-  const f = FORMATIONS[unit?.formation || 'none'];
+/** 阵型/主将对某结算属性的乘性修正（atk/def/range/speed/charge/morale）。formations 可由题材覆盖。 */
+function formationMod(unit, stat, formations = FORMATIONS) {
+  const f = formations[unit?.formation || 'none'];
   return f?.statMods?.[stat] ?? 1.0;
 }
 
@@ -194,33 +194,44 @@ function moraleFactor(unit) {
 //   ctx = { battleType, attackerGeneral, defenderGeneral, rng }
 // ============================================================
 export function resolveAttack(attacker, defender, ctx = {}) {
-  const { battleType = 'field', attackerGeneral = null, defenderGeneral = null, rng = Math.random } = ctx;
+  const { battleType = 'field', attackerGeneral = null, defenderGeneral = null, rng = Math.random, tables = {} } = ctx;
+  // 题材表（缺省=内置三国常量）
+  const unitTypes = tables.unitTypes || UNIT_TYPES;
+  const counterMatrix = tables.counterMatrix || COUNTER_MATRIX;
+  const formations = tables.formations || FORMATIONS;
+  const battleTypes = tables.battleTypes || BATTLE_TYPES;
+  const fallbackUnit = unitTypes.infantry || Object.values(unitTypes)[0] || UNIT_TYPES.infantry;
+  // water 地形的“水栖兵种”判定：本题材中有 water 加成(>1)者视为水军，免地形罚（取代硬编码 'navy'）
   const aType = attacker.unitType, dType = defender.unitType;
-  const aBase = UNIT_TYPES[aType] || UNIT_TYPES.infantry;
-  const dBase = UNIT_TYPES[dType] || UNIT_TYPES.infantry;
+  const aBase = unitTypes[aType] || fallbackUnit;
+  const dBase = unitTypes[dType] || fallbackUnit;
 
   // 攻方是否远程：远程兵且本次以远程结算（无近战反击）
-  const ranged = aBase.ranged > 0 && aBase.melee < aBase.ranged;
+  const ranged = (aBase.ranged || 0) > 0 && (aBase.melee || 0) < (aBase.ranged || 0);
   const atkStat = ranged ? aBase.ranged : aBase.melee;
   const atkKind = ranged ? 'ranged' : 'melee';
 
-  const counter = (battleType === 'naval' || aType !== 'navy') ? counterMultiplier(aType, dType) : 1.0;
-  const terrainA = terrainUnitFactor(battleType, aType);
-  const terrainD = terrainUnitFactor(battleType, dType);
+  // 水栖兵种(water>1)的克制仅在 water 地形生效（替代硬编码 navy）：
+  //   非 water 地形 + 水栖攻方 → 不享克制；其余情形正常取克制倍率。
+  const aquaticAtk = (aBase.water || 0) > 1;
+  const isWaterTerrain = battleTypes[battleType]?.terrain === 'water';
+  const counter = (isWaterTerrain || !aquaticAtk) ? counterMultiplier(aType, dType, counterMatrix) : 1.0;
+  const terrainA = terrainUnitFactor(battleType, aType, battleTypes, unitTypes);
+  const terrainD = terrainUnitFactor(battleType, dType, battleTypes, unitTypes);
 
   // 攻方总战力
   let power = attacker.troops * atkStat
     * counter
-    * formationMod(attacker, 'atk')
-    * (atkKind === 'ranged' ? formationMod(attacker, 'range') : 1.0)
-    * (aBase.charge > 1 ? formationMod(attacker, 'charge') : 1.0)
+    * formationMod(attacker, 'atk', formations)
+    * (atkKind === 'ranged' ? formationMod(attacker, 'range', formations) : 1.0)
+    * ((aBase.charge || 1) > 1 ? formationMod(attacker, 'charge', formations) : 1.0)
     * generalFactor(attackerGeneral, atkKind)
     * terrainA
     * moraleFactor(attacker);
 
   // 守方坚韧度
   const toughness = dBase.def
-    * formationMod(defender, 'def')
+    * formationMod(defender, 'def', formations)
     * generalFactor(defenderGeneral, 'def')
     * terrainD;
 
@@ -265,7 +276,8 @@ export function moraleShift(unit, delta) {
 // 器械结算：对工事（城门/城墙）或部队
 // ============================================================
 export function resolveMachine(machineKey, ctx = {}) {
-  const m = WAR_MACHINES[machineKey];
+  const machines = ctx.machines || WAR_MACHINES;
+  const m = machines[machineKey];
   if (!m) return { power: 0, vs: null };
   const { rng = Math.random, crewTroops = 0 } = ctx;
   // 器械威力随操作兵力小幅提升，含 ±15% 波动
@@ -295,9 +307,9 @@ export function aliveTroops(units, side) {
     .reduce((s, u) => s + u.troops, 0);
 }
 
-export function checkVictory(battle) {
+export function checkVictory(battle, battleTypes = BATTLE_TYPES) {
   const { battleType, units = [], round = 1, works = {} } = battle;
-  const def = BATTLE_TYPES[battleType] || BATTLE_TYPES.field;
+  const def = battleTypes[battleType] || battleTypes.field || BATTLE_TYPES.field;
   const playerAlive = aliveTroops(units, 'player');
   const enemyAlive = aliveTroops(units, 'enemy');
 
@@ -329,14 +341,17 @@ export function checkVictory(battle) {
 // ============================================================
 // 校验：单位栈 / 军团编制（供 preset 校验复用）
 // ============================================================
-/** 校验一个 unitStack 定义，返回 errors[]（空=通过） */
-export function validateUnitStack(u = {}) {
+/** 校验一个 unitStack 定义，返回 errors[]（空=通过）。tables 可由题材 Schema 覆盖。 */
+export function validateUnitStack(u = {}, tables = {}) {
+  const unitTypes = tables.unitTypes || UNIT_TYPES;
+  const formations = tables.formations || FORMATIONS;
+  const machines = tables.machines || WAR_MACHINES;
   const errs = [];
-  if (!u.unitType || !UNIT_TYPES[u.unitType]) errs.push(`未知兵种: ${u.unitType}`);
+  if (!u.unitType || !unitTypes[u.unitType]) errs.push(`未知兵种: ${u.unitType}`);
   if (!(u.troops > 0)) errs.push(`兵力须为正: ${u.troops}`);
-  if (u.formation && !FORMATIONS[u.formation]) errs.push(`未知阵型: ${u.formation}`);
+  if (u.formation && !formations[u.formation]) errs.push(`未知阵型: ${u.formation}`);
   for (const mk of (u.machines || [])) {
-    if (!WAR_MACHINES[mk]) errs.push(`未知器械: ${mk}`);
+    if (!machines[mk]) errs.push(`未知器械: ${mk}`);
   }
   return errs;
 }
@@ -346,27 +361,29 @@ export function validateUnitStack(u = {}) {
  * @param {object} battle - { battleType, units:[unitStack], generalIds?:Set|Array }
  * @returns {string[]} errors（空=通过）
  */
-export function validateLegionBattle(battle = {}, knownGeneralIds = null) {
+export function validateLegionBattle(battle = {}, knownGeneralIds = null, tables = {}) {
+  const battleTypes = tables.battleTypes || BATTLE_TYPES;
+  const machines = tables.machines || WAR_MACHINES;
   const errs = [];
   const bt = battle.battleType;
-  if (!BATTLE_TYPES[bt]) { errs.push(`未知战型: ${bt}`); return errs; }
+  if (!battleTypes[bt]) { errs.push(`未知战型: ${bt}`); return errs; }
   const genSet = knownGeneralIds ? new Set(knownGeneralIds) : null;
   // 按 side 统计器械数量，校验携带上限
   const machineCount = {}; // `${side}:${machineKey}` → n
   for (const u of (battle.units || [])) {
-    for (const e of validateUnitStack(u)) errs.push(e);
+    for (const e of validateUnitStack(u, tables)) errs.push(e);
     if (u.generalId && genSet && !genSet.has(u.generalId)) errs.push(`未知主将引用: ${u.generalId}`);
     for (const mk of (u.machines || [])) {
       const key = `${u.side}:${mk}`;
       machineCount[key] = (machineCount[key] || 0) + 1;
-      if (!(WAR_MACHINES[mk]?.battleTypes || []).includes(bt)) {
+      if (!(machines[mk]?.battleTypes || []).includes(bt)) {
         errs.push(`器械 ${mk} 不可用于 ${bt}`);
       }
     }
   }
   for (const [key, n] of Object.entries(machineCount)) {
     const mk = key.split(':')[1];
-    const limit = machineCarryLimit(bt, mk);
+    const limit = machineCarryLimit(bt, mk, battleTypes);
     if (n > limit) errs.push(`器械 ${mk} 超携带上限(${n}>${limit}) @${bt}`);
   }
   return errs;

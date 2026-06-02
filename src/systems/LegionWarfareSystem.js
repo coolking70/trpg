@@ -13,21 +13,26 @@
 
 import { GameSystem } from '../core/GameEngine.js';
 import {
-  UNIT_TYPES, BATTLE_TYPES, FORMATIONS,
+  BATTLE_TYPES,
   MORALE_MAX, MORALE_BREAK, LOW_SUPPLY_MORALE_PENALTY,
   resolveAttack, resolveMachine, moraleShift, supplyDrain,
   counterMultiplier, canUseFormation, generalHasTactic, tacticSuccessChance,
   checkVictory, aliveTroops,
 } from '../data/warfare.js';
+import { schemaOf } from '../data/strategySchema.js';
 
 const SAFETY_ROUND_CAP = 30;
 
-/** 某 side 在某战型下的默认起始分区 */
-function defaultZone(side, battleType) {
-  if (battleType === 'siege') return side === 'player' ? '城外' : '城墙';
-  if (battleType === 'defense') return side === 'player' ? '城墙' : '城外';
-  if (battleType === 'naval') return '江心';
-  return '前阵';
+/**
+ * 某 side 在某战型下的默认起始分区。zones 取自题材 battleType（按 KEY 的攻守语义选位）。
+ * battleType KEY（field/siege/defense/naval）为结构槽位，题材沿用并可重命名分区。
+ */
+function defaultZone(side, battleType, btDef) {
+  const zones = btDef?.zones || [];
+  const first = zones[0], last = zones[zones.length - 1];
+  if (battleType === 'siege') return side === 'player' ? (first || '城外') : (zones[2] || last || '城墙');
+  if (battleType === 'defense') return side === 'player' ? (zones[2] || last || '城墙') : (first || '城外');
+  return first || (battleType === 'naval' ? '江心' : '前阵');
 }
 
 export class LegionWarfareSystem extends GameSystem {
@@ -42,6 +47,15 @@ export class LegionWarfareSystem extends GameSystem {
     this.eventSystem = gameEngine.getSystem('EventSystem');
   }
 
+  /** 题材战术表（缺省=内置三国）。供本系统及 warfare 纯函数读取，换皮零改逻辑。 */
+  _T(gameState) {
+    const s = schemaOf(gameState);
+    return {
+      unitTypes: s.unitTypes, counterMatrix: s.counterMatrix, formations: s.formations,
+      battleTypes: s.battleTypes, machines: s.machines, tactics: s.tactics,
+    };
+  }
+
   // ============================================================
   // 开战
   // ============================================================
@@ -50,26 +64,28 @@ export class LegionWarfareSystem extends GameSystem {
    * @param {object} battleDef - { battleType, generals:{id->general}, supply:{player,enemy}, units:[unitStackDef], objectiveName? }
    */
   startBattle(gameState, battleDef) {
-    const battleType = BATTLE_TYPES[battleDef.battleType] ? battleDef.battleType : 'field';
-    const btDef = BATTLE_TYPES[battleType];
+    const T = this._T(gameState);
+    const battleType = T.battleTypes[battleDef.battleType] ? battleDef.battleType : 'field';
+    const btDef = T.battleTypes[battleType] || BATTLE_TYPES.field;
+    const fallbackUnitKey = T.unitTypes.infantry ? 'infantry' : Object.keys(T.unitTypes)[0];
 
     const units = (battleDef.units || []).map((u, i) => ({
       id: u.id || `stack_${i + 1}`,
       side: u.side === 'enemy' ? 'enemy' : 'player',
-      name: u.name || `${UNIT_TYPES[u.unitType]?.name || '部队'}`,
-      unitType: UNIT_TYPES[u.unitType] ? u.unitType : 'infantry',
+      name: u.name || `${T.unitTypes[u.unitType]?.name || '部队'}`,
+      unitType: T.unitTypes[u.unitType] ? u.unitType : fallbackUnitKey,
       troops: Math.max(1, Math.round(u.troops || 100)),
       maxTroops: Math.max(1, Math.round(u.troops || 100)),
       morale: u.morale != null ? u.morale : MORALE_MAX,
-      zone: u.zone || defaultZone(u.side === 'enemy' ? 'enemy' : 'player', battleType),
+      zone: u.zone || defaultZone(u.side === 'enemy' ? 'enemy' : 'player', battleType, btDef),
       generalId: u.generalId || null,
-      formation: FORMATIONS[u.formation] ? u.formation : 'none',
+      formation: T.formations[u.formation] ? u.formation : 'none',
       machines: Array.isArray(u.machines) ? u.machines.slice() : [],
     }));
 
     // 先攻：按兵种行动力降序（稳定）
     const turnOrder = units
-      .map((u, idx) => ({ id: u.id, side: u.side, speed: UNIT_TYPES[u.unitType]?.speed || 5, idx }))
+      .map((u, idx) => ({ id: u.id, side: u.side, speed: T.unitTypes[u.unitType]?.speed || 5, idx }))
       .sort((a, b) => (b.speed - a.speed) || (a.idx - b.idx))
       .map(s => ({ id: s.id, side: s.side }));
 
@@ -78,6 +94,7 @@ export class LegionWarfareSystem extends GameSystem {
     gameState.activeLegionBattle = {
       battleType,
       zones: btDef.zones.slice(),
+      gateZone: btDef.gateZone || null,
       objectiveName: battleDef.objectiveName || btDef.victory.target || btDef.name,
       units,
       turnOrder,
@@ -133,7 +150,8 @@ export class LegionWarfareSystem extends GameSystem {
   attackableTargets(gameState, unit) {
     const b = gameState.activeLegionBattle;
     if (!b || !unit) return [];
-    const reach = (UNIT_TYPES[unit.unitType]?.ranged || 0) > 0 ? 2 : 1;
+    const unitTypes = schemaOf(gameState).unitTypes;
+    const reach = (unitTypes[unit.unitType]?.ranged || 0) > 0 ? 2 : 1;
     const zi = this._zoneIndex(b, unit.zone);
     return b.units.filter(t => t.side !== unit.side && t.troops > 0
       && Math.abs(this._zoneIndex(b, t.zone) - zi) <= reach);
@@ -144,8 +162,9 @@ export class LegionWarfareSystem extends GameSystem {
     if (!battle.works || battle.works.gate == null) return false;
     const attackerSide = battle.battleType === 'siege' ? 'player' : 'enemy';
     if (unit.side !== attackerSide) return false;
+    const gateZone = battle.gateZone || '城门';
     const zi = this._zoneIndex(battle, unit.zone);
-    return Math.abs(zi - this._zoneIndex(battle, '城门')) <= 1;
+    return Math.abs(zi - this._zoneIndex(battle, gateZone)) <= 1;
   }
 
   // ============================================================
@@ -160,16 +179,17 @@ export class LegionWarfareSystem extends GameSystem {
     if (!unit || unit.troops <= 0) return { ok: false, reason: '该部队不可行动' };
 
     const type = order.type || 'attack';
+    const T = this._T(gameState);
     let result;
     switch (type) {
       case 'move': result = this._orderMove(b, unit, order); break;
-      case 'set_formation': result = this._orderFormation(b, unit, order); break;
-      case 'bombard': result = this._orderBombard(b, unit, order); break;
-      case 'tactic': result = this._orderTactic(gameState, b, unit, order); break;
+      case 'set_formation': result = this._orderFormation(T, b, unit, order); break;
+      case 'bombard': result = this._orderBombard(T, b, unit, order); break;
+      case 'tactic': result = this._orderTactic(gameState, T, b, unit, order); break;
       case 'hold': result = this._orderHold(b, unit); break;
       case 'retreat': result = this._orderRetreat(b, unit); break;
       case 'attack':
-      default: result = this._orderAttack(gameState, b, unit, order); break;
+      default: result = this._orderAttack(gameState, T, b, unit, order); break;
     }
     result = result || { ok: false, reason: '无效指令' };
     result.unitId = unitId;
@@ -191,47 +211,48 @@ export class LegionWarfareSystem extends GameSystem {
     return { ok: true, narrative: `${unit.name} 由「${from}」移师「${target}」。` };
   }
 
-  _orderFormation(b, unit, order) {
+  _orderFormation(T, b, unit, order) {
     const fk = order.formation;
-    if (!FORMATIONS[fk]) return { ok: false, reason: `无此阵型: ${fk}`, narrative: '' };
+    const fdef = T.formations[fk];
+    if (!fdef) return { ok: false, reason: `无此阵型: ${fk}`, narrative: '' };
     const g = this._general(b, unit);
-    if (!canUseFormation(g, fk)) {
-      return { ok: false, reason: '主将阵法不足', narrative: `${unit.name} 试图布「${FORMATIONS[fk].name}」，但主将阵法造诣不足，未能成阵。` };
+    if (!canUseFormation(g, fk, T.formations)) {
+      return { ok: false, reason: '主将阵法不足', narrative: `${unit.name} 试图布「${fdef.name}」，但主将阵法造诣不足，未能成阵。` };
     }
     unit.formation = fk;
-    return { ok: true, narrative: `${unit.name} 摆出「${FORMATIONS[fk].name}」。` };
+    return { ok: true, narrative: `${unit.name} 摆出「${fdef.name}」。` };
   }
 
-  _orderBombard(b, unit, order) {
+  _orderBombard(T, b, unit, order) {
     const machineKey = (unit.machines || []).find(Boolean);
     if (!machineKey) return { ok: false, reason: '无器械可用', narrative: `${unit.name} 没有可用的攻城器械。` };
-    const m = resolveMachine(machineKey, { rng: this.rng, crewTroops: unit.troops });
+    const m = resolveMachine(machineKey, { rng: this.rng, crewTroops: unit.troops, machines: T.machines });
     // 对工事
     if ((m.vs === 'gate' || m.vs === 'wall') && b.works && this._canHitGate(b, unit)) {
       const key = m.vs;
       b.works[key] = Math.max(0, (b.works[key] ?? 0) - m.power);
-      return { ok: true, machineKey, narrative: `${unit.name} 操${UNIT_TYPES[unit.unitType]?.name || ''}以器械猛攻${key === 'gate' ? '城门' : '城墙'}，造成 ${m.power} 点破坏（余 ${b.works[key]}）。`, worksAfter: { ...b.works } };
+      return { ok: true, machineKey, narrative: `${unit.name} 操${T.unitTypes[unit.unitType]?.name || ''}以器械猛攻${key === 'gate' ? '城门' : '城墙'}，造成 ${m.power} 点破坏（余 ${b.works[key]}）。`, worksAfter: { ...b.works } };
     }
     // 对部队（弩车等）
-    const targets = this.attackableTargets({ activeLegionBattle: b }, unit);
+    const targets = this.attackableTargets({ activeLegionBattle: b, strategySchema: { unitTypes: T.unitTypes } }, unit);
     const target = this._pickTarget(targets, order.targetId);
     if (!target) return { ok: false, reason: '无可击目标', narrative: `${unit.name} 的器械暂无可击目标。` };
     const losses = Math.min(target.troops, Math.round(m.power * 6 * (0.85 + this.rng() * 0.3)));
     target.troops -= losses;
     target.morale = moraleShift(target, -Math.round((losses / Math.max(1, target.maxTroops)) * 50));
-    return { ok: true, machineKey, targetId: target.id, narrative: `${unit.name} 以${resolveMachineName(machineKey)}远程攒射 ${target.name}，杀伤约 ${losses} 众。` };
+    return { ok: true, machineKey, targetId: target.id, narrative: `${unit.name} 以${machineName(machineKey, T.machines)}远程攒射 ${target.name}，杀伤约 ${losses} 众。` };
   }
 
-  _orderTactic(gameState, b, unit, order) {
+  _orderTactic(gameState, T, b, unit, order) {
     const tk = order.tacticKey;
     const g = this._general(b, unit);
     if (!g || !generalHasTactic(g, tk)) return { ok: false, reason: '主将不会该战法', narrative: '' };
     const usedKey = `${unit.id}:${tk}`;
     if (b.tacticsUsed[usedKey]) return { ok: false, reason: '该战法本战已用', narrative: '' };
     b.tacticsUsed[usedKey] = true;
-    const chance = tacticSuccessChance(g, tk);
+    const chance = tacticSuccessChance(g, tk, T.tactics);
     const success = this.rng() < chance;
-    if (!success) return { ok: true, tacticKey: tk, success: false, narrative: `${g.name || unit.name} 施展「${tacticName(tk)}」未能奏效。` };
+    if (!success) return { ok: true, tacticKey: tk, success: false, narrative: `${g.name || unit.name} 施展「${tacticName(tk, T.tactics)}」未能奏效。` };
 
     if (tk === 'rally') {
       for (const u of b.units) if (u.side === unit.side && u.troops > 0) u.morale = moraleShift(u, 18);
@@ -240,12 +261,12 @@ export class LegionWarfareSystem extends GameSystem {
     // fire / charge / ambush 都对一个目标造成额外杀伤
     const targets = this.attackableTargets(gameState, unit);
     const target = this._pickTarget(targets, order.targetId);
-    if (!target) return { ok: true, tacticKey: tk, success: true, narrative: `${g.name || unit.name} 施展「${tacticName(tk)}」，然战场无当面之敌。` };
+    if (!target) return { ok: true, tacticKey: tk, success: true, narrative: `${g.name || unit.name} 施展「${tacticName(tk, T.tactics)}」，然战场无当面之敌。` };
     const mult = tk === 'fire' ? 0.4 : (tk === 'ambush' ? 0.3 : 0.25);
     const losses = Math.min(target.troops, Math.round(target.troops * mult * (0.85 + this.rng() * 0.3)));
     target.troops -= losses;
     target.morale = moraleShift(target, -Math.round(mult * 80));
-    return { ok: true, tacticKey: tk, success: true, targetId: target.id, narrative: `${g.name || unit.name} 「${tacticName(tk)}」奏效，${target.name} 折损约 ${losses} 众，阵脚动摇！` };
+    return { ok: true, tacticKey: tk, success: true, targetId: target.id, narrative: `${g.name || unit.name} 「${tacticName(tk, T.tactics)}」奏效，${target.name} 折损约 ${losses} 众，阵脚动摇！` };
   }
 
   _orderHold(b, unit) {
@@ -271,11 +292,11 @@ export class LegionWarfareSystem extends GameSystem {
     return targets[0];
   }
 
-  _orderAttack(gameState, b, unit, order) {
+  _orderAttack(gameState, T, b, unit, order) {
     // 攻方贴城门 → 默认砸门（无器械则徒手破门，效率低）
     if (b.works && b.works.gate > 0 && this._canHitGate(b, unit) && !order.targetId) {
       const hasMachine = (unit.machines || []).some(Boolean);
-      if (hasMachine) return this._orderBombard(b, unit, order);
+      if (hasMachine) return this._orderBombard(T, b, unit, order);
       const dmg = Math.round(8 * (0.7 + this.rng() * 0.6));
       b.works.gate = Math.max(0, b.works.gate - dmg);
       return { ok: true, narrative: `${unit.name} 蚁附攻门，劈砍冲撞，城门受损 ${dmg}（余 ${b.works.gate}）。`, worksAfter: { ...b.works } };
@@ -292,6 +313,7 @@ export class LegionWarfareSystem extends GameSystem {
       attackerGeneral: this._general(b, unit),
       defenderGeneral: this._general(b, target),
       rng: this.rng,
+      tables: { unitTypes: T.unitTypes, counterMatrix: T.counterMatrix, formations: T.formations, battleTypes: T.battleTypes },
     });
     target.troops = Math.max(0, target.troops - r.defenderLosses);
     unit.troops = Math.max(0, unit.troops - r.attackerLosses);
@@ -325,6 +347,7 @@ export class LegionWarfareSystem extends GameSystem {
   decideLegion(gameState, unit) {
     const b = gameState.activeLegionBattle;
     if (!b || !unit || unit.troops <= 0) return { type: 'hold' };
+    const T = this._T(gameState);
     const g = this._general(b, unit);
 
     // 士气濒溃 → 退却或死守
@@ -333,15 +356,15 @@ export class LegionWarfareSystem extends GameSystem {
     }
     // 首轮未列阵 + 主将能列好阵 → 列阵
     if (unit.formation === 'none') {
-      const wish = this._wishFormation(unit);
-      if (wish && canUseFormation(g, wish)) return { type: 'set_formation', formation: wish };
+      const wish = this._wishFormation(T, unit);
+      if (wish && canUseFormation(g, wish, T.formations)) return { type: 'set_formation', formation: wish };
     }
     // 攻方有器械且城门未破 → 轰门（移动到位或直接轰）
     if (b.works && b.works.gate > 0 && (unit.machines || []).some(Boolean)) {
       if (this._canHitGate(b, unit)) return { type: 'bombard' };
       // 向城门推进
       const zi = this._zoneIndex(b, unit.zone);
-      const gi = this._zoneIndex(b, '城门');
+      const gi = this._zoneIndex(b, b.gateZone || '城门');
       const nz = b.zones[Math.max(0, Math.min(b.zones.length - 1, zi + (gi > zi ? 1 : -1)))];
       return { type: 'move', zone: nz };
     }
@@ -351,7 +374,7 @@ export class LegionWarfareSystem extends GameSystem {
     if (tactics.length > 0 && targets.length > 0 && this.rng() < 0.5) {
       for (const tk of tactics) {
         if (!b.tacticsUsed[`${unit.id}:${tk}`]) {
-          const best = this._bestTarget(unit, targets);
+          const best = this._bestTarget(T, unit, targets);
           return { type: 'tactic', tacticKey: tk, targetId: best?.id };
         }
       }
@@ -364,23 +387,29 @@ export class LegionWarfareSystem extends GameSystem {
     }
     // 默认：攻击最优目标（无目标则推进）
     if (targets.length === 0) return { type: 'attack' }; // 内部会自动推进
-    const best = this._bestTarget(unit, targets);
+    const best = this._bestTarget(T, unit, targets);
     return { type: 'attack', targetId: best?.id };
   }
 
-  _wishFormation(unit) {
+  /**
+   * 该兵种的偏好阵型：优先题材 unitType.wishFormation；否则按三国启发式（仅三国兵种 key 命中，
+   * 其它题材未提供 wishFormation 时返回 null=不列阵，优雅降级）。
+   */
+  _wishFormation(T, unit) {
     const ut = unit.unitType;
+    const hinted = T.unitTypes[ut]?.wishFormation;
+    if (hinted) return T.formations[hinted] ? hinted : null;
     if (ut === 'cavalry') return 'fengshi';     // 骑兵→锋矢突击
     if (ut === 'archer') return 'yanxing';       // 弓兵→雁行
     if (ut === 'spearman' || ut === 'infantry') return unit.side === 'player' ? 'yulin' : 'fangyuan';
-    return 'yulin';
+    return T.formations.yulin ? 'yulin' : null;
   }
 
   /** 选克制优势最大、其次兵力最少的目标 */
-  _bestTarget(unit, targets) {
+  _bestTarget(T, unit, targets) {
     return [...targets].sort((a, bb) => {
-      const ca = counterMultiplier(unit.unitType, a.unitType);
-      const cb = counterMultiplier(unit.unitType, bb.unitType);
+      const ca = counterMultiplier(unit.unitType, a.unitType, T.counterMatrix);
+      const cb = counterMultiplier(unit.unitType, bb.unitType, T.counterMatrix);
       if (cb !== ca) return cb - ca;
       return a.troops - bb.troops;
     })[0] || null;
@@ -392,6 +421,7 @@ export class LegionWarfareSystem extends GameSystem {
   nextTurn(gameState) {
     const b = gameState.activeLegionBattle;
     if (!b) return { nextActor: null, newRound: false, battleEnd: false };
+    const battleTypes = schemaOf(gameState).battleTypes;
 
     // 清理：阵亡/退却的栈移出 turnOrder（精确调整 index，复用 CombatSystem 思路）
     const oldOrder = b.turnOrder.slice();
@@ -402,7 +432,7 @@ export class LegionWarfareSystem extends GameSystem {
     });
 
     // 胜负（任意时刻全灭/达成条件）
-    const v1 = checkVictory(b);
+    const v1 = checkVictory(b, battleTypes);
     if (v1) return this.endBattle(gameState, v1);
 
     const survivorIds = new Set(b.turnOrder.map(s => s.id));
@@ -504,12 +534,10 @@ export class LegionWarfareSystem extends GameSystem {
   }
 }
 
-// 小工具：器械/战法中文名
-function resolveMachineName(key) {
-  const map = { catapult: '投石车', ram: '攻城锤', ballista: '弩车', towerShip: '楼船', mengchong: '蒙冲' };
-  return map[key] || '器械';
+// 小工具：器械/战法显示名（取自题材表，缺省回退通用词）
+function machineName(key, machines = {}) {
+  return machines[key]?.name || '器械';
 }
-function tacticName(key) {
-  const map = { charge: '突击', fire: '火攻', ambush: '伏兵', rally: '鼓舞' };
-  return map[key] || '战法';
+function tacticName(key, tactics = {}) {
+  return tactics[key]?.name || '战法';
 }

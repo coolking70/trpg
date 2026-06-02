@@ -8,7 +8,7 @@
  */
 
 import './LegionBattlePanel.css';
-import { UNIT_TYPES, FORMATIONS } from '../data/warfare.js';
+import { schemaOf } from '../data/strategySchema.js';
 
 const BATTLE_TYPE_NAME = { field: '野战', siege: '攻城', defense: '守城', naval: '水战' };
 const POSTURES = [
@@ -120,8 +120,9 @@ export class LegionBattlePanel {
     for (const u of stacks) {
       const row = document.createElement('div');
       row.className = 'legion-panel__stack';
-      const utName = UNIT_TYPES[u.unitType]?.name || u.unitType;
-      const fName = FORMATIONS[u.formation]?.name;
+      const sc = schemaOf(this.gameState);
+      const utName = sc.unitTypes[u.unitType]?.name || u.unitType;
+      const fName = sc.formations[u.formation]?.name;
       const troopPct = Math.max(0, Math.min(100, (u.troops / Math.max(1, u.maxTroops)) * 100));
       const moralePct = Math.max(0, Math.min(100, u.morale));
       row.innerHTML = `
