@@ -19,7 +19,7 @@
 
 **验证**：jest 706/706（war 12 + warMarch 5 + warEngagement 3 + warSiege 5 + warPosture 4）+ MCP 45/45。deepseek-v4-flash 真 GM 玩测整条作战链：出兵公开讨伐(ETA 8 旬)→探报敌军开进→兵临城下→闭城固守→围城消耗(断粮/士气降)→多线动态战事，GM 叙述忠于三国。
 
-**W6 浏览器作战 UI**：尚待做（作战层目前在 headless/GameSession 完整可玩；浏览器面板镜像为后续）。
+**W6 浏览器作战 UI**：把作战层接进浏览器 `main.js`（探报/接敌抉择/围城操作镜像 GameSession，经共享 StrategicSystem 方法）；`RightPanel` 极简呈现——兵临城下→出城迎击/闭城固守按钮、围城→坚守/强攻反击/求援/突围(守)或强攻/围困/退兵(攻)。Claude Preview 浏览器实测三国整条作战链。
 
 ### Phase 40 — 收敛阶段2：战略编排单一事实源 🧹
 

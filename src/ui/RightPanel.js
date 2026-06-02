@@ -123,6 +123,52 @@ export class RightPanel {
       this._strategyEl.appendChild(det);
     }
 
+    // 作战层（Phase 41 W6）：接敌抉择 / 围城操作（优先于理政情境选项）
+    const mkWar = (label, payload, title) => {
+      const b = document.createElement('button');
+      b.className = 'btn right-panel__strategy-btn';
+      b.textContent = label; if (title) b.title = title;
+      b.addEventListener('click', () => this.eventSystem.publish('strategy:uiAction', payload));
+      return b;
+    };
+    const pend = this.gameState._pendingEngagement;
+    const ss = this.engine?.getSystem?.('StrategicSystem');
+    const sg = !pend && ss ? ss.playerSiege(this.gameState) : null;
+    if (pend) {
+      const wrap = document.createElement('div');
+      wrap.className = 'right-panel__strategy-acts';
+      const banner = document.createElement('div');
+      banner.className = 'right-panel__strategy-campaign';
+      banner.textContent = `⚔ ${st.factions[pend.attacker]?.name || pend.attacker}大军（约${pend.army.troops}众）兵临${this._cityName(st, pend.targetHoldingId)}城下`;
+      this._strategyEl.appendChild(banner);
+      wrap.appendChild(mkWar('出城迎击', { kind: 'engage', choice: 'sally' }, '按野战决胜'));
+      wrap.appendChild(mkWar('闭城固守', { kind: 'engage', choice: 'hold' }, '凭城消耗，待敌粮尽士衰'));
+      this._strategyEl.appendChild(wrap);
+      return;
+    }
+    if (sg) {
+      const pid = st.playerFactionId;
+      const banner = document.createElement('div');
+      banner.className = 'right-panel__strategy-campaign';
+      banner.textContent = `🏰 ${this._cityName(st, sg.holdingId)}围城[${sg.mode === 'blockade' ? '围困' : '强攻'}] 攻${sg.atk.troops}/士${sg.atk.morale} · 守${sg.def.troops}/粮${sg.def.supply} 门${sg.works.gate}`;
+      this._strategyEl.appendChild(banner);
+      const wrap = document.createElement('div');
+      wrap.className = 'right-panel__strategy-acts';
+      if (sg.defender === pid) {
+        wrap.appendChild(mkWar('坚守', { kind: 'siege_order', order: 'hold' }, '凭城消耗，待敌退'));
+        wrap.appendChild(mkWar('强攻反击', { kind: 'siege_order', order: 'sortie' }, '开城突袭，挫敌兵锐'));
+        const ally = this._stratBestAlly(st, pid);
+        if (ally) wrap.appendChild(mkWar(`求援·${st.factions[ally]?.name || ally}`, { kind: 'siege_order', order: 'relief', allyId: ally }, '急召盟友来援'));
+        wrap.appendChild(mkWar('突围', { kind: 'siege_order', order: 'breakout' }, '倾力出城决战'));
+      } else {
+        wrap.appendChild(mkWar('强攻', { kind: 'siege_order', order: 'assault' }, '破门夺城，伤亡大'));
+        wrap.appendChild(mkWar('围困', { kind: 'siege_order', order: 'blockade' }, '断粮相持，待其献城'));
+        wrap.appendChild(mkWar('退兵', { kind: 'siege_order', order: 'lift' }, '解围撤还'));
+      }
+      this._strategyEl.appendChild(wrap);
+      return;
+    }
+
     // 情境选项：仅当处于「理政」场景（scene.tags 含 governance）
     const scene = this._currentScene();
     const atCourt = scene && (scene.tags || []).includes('governance');
@@ -163,6 +209,9 @@ export class RightPanel {
     if (ss && this.gameState) { try { return ss.getCurrentScene(this.gameState); } catch { /* */ } }
     return null;
   }
+
+  _cityName(st, id) { for (const f of Object.values(st.factions || {})) { const h = (f.holdings || []).find(x => x.id === id); if (h) return h.name; } return id; }
+  _stratBestAlly(st, fid) { const me = st.factions[fid]; let best = null, r = 39; for (const [tid, rel] of Object.entries(me?.diplomacy || {})) { if ((rel.stance === 'ally' || rel.relation >= 40) && rel.relation > r) { r = rel.relation; best = tid; } } return best; }
 
   /**
    * 设置当前活跃事件（普通事件卡）

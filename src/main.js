@@ -1579,14 +1579,55 @@ class TRPGApp {
       const { narratives, invasion } = applySeasonEvents(this.gameState, events);
       for (const n of narratives) this.gameState.addNarrative('system', n);
       try { await ai.processGameAction('narrate_governance', { kind: 'season', season, events, player: ss.getPlayerState(this.gameState) }, this.gameState); } catch { /* */ }
-      // 战役级连战（Phase 38）：敌国来犯 → 立刻一场守城战（面板接管）
+      // 作战层（Phase 41）：探报 + 接敌抉择（regions 启用时）
+      for (const d of events.filter(e => e.type === 'march_detected')) {
+        this.gameState.addNarrative('system', `🛰 探报：${this._stratName(d.march.attacker)} 一支军马正向 ${this._stratHolding(d.march.targetHoldingId)} 开进（${d.march.posture === 'raid' ? '踪迹隐秘' : '旗号公开'}）。`);
+      }
+      const arrival = events.find(e => e.type === 'army_arrived' && e.playerEngagement);
+      if (arrival) {
+        this.gameState._pendingEngagement = arrival.march;
+        this.gameState.addNarrative('system', `⚔ ${this._stratName(arrival.march.attacker)} 大军已抵 ${this._stratHolding(arrival.march.targetHoldingId)} 城下！`);
+        this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+        return;
+      }
+      // 战役级连战（Phase 38，无 regions 旧路径）：敌国来犯 → 立刻一场守城战
       if (invasion) {
         const battle = ss.buildInvasionBattle(this.gameState, invasion.by, st.playerFactionId);
         if (battle) { this._startLegionBattle(battle); return; }
       }
+    } else if (data.kind === 'engage') {
+      const m = this.gameState._pendingEngagement; if (!m) return;
+      this.gameState._pendingEngagement = null;
+      const r = ss.resolveEngagement(this.gameState, m, data.choice || 'hold');
+      if (r.kind === 'battle') {
+        this.gameState.addNarrative('system', `🐎 ${this._stratHolding(m.targetHoldingId)} 守军出城列阵，迎击来犯之敌！`);
+        this._startLegionBattle(r.battleDef); return;
+      }
+      this.gameState.addNarrative('system', `🏯 ${this._stratHolding(m.targetHoldingId)} 闭门坚守，围城战起。`);
+    } else if (data.kind === 'siege_order') {
+      const sg = ss.playerSiege(this.gameState); if (!sg) return;
+      if (data.order === 'breakout') {
+        this._breakoutSiege = sg;
+        this._startLegionBattle({ battleType: 'field', enemyFactionId: sg.attacker, objectiveName: `${this._stratHolding(sg.holdingId)}·突围决战`, supply: { player: 9999, enemy: sg.atk.supply }, units: [{ id: 'def_main', side: 'player', unitType: 'spearman', troops: Math.max(1, sg.def.troops) }, { id: 'atk_main', side: 'enemy', unitType: 'infantry', troops: Math.max(1, sg.atk.troops) }] });
+        this.gameState.addNarrative('system', `🐎 ${this._stratHolding(sg.holdingId)} 守军大开城门，倾力突围！`); return;
+      }
+      if (data.order === 'lift') { ss.resolveSiege(this.gameState, sg, 'retreat'); this.gameState.addNarrative('system', `🏳 我军解围撤还，${this._stratHolding(sg.holdingId)} 之围遂解。`); }
+      else {
+        const r = ss.siegeOrder(this.gameState, sg, data.order, { allyId: data.allyId });
+        this.gameState.addNarrative('system', `🏯 ${r.narrative}`);
+        for (const ev of (r.events || [])) if (ev.type === 'relief_arrived' && ev.result) this.gameState.addNarrative('system', `🚩 援军驰至，里应外合，重创围城之敌（歼约 ${ev.result.hit}）！`);
+        if (r.outcome) {
+          const res = ss.resolveSiege(this.gameState, sg, r.outcome.type);
+          const verb = { breach: '城门告破', surrender: '粮尽献城', fallen: '城陷', retreat: '攻方退兵' }[r.outcome.type] || r.outcome.type;
+          this.gameState.addNarrative('system', res.attackerWins ? `🏯 ${this._stratHolding(sg.holdingId)} ${verb}，落入 ${this._stratName(sg.attacker)} 之手。` : `🎉 ${verb}，${this._stratHolding(sg.holdingId)} 之围得解！`);
+        }
+      }
     }
     this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
   }
+
+  _stratName(id) { return this.gameState?.strategicState?.factions?.[id]?.name || id; }
+  _stratHolding(id) { for (const f of Object.values(this.gameState?.strategicState?.factions || {})) { const h = (f.holdings || []).find(x => x.id === id); if (h) return h.name; } return id; }
 
   /** 军团战结束：叙述 + drawFromStrategy 结算（与 GameSession 对齐） */
   async _endLegionBattle(turnResult) {
@@ -1603,6 +1644,15 @@ class TRPGApp {
       strategyCtx: ctx, battleDef: bdef, won, summary: s,
     });
     for (const n of narratives) this.gameState.addNarrative('system', n);
+    // 突围决战（Phase 41 W4）：玩家=守方，胜→解围，败→城陷
+    if (this._breakoutSiege) {
+      const sg = this._breakoutSiege; this._breakoutSiege = null;
+      const ss = this.engine.getSystem('StrategicSystem');
+      ss.resolveSiege(this.gameState, sg, won ? 'retreat' : 'fallen');
+      this.gameState.addNarrative('system', won
+        ? `🎉 突围得手，敌军溃退，${this._stratHolding(sg.holdingId)} 之围遂解！`
+        : `🏯 突围失利，${this._stratHolding(sg.holdingId)} 终告陷落，落入 ${this._stratName(sg.attacker)} 之手。`);
+    }
     this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
     const aiEngine = this.engine.getSystem('AIGMEngine');
     try { await aiEngine.processGameAction('narrate_legion_result', { won, summary: s }, this.gameState); } catch { /* */ }
