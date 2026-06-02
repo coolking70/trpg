@@ -25,12 +25,8 @@ jobs:
       - name: 跑 Jest 测试
         run: npm test
 
-      - name: 构建生产包
+      - name: 构建生产包（仅作质量门：验证可打包，不发布）
         run: npm run build
 
-      - name: 上传 dist 产物（供 Pages 部署）
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist
-          retention-days: 7
+      # 现阶段不发布到 GitHub Pages：已移除 dist 产物上传与部署步骤。
+      # 将来需要发布时，再加回 actions/upload-pages-artifact + actions/deploy-pages。

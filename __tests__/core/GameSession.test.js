@@ -17,8 +17,9 @@ describe('GameSession 权威对局核心', () => {
   beforeEach(async () => {
     origRandom = Math.random;
     Math.random = () => 0; // 确定性：取第一个 outcome，且不触发概率遭遇
-    session = new GameSession(); // 不配置 AI → localFallback
+    session = new GameSession();
     session.loadPreset(DEFAULT_PRESET);
+    session.configureAI({ endpoint: '' }); // loadPreset 后再关 AI（覆盖预设默认端点）→ localFallback，不打网络
     await session.kickoff();
   });
 

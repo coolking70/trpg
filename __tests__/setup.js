@@ -64,3 +64,10 @@ if (!global.performance.now) {
 if (!global.structuredClone) {
   global.structuredClone = (val) => JSON.parse(JSON.stringify(val));
 }
+
+// jsdom 环境无全局 fetch（CI 的 Node 下 `fetch is not defined`）。
+// 测试不应打真实网络——提供一个立即拒绝的兜底，让 AI 调用走本地兜底叙事而非抛错。
+// 需要验证 AI 成功路径的用例自行 mock global.fetch（会覆盖此兜底）。
+if (!global.fetch) {
+  global.fetch = () => Promise.reject(new Error('fetch is disabled in tests'));
+}
