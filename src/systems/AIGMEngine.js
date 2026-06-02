@@ -382,6 +382,7 @@ export class AIGMEngine extends GameSystem {
       // 复读缓解：仅对纯叙事类调用注入（player_action 等裁决类不需要）
       const NARRATE_ACTIONS = new Set([
         'narrate_event', 'narrate_scene_arrival', 'narrate_combat',
+        'narrate_legion_start', 'narrate_legion_result',
         'narrate_npc_dialogue', 'narrate_vignette', 'narrate_world_ripple',
       ]);
       const antiRepetition = NARRATE_ACTIONS.has(actionType)
@@ -415,6 +416,7 @@ export class AIGMEngine extends GameSystem {
       // 其余流（如 player_action 自由输入裁决）：按权限表过滤后落地（L0/L1 → 全拦=婉拒，L2 有界，…）。
       const NARRATION_ONLY = new Set([
         'narrate_event', 'narrate_scene_arrival', 'narrate_combat',
+        'narrate_legion_start', 'narrate_legion_result',
         'narrate_npc_dialogue', 'narrate_vignette', 'narrate_world_ripple',
       ]);
       const authLevel = clampAuthority(gameState?.aiAuthority);
@@ -457,6 +459,10 @@ export class AIGMEngine extends GameSystem {
       if (parsed.stateUpdate) {
         this.responseParser.applyStateUpdate(parsed.stateUpdate, gameState);
       }
+
+      // 健壮性：个别模型/接口（如 Responses-API + 结构化输出）偶尔会让解析后的 narrative
+      // 仍残留 JSON 片段（如 `narrative":"…`）。这里做一次兜底清洗，把真正的叙事抠出来。
+      parsed.narrative = this._sanitizeNarrative(parsed.narrative);
 
       if (!parsed.narrative) {
         parsed.narrative = this._buildLocalFallbackNarrative(actionType, actionData, gameState);
@@ -1167,6 +1173,26 @@ export class AIGMEngine extends GameSystem {
     return { narrative, actions: [], diceRequests: [], diceResults: [] };
   }
 
+  /**
+   * 清洗叙事文本：若解析后仍残留 `narrative":"…` / 前后多余的 JSON 括号引号（个别接口的边角情况），
+   * 尽量抠出真正的叙事内容；正常文本原样返回。
+   */
+  _sanitizeNarrative(narrative) {
+    if (typeof narrative !== 'string') return narrative;
+    let s = narrative.trim();
+    // 残留形如  narrative":"正文...  或  {"narrative":"正文...
+    const m = s.match(/^\{?\s*"?narrative"?\s*:\s*"([\s\S]*)$/);
+    if (m) {
+      s = m[1];
+      // 截到 "," 后接其它字段（actions/stateUpdate 等）或收尾的 "}
+      s = s.replace(/"\s*,\s*"(?:actions|stateUpdate|diceRequests)"[\s\S]*$/, '');
+      s = s.replace(/"\s*\}?\s*$/, '');
+      // 反转义
+      s = s.replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\\\/g, '\\');
+    }
+    return s.trim();
+  }
+
   _buildLocalFallbackNarrative(actionType, actionData, gameState) {
     let narrative = '';
 
@@ -1235,6 +1261,19 @@ export class AIGMEngine extends GameSystem {
         const to = actionData.toScene;
         if (to) narrative = to.description ? `你们抵达了${to.name}。${to.description}` : `你们抵达了${to.name}。`;
         else narrative = '你们抵达了新的场景。';
+        break;
+      }
+
+      case 'narrate_legion_start': {
+        const bt = actionData.battleTypeName || '大战';
+        narrative = `${actionData.objectiveName || ''}${actionData.objectiveName ? '——' : ''}${bt}一触即发，两军列阵，旌旗蔽空，杀气腾腾。`;
+        break;
+      }
+
+      case 'narrate_legion_result': {
+        narrative = actionData.won
+          ? '鼓角声渐歇，敌阵土崩瓦解，残兵败将四散奔逃。我军将士欢声雷动，旌旗指处，尽是降幡。'
+          : '阵脚终究没能稳住，我军且战且退，丢盔弃甲。残部退入暮色，喘息未定，徒留满地狼藉。';
         break;
       }
 

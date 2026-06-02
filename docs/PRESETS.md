@@ -11,6 +11,7 @@
 | **青锋录** (`qingfeng-wuxia.json`) | 武侠 | 26 | 37 | 11 (2 招募) | 9 | 3 | 100% / 86% 半血（3 人队） | 86 KB |
 | **赛博朋克霓虹反叛** (`cyberpunk-neon-rebellion.json`) | 赛博朋克 | (已有，未审计) | - | - | - | - | - | 79 KB |
 | **苍冰星传说：十四岁的约定**（管线产物示例） | 小说改编（《魔弹之王与冻涟的雪姬》） | 17 | 17 | 5 | 20 | 多结局 | 0 必修 / 全可达 | — |
+| **三国演义·群雄逐鹿**（军团战示范，`public/generated/sanguo-legion-preset.json`） | 历史·战争 | 22 | 30 | 7 | — | 3 | 10 场军团战 + 4 场个人战 | — |
 
 > **关于旧的「超大型剧本」**：早期的 `novel_build_mega_preset`（读全文 + LLM 自由发挥直接吐 298 场景剧本）已废弃删除——分支与文本质量不可控。改用下文的三段确定性管线替代。
 
@@ -52,6 +53,19 @@
 **Responses-API**：`novel_digest`/`blueprint_draft` 可接 hy3 等只走 `/responses` 的模型——设 `apiStyle:'responses'` 或环境变量 `OPENAI_API_STYLE=responses`，或 baseUrl 以 `/responses` 结尾即自动切换。
 
 > 示例产物《苍冰星传说：十四岁的约定》由真实 5MB 小说《魔弹之王与冻涟的雪姬》跑通全管线生成，体检 0 必修、全节点可达、无不可胜 boss，并以 hy3-preview 作 GM 手动玩测通过。
+
+## 军团战争剧本（Phase 31/32）
+
+除个人战（单挑/暗杀/逃脱）外，剧本还能编排**军团战争**（野战/攻城/守城/水战，单位栈战术制）。蓝图 chapter 用 `legionBattlePlan` 编排，`buildPresetFromBlueprint` 编译为内联 `start_legion_battle` 事件。
+
+**示例：《三国演义·群雄逐鹿》**（`public/generated/sanguo-legion-preset.json`）
+
+- 手写 digest/blueprint（不调 LLM）：`scripts/generate-sanguo-preset.mjs`（17 主将含统率/武力/智力/阵法/战法，15 章节，桃园结义→街亭）。
+- 10 场军团战覆盖四战型：野战（官渡/博望坡/定军山/夷陵/南中）、水战（赤壁）、攻城（下邳/南郡/樊城）、守城（街亭）；4 场个人战（三英战吕布/白门楼/长坂坡/麦城）。
+- `legion_simulate` 平衡贴合史实：刘备的胜仗高胜率，**夷陵 42%（偏难）、街亭 16%（过难）正对应史上两场大败**。
+- hy3-preview 真 GM headless 玩测通过：个人战与军团战均由真 GM 叙述、基于真实战况、忠于史实。
+
+复现：`node scripts/generate-sanguo-preset.mjs`（写 digest/blueprint）→ MCP `preset_build_from_blueprint`（段③确定性构建）→ `legion_simulate` 平衡。
 
 ## 跨题材机制复用验证
 

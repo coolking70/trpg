@@ -1,0 +1,557 @@
+{
+  "schemaVersion": 1,
+  "title": "三国演义·群雄逐鹿",
+  "logline": "汉室倾颓，群雄并起；自桃园结义至六出祁山，运筹于阵前，决胜于沙场。",
+  "themes": [
+    "忠义",
+    "权谋",
+    "兴亡",
+    "英雄"
+  ],
+  "tone": "历史·战争·群像",
+  "world": {
+    "name": "汉末三国",
+    "setting": "东汉末年，黄巾乱起，董卓乱政，群雄割据，终成魏蜀吴三分之势。",
+    "gmStyle": "半文半白的章回体史诗，重谋略与战阵，主将之勇略智计左右胜负。",
+    "factions": [
+      {
+        "id": "shu",
+        "name": "蜀汉"
+      },
+      {
+        "id": "wei",
+        "name": "曹魏"
+      },
+      {
+        "id": "wu",
+        "name": "东吴"
+      },
+      {
+        "id": "qun",
+        "name": "群雄"
+      }
+    ]
+  },
+  "characters": [
+    {
+      "id": "liubei",
+      "name": "刘备",
+      "title": "汉左将军",
+      "role": "protagonist",
+      "factionId": "shu",
+      "description": "仁德之主，矢志匡扶汉室。",
+      "warfare": {
+        "command": 80,
+        "might": 70,
+        "intellect": 76,
+        "tactics": 2,
+        "abilities": [
+          "rally",
+          "charge"
+        ]
+      }
+    },
+    {
+      "id": "guanyu",
+      "name": "关羽",
+      "title": "汉寿亭侯",
+      "role": "companion",
+      "factionId": "shu",
+      "description": "义薄云天，万人之敌。",
+      "warfare": {
+        "command": 90,
+        "might": 97,
+        "intellect": 75,
+        "tactics": 2,
+        "abilities": [
+          "charge",
+          "rally"
+        ]
+      }
+    },
+    {
+      "id": "zhangfei",
+      "name": "张飞",
+      "title": "万夫不当",
+      "role": "companion",
+      "factionId": "shu",
+      "description": "当阳桥头一声吼，吓退曹兵百万。",
+      "warfare": {
+        "command": 80,
+        "might": 96,
+        "intellect": 48,
+        "tactics": 1,
+        "abilities": [
+          "charge"
+        ]
+      }
+    },
+    {
+      "id": "zhaoyun",
+      "name": "赵云",
+      "title": "常山赵子龙",
+      "role": "companion",
+      "factionId": "shu",
+      "description": "一身是胆，长坂坡七进七出。",
+      "warfare": {
+        "command": 86,
+        "might": 95,
+        "intellect": 76,
+        "tactics": 2,
+        "abilities": [
+          "charge",
+          "ambush"
+        ]
+      }
+    },
+    {
+      "id": "zhugeliang",
+      "name": "诸葛亮",
+      "title": "卧龙",
+      "role": "companion",
+      "factionId": "shu",
+      "description": "运筹帷幄，神机妙算。",
+      "warfare": {
+        "command": 92,
+        "might": 42,
+        "intellect": 100,
+        "tactics": 3,
+        "abilities": [
+          "fire",
+          "ambush",
+          "rally"
+        ]
+      }
+    },
+    {
+      "id": "huangzhong",
+      "name": "黄忠",
+      "title": "老当益壮",
+      "role": "companion",
+      "factionId": "shu",
+      "description": "定军山斩夏侯渊。",
+      "warfare": {
+        "command": 82,
+        "might": 93,
+        "intellect": 62,
+        "tactics": 2,
+        "abilities": [
+          "charge"
+        ]
+      }
+    },
+    {
+      "id": "weiyan",
+      "name": "魏延",
+      "title": "镇远将军",
+      "role": "companion",
+      "factionId": "shu",
+      "description": "勇略兼备，性情孤高。",
+      "warfare": {
+        "command": 80,
+        "might": 88,
+        "intellect": 62,
+        "tactics": 2,
+        "abilities": [
+          "charge",
+          "ambush"
+        ]
+      }
+    },
+    {
+      "id": "masu",
+      "name": "马谡",
+      "title": "参军",
+      "role": "npc",
+      "factionId": "shu",
+      "description": "才器过人，言过其实。",
+      "warfare": {
+        "command": 64,
+        "might": 50,
+        "intellect": 72,
+        "tactics": 1,
+        "abilities": [
+          "rally"
+        ]
+      }
+    },
+    {
+      "id": "caocao",
+      "name": "曹操",
+      "title": "魏王",
+      "role": "boss",
+      "factionId": "wei",
+      "description": "治世之能臣，乱世之奸雄。",
+      "warfare": {
+        "command": 96,
+        "might": 72,
+        "intellect": 91,
+        "tactics": 3,
+        "abilities": [
+          "fire",
+          "ambush",
+          "rally"
+        ]
+      }
+    },
+    {
+      "id": "xiahoudun",
+      "name": "夏侯惇",
+      "title": "独眼将军",
+      "role": "boss",
+      "factionId": "wei",
+      "description": "拔矢啖睛，悍勇无双。",
+      "warfare": {
+        "command": 85,
+        "might": 90,
+        "intellect": 60,
+        "tactics": 2,
+        "abilities": [
+          "charge"
+        ]
+      }
+    },
+    {
+      "id": "zhangliao",
+      "name": "张辽",
+      "title": "荡寇将军",
+      "role": "boss",
+      "factionId": "wei",
+      "description": "威震逍遥津。",
+      "warfare": {
+        "command": 90,
+        "might": 92,
+        "intellect": 78,
+        "tactics": 2,
+        "abilities": [
+          "charge",
+          "ambush"
+        ]
+      }
+    },
+    {
+      "id": "simayi",
+      "name": "司马懿",
+      "title": "骠骑将军",
+      "role": "boss",
+      "factionId": "wei",
+      "description": "深谋远虑，鹰视狼顾。",
+      "warfare": {
+        "command": 92,
+        "might": 65,
+        "intellect": 98,
+        "tactics": 3,
+        "abilities": [
+          "fire",
+          "ambush",
+          "rally"
+        ]
+      }
+    },
+    {
+      "id": "sunquan",
+      "name": "孙权",
+      "title": "吴侯",
+      "role": "npc",
+      "factionId": "wu",
+      "description": "坐断东南，雄踞江东。",
+      "warfare": {
+        "command": 80,
+        "might": 68,
+        "intellect": 80,
+        "tactics": 2,
+        "abilities": [
+          "rally"
+        ]
+      }
+    },
+    {
+      "id": "zhouyu",
+      "name": "周瑜",
+      "title": "大都督",
+      "role": "npc",
+      "factionId": "wu",
+      "description": "雄姿英发，火烧赤壁。",
+      "warfare": {
+        "command": 94,
+        "might": 70,
+        "intellect": 96,
+        "tactics": 3,
+        "abilities": [
+          "fire",
+          "ambush",
+          "rally"
+        ]
+      }
+    },
+    {
+      "id": "luxun",
+      "name": "陆逊",
+      "title": "书生都督",
+      "role": "boss",
+      "factionId": "wu",
+      "description": "火烧连营七百里。",
+      "warfare": {
+        "command": 90,
+        "might": 60,
+        "intellect": 95,
+        "tactics": 3,
+        "abilities": [
+          "fire",
+          "ambush",
+          "rally"
+        ]
+      }
+    },
+    {
+      "id": "lvbu",
+      "name": "吕布",
+      "title": "飞将",
+      "role": "boss",
+      "factionId": "qun",
+      "description": "人中吕布，马中赤兔。",
+      "warfare": {
+        "command": 75,
+        "might": 100,
+        "intellect": 55,
+        "tactics": 1,
+        "abilities": [
+          "charge"
+        ]
+      }
+    },
+    {
+      "id": "menghuo",
+      "name": "孟获",
+      "title": "南蛮王",
+      "role": "boss",
+      "factionId": "qun",
+      "description": "据守南中，桀骜不驯。",
+      "warfare": {
+        "command": 70,
+        "might": 82,
+        "intellect": 46,
+        "tactics": 1,
+        "abilities": [
+          "charge"
+        ]
+      }
+    }
+  ],
+  "locations": [
+    {
+      "id": "zhuoxian",
+      "name": "涿县"
+    },
+    {
+      "id": "hulaoguan",
+      "name": "虎牢关"
+    },
+    {
+      "id": "guandu",
+      "name": "官渡"
+    },
+    {
+      "id": "longzhong",
+      "name": "隆中"
+    },
+    {
+      "id": "changbanpo",
+      "name": "长坂坡"
+    },
+    {
+      "id": "chibi",
+      "name": "赤壁"
+    },
+    {
+      "id": "hanzhong",
+      "name": "汉中"
+    },
+    {
+      "id": "fancheng",
+      "name": "樊城"
+    },
+    {
+      "id": "yiling",
+      "name": "夷陵"
+    },
+    {
+      "id": "nanzhong",
+      "name": "南中"
+    },
+    {
+      "id": "jieting",
+      "name": "街亭"
+    }
+  ],
+  "plotBeats": [
+    {
+      "id": "b_taoyuan",
+      "order": 1,
+      "sectionTitle": "桃园结义",
+      "title": "桃园结义",
+      "summary": "黄巾之乱，三人结义起兵。",
+      "type": "battle",
+      "locations": [],
+      "conflicts": [],
+      "focusFactionId": "shu"
+    },
+    {
+      "id": "b_hulao",
+      "order": 2,
+      "sectionTitle": "虎牢关·三英战吕布",
+      "title": "虎牢关·三英战吕布",
+      "summary": "十八路诸侯讨董，虎牢关前会吕布。",
+      "type": "battle",
+      "locations": [],
+      "conflicts": [],
+      "focusFactionId": "shu"
+    },
+    {
+      "id": "b_xiapi",
+      "order": 3,
+      "sectionTitle": "下邳·白门楼",
+      "title": "下邳·白门楼",
+      "summary": "曹刘联手围吕布于下邳。",
+      "type": "battle",
+      "locations": [],
+      "conflicts": [],
+      "focusFactionId": "shu"
+    },
+    {
+      "id": "b_guandu",
+      "order": 4,
+      "sectionTitle": "官渡之战",
+      "title": "官渡之战",
+      "summary": "袁曹决战官渡，刘备暂附袁绍。",
+      "type": "battle",
+      "locations": [],
+      "conflicts": [],
+      "focusFactionId": "shu"
+    },
+    {
+      "id": "b_sangu",
+      "order": 5,
+      "sectionTitle": "三顾茅庐",
+      "title": "三顾茅庐",
+      "summary": "刘备三访隆中，得卧龙出山。",
+      "type": "battle",
+      "locations": [],
+      "conflicts": [],
+      "focusFactionId": "shu"
+    },
+    {
+      "id": "b_bowang",
+      "order": 6,
+      "sectionTitle": "博望坡·新野",
+      "title": "博望坡·新野",
+      "summary": "诸葛亮初用兵，火烧博望。",
+      "type": "battle",
+      "locations": [],
+      "conflicts": [],
+      "focusFactionId": "shu"
+    },
+    {
+      "id": "b_changban",
+      "order": 7,
+      "sectionTitle": "长坂坡",
+      "title": "长坂坡",
+      "summary": "曹军追击，赵云单骑救主。",
+      "type": "battle",
+      "locations": [],
+      "conflicts": [],
+      "focusFactionId": "shu"
+    },
+    {
+      "id": "b_chibi",
+      "order": 8,
+      "sectionTitle": "赤壁之战",
+      "title": "赤壁之战",
+      "summary": "孙刘联盟，火烧曹军水寨。",
+      "type": "battle",
+      "locations": [],
+      "conflicts": [],
+      "focusFactionId": "shu"
+    },
+    {
+      "id": "b_nanjun",
+      "order": 9,
+      "sectionTitle": "取南郡·借荆州",
+      "title": "取南郡·借荆州",
+      "summary": "赤壁战后争夺荆襄。",
+      "type": "battle",
+      "locations": [],
+      "conflicts": [],
+      "focusFactionId": "shu"
+    },
+    {
+      "id": "b_hanzhong",
+      "order": 10,
+      "sectionTitle": "汉中之战·定军山",
+      "title": "汉中之战·定军山",
+      "summary": "黄忠斩夏侯渊，刘备进位汉中王。",
+      "type": "battle",
+      "locations": [],
+      "conflicts": [],
+      "focusFactionId": "shu"
+    },
+    {
+      "id": "b_fancheng",
+      "order": 11,
+      "sectionTitle": "水淹七军·围樊城",
+      "title": "水淹七军·围樊城",
+      "summary": "关羽北伐，威震华夏。",
+      "type": "battle",
+      "locations": [],
+      "conflicts": [],
+      "focusFactionId": "shu"
+    },
+    {
+      "id": "b_maicheng",
+      "order": 12,
+      "sectionTitle": "败走麦城",
+      "title": "败走麦城",
+      "summary": "东吴白衣渡江，关羽兵败。",
+      "type": "battle",
+      "locations": [],
+      "conflicts": [],
+      "focusFactionId": "shu"
+    },
+    {
+      "id": "b_yiling",
+      "order": 13,
+      "sectionTitle": "夷陵之战",
+      "title": "夷陵之战",
+      "summary": "刘备伐吴，陆逊火烧连营。",
+      "type": "battle",
+      "locations": [],
+      "conflicts": [],
+      "focusFactionId": "shu"
+    },
+    {
+      "id": "b_nanman",
+      "order": 14,
+      "sectionTitle": "七擒孟获",
+      "title": "七擒孟获",
+      "summary": "诸葛亮南征，攻心为上。",
+      "type": "battle",
+      "locations": [],
+      "conflicts": [],
+      "focusFactionId": "shu"
+    },
+    {
+      "id": "b_jieting",
+      "order": 15,
+      "sectionTitle": "街亭之战",
+      "title": "街亭之战",
+      "summary": "马谡失街亭，孔明挥泪。",
+      "type": "battle",
+      "locations": [],
+      "conflicts": [],
+      "focusFactionId": "shu"
+    }
+  ],
+  "sourceMaterial": {
+    "note": "据《三国演义》主要回目改编（手写 digest，未读原文正文）。"
+  }
+}

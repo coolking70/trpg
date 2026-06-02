@@ -247,6 +247,30 @@ export class AIPromptBuilder {
         break;
       }
 
+      case 'narrate_legion_start': {
+        const fmt = (arr) => (arr || []).map(u => `${u.name || u.unitType}(${u.troops}众)`).join('、');
+        parts.push(`【军团战开战】战型: ${actionData.battleTypeName || actionData.battleType}；目标: ${actionData.objectiveName || ''}`);
+        if (actionData.player?.length) parts.push(`我军: ${fmt(actionData.player)}`);
+        if (actionData.enemy?.length) parts.push(`敌军: ${fmt(actionData.enemy)}`);
+        parts.push(
+          '用 3-4 句渲染两军对垒的开战气势：地形与天候、双方阵列与旌旗、临战的紧张感。',
+          '这是大军团会战（成千上万的兵马），不是个人单挑；不要写具体某个士兵的招式。严禁预判胜负结果。'
+        );
+        break;
+      }
+
+      case 'narrate_legion_result': {
+        const s = actionData.summary || {};
+        parts.push(`【军团战结果】我军${actionData.won ? '获胜' : '败退'}；歼敌约 ${s.enemyLosses ?? '?'}，我军折损约 ${s.playerLosses ?? '?'}，历时 ${s.round ?? '?'} 回合`);
+        parts.push(
+          actionData.won
+            ? '用 3-4 句叙述我军取胜后的战场：敌阵崩溃、追亡逐北、我军气势。要与上面的折损数字基调一致（惨胜还是大胜）。'
+            : '用 3-4 句叙述我军败退后的战场：阵脚溃散、且战且退、残部狼狈。',
+          '严格按上面给出的胜负与折损数字写，不要改写结果。'
+        );
+        break;
+      }
+
       default:
         parts.push(`操作: ${actionType}`);
         if (actionData.text) parts.push(actionData.text);

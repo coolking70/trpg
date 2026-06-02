@@ -84,6 +84,22 @@ describe('AIGMEngine.shouldCallAI', () => {
   });
 });
 
+describe('AIGMEngine._sanitizeNarrative', () => {
+  const ai = new AIGMEngine();
+  test('正常文本原样返回', () => {
+    expect(ai._sanitizeNarrative('两军列阵于官渡。')).toBe('两军列阵于官渡。');
+  });
+  test('残留 narrative":" 片段被抠出', () => {
+    expect(ai._sanitizeNarrative('narrative":"赤壁江面火光渐熄。","actions":[]')).toBe('赤壁江面火光渐熄。');
+  });
+  test('完整 JSON 包裹被剥离', () => {
+    expect(ai._sanitizeNarrative('{"narrative":"诸葛亮羽扇轻摇。"}')).toBe('诸葛亮羽扇轻摇。');
+  });
+  test('尾部多余引号花括号被清理', () => {
+    expect(ai._sanitizeNarrative('narrative":"火攻奏效。"}')).toBe('火攻奏效。');
+  });
+});
+
 describe('AIGMEngine._hookNameForAction', () => {
   test('narrate_scene_arrival → sceneArrival hook + firstVisit option', () => {
     const ai = new AIGMEngine();

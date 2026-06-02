@@ -11,11 +11,11 @@
 - **是什么**：浏览器端 AI GM TRPG，AI 担任游戏主持人，玩家通过卡牌/**场景节点图**/文本推进冒险
 - **技术**：原生 ES Modules + Vite + Three.js (3D 骰子) + Canvas2D，无前端框架
 - **AI 接口**：OpenAI 兼容 `/chat/completions` **及 `/responses`**（hy3 等），默认本地 `qwen/qwen3.6-35b-a3b @ http://127.0.0.1:1234/v1`
-- **当前状态**：Phase 16-30 完成、**Jest 545 / MCP 44 全过**、场景图作为主架构、生产就绪
-- **已验证规模**：bundled 最大 **101 节点 / 87 事件 / 22 NPC**；小说→预设三段管线从真实 5MB 小说生成 **17 场景 / 17 事件 / 20 敌人 / 5 NPC（0 必修、全可达）**，已用真 GM 手动玩测通过
-- **核心能力栈**：场景图 + 快速旅行 + 角色创建 4 轴 + NPC schedule/关系图 + 故事时间 + 营地交互 + worldFlags AI 注入 + 隐藏路径 + IndexedDB + 跨周目元进度 + AI 本地权威状态/相关性检索 + AI Hooks gate(4 tier) + **AI 参与度阶梯(L0–L4 权限模型)** + 战斗 buff/AOE/phases + escape_combat + 生态位动态掉落 + 数值 Monte Carlo 模拟器 + **小说→预设三段确定性管线**
-- **MCP 服务器**：67 个工具（小说→预设三段管线 `novel_digest`/`blueprint_draft`/`blueprint_validate`/`preset_build_from_blueprint`、战略层生成/审稿、preset_apply_template / scene_chain_create / combat_simulate / enemy_assign_ecology 等）
-- **下一步候选**：编辑器加场景图可视化编辑 / 部署+真人玩测反馈 / 三段管线在更多小说题材上验证 / 多语言 / 社区预设上传
+- **当前状态**：Phase 16-32 完成、**Jest 598 / MCP 45 全过**、场景图作为主架构、生产就绪
+- **已验证规模**：bundled 最大 **101 节点 / 87 事件 / 22 NPC**；小说→预设三段管线从真实 5MB 小说生成 **17 场景（0 必修、全可达）**；三国军团战剧本 **22 场景 / 30 事件 / 10 场军团战 + 4 场个人战**，均经真 GM 玩测通过
+- **核心能力栈**：场景图 + 快速旅行 + 角色创建 4 轴 + NPC schedule/关系图 + 故事时间 + 营地交互 + worldFlags AI 注入 + 隐藏路径 + IndexedDB + 跨周目元进度 + AI 本地权威状态/相关性检索 + AI Hooks gate(4 tier) + AI 参与度阶梯(L0–L4) + 个人战 buff/AOE/phases/escape + **军团战争系统(单位栈战术制·野战/攻城/守城/水战)** + 生态位动态掉落 + 数值 Monte Carlo 模拟器(个人战 + 军团战) + 小说→预设三段确定性管线
+- **MCP 服务器**：68 个工具（小说→预设三段管线 `novel_digest`/`blueprint_draft`/`blueprint_validate`/`preset_build_from_blueprint`（蓝图可编排 `combatPlan` 个人战 + `legionBattlePlan` 军团战）、`combat_simulate`/`legion_simulate` 平衡模拟、战略层生成/审稿、enemy_assign_ecology 等）
+- **下一步候选**：军团战浏览器对战面板（LegionBattlePanel UI）/ 战役级连战元层 / 编辑器场景图可视化编辑 / 部署+真人玩测反馈 / 多语言
 
 ---
 
@@ -23,10 +23,10 @@
 
 ```bash
 npm install
-npm test          # 545 tests in 35 suites
+npm test          # 598 tests in 39 suites
 npm run dev       # localhost:3000
 npm run build     # 生产构建到 dist/
-npm run test:mcp  # 44 MCP smoke tests
+npm run test:mcp  # 45 MCP smoke tests
 
 # 数值平衡审计（5 秒，无 AI 调用）
 node scripts/combat-balance-check.mjs --preset presets/eternal-crown-stress-test.json --party-by-chapter
@@ -86,6 +86,8 @@ git show <commit> --stat
 | _(unreleased)_ | **Phase 28 生态位/掉落/上下文** | `src/data/ecology.js` 生态位词表 + 掉落池；CombatSystem 动态掉落；MCP 生态工具；AIGMEngine 注入本地权威状态 + ContextRetriever 相关事件/物品/势力；SceneSystem 快速旅行 |
 | _(unreleased)_ | **Phase 29 AI 参与度阶梯 🎚️** | `src/systems/AIAuthority.js` L0–L4 权限模型 + `filterActionsByAuthority`/`narrationCanMutate`/`authorityPromptSection`；L3 编剧动作 / L4 创世动作（校验+快照+`undoLastRewrite`）；`GameState.aiAuthority`；SettingsModal/EndgameModal 滑杆；WS `set_authority` 仅房主可调 |
 | _(unreleased)_ | **Phase 30 小说→预设三段管线 📖→🎲** | 删 `novel_build_mega_preset`；新增 `novel_digest`（概括）→ `blueprint_draft`/`blueprint_validate`（设计，人工可确认）→ `preset_build_from_blueprint`（确定性构建，复用 normalize/ecology/validate）；`callOpenAICompatible`+`AIGMEngine` 支持 `/responses` 风格；tier 限敌人数 + 过滤占位 combatPlan |
+| _(unreleased)_ | **Phase 31 军团战争系统 ⚔️** | `src/data/warfare.js`（兵种/克制/阵型/器械/战型/战法 + 纯结算）+ `LegionWarfareSystem.js`（单位栈战术制，与个人战零耦合）；GameSession 接 `start_legion_battle`/`legion` 动作/`legion` 快照；蓝图 `legionBattlePlan` → builder 内联军团战；`legionSimulator.js` + `legion_simulate` 平衡模拟；`narrate_legion_*` 叙述 + `_sanitizeNarrative` 修复 |
+| _(unreleased)_ | **Phase 32 三国剧本 🀄** | 手写 digest/blueprint → `generate-sanguo-preset.mjs`；`public/generated/sanguo-legion-preset.json`（10 场军团战覆盖四战型 + 4 场个人战）；balance 贴史实（夷陵/街亭为难局）；hy3 真 GM 玩测通过 |
 
 详细 bug 见第 5 章。
 
@@ -374,6 +376,19 @@ ecology = { biome: 'swamp', creatureType: 'beast', tier: 'elite' }
 3. **`preset_build_from_blueprint`（段③）** — **不调 LLM**，编译成预设，复用 `presetNormalize`/`resolveLootTable`/`assignPresetImages`/`validatePreset`
 
 段③纪律：按 tier 限同场敌人数（trivial/common≤3、elite≤2、boss≤1）、过滤占位/无战斗 combatPlan（`enemyConcept` 命中 `无战斗|纯叙事|none` 或为空时跳过）。改进段③时**先改 builder 再用既有 digest/blueprint 重新确定性构建即可**，不必重调 LLM。LLM 调用支持 `/chat/completions` 与 `/responses` 两种风格（见 AI_INTEGRATION 二）。
+
+### 4.16 军团战争系统（Phase 31）
+
+与个人战（`CombatSystem`：HP/属性/先攻回合制）**完全平行、零耦合**的另一套战斗，单位栈战术制。路由由"事件用哪个 effect"决定，无引擎级开关：
+
+- **数据层** `src/data/warfare.js`（纯数据+纯函数，runtime/MCP 共享，仿 ecology.js）：兵种 `UNIT_TYPES` + 克制 `COUNTER_MATRIX`、阵型 `FORMATIONS`（按主将阵法等级解锁）、器械 `WAR_MACHINES`（按战型白名单+携带上限）、战型 `BATTLE_TYPES`（野战歼灭/攻城破门/守城守满回合/水战控渡口）、战法 `TACTICS`；纯结算 `resolveAttack`/`checkVictory`/`validateLegionBattle` 等。
+- **系统** `src/systems/LegionWarfareSystem.js`：平行 `CombatSystem`，提供 `startBattle`/`executeOrder`/`decideLegion`/`nextTurn`/`endBattle` 原语；指令 move/attack/set_formation/bombard/tactic/hold/retreat；主将武力加近战、统率加士气、智力加远程/战法；粮草耗尽掉士气、士气崩溃溃退。
+- **接线** `GameSession`：事件效果 `start_legion_battle`（内联整场编制 + 主将武备）、`legion` 动作、`getState` 的 `situation:'legion'` 快照与指令选项；auto（`decideLegion` 启发式，给测试/模拟器）+ interactive 双模式，复用 `combatMode`。`GameState.activeLegionBattle` 序列化。
+- **编排** 蓝图 chapter `legionBattlePlan`（与 `combatPlan` 个人战并列）→ `buildPresetFromBlueprint` 编译；主将 `warfare` 属性从 digest 角色装配，`validateLegionBattle` 校验编制。
+- **平衡** `src/systems/legionSimulator.js`（核心）+ `scripts/legion-balance-check.mjs`（CLI）+ MCP `legion_simulate`：蒙特卡洛跑某场军团战，输出胜率/回合/损耗 + 标志。
+- **叙述** `narrate_legion_start` / `narrate_legion_result` 钩子（AIGMEngine + AIPromptBuilder）；`_sanitizeNarrative` 兜底清洗 Responses-API 偶发的 JSON 片段泄漏。
+- **个人战保留** 单挑/切磋/暗杀/逃脱仍走 `start_combat`（个人战）；剧本编排层决定某节点调哪套。
+- **下一步** 浏览器军团战对战面板 `LegionBattlePanel`（按 `CombatPanel.js` 范式）尚未做。
 
 ---
 

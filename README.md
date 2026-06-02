@@ -3,8 +3,8 @@
 > 基于 AI 的 TRPG 浏览器跑团游戏。AI 担任 Game Master，玩家通过卡牌、地图和文本交互推进冒险。
 
 [![CI](https://github.com/USERNAME/REPONAME/actions/workflows/ci.yml/badge.svg)](https://github.com/USERNAME/REPONAME/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-545%2F545-brightgreen)](./__tests__)
-[![MCP](https://img.shields.io/badge/mcp_tests-44%2F44-brightgreen)](./mcp-server)
+[![Tests](https://img.shields.io/badge/tests-598%2F598-brightgreen)](./__tests__)
+[![MCP](https://img.shields.io/badge/mcp_tests-45%2F45-brightgreen)](./mcp-server)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 支持完整的玩法闭环：探索 → 事件触发 → 战斗 → 角色成长 → 商店 → 主线推进，并配备完整的预设创作器，任何用户都能在浏览器中打造自己的故事。
@@ -22,12 +22,13 @@
 - **角色创建 4 轴** — race × origin × background × faith，玩家身份决定起始场景 + statBonus + AI 上下文
 - **NPC 系统** — schedule（按 storyTime 切换场景）/ affection / giftPreferences / 关系图（一级传播 + 死亡冲击）
 - **战斗深化** — buff/debuff/dot 持续状态 / AOE 多目标 / **Boss 阶段战 (phases)** / escape_combat 道具
+- **军团战争系统** — 与个人战平行的单位栈战术制：野战/攻城/守城/水战，兵力/兵种/粮草/士气，按战型限带投石车/攻城锤/弩车等器械，主将武力/统率/智力与阵法/战法影响阵型与战局（个人战仅保留给单挑/暗杀/逃脱）
 - **AI 参与度阶梯** — L0–L4 权限滑杆控制 AI GM 管多宽（L0 纯氛围 → L4 可改写剧情/结局），新游戏可选、游戏中可调、多人仅房主可调
 - **AI 叙事丰度可调** — 4 档 aiTier（none/light/standard/advanced）× preset.aiHooks 三态控制（always/never/optional）
 - **API 连通性测试** — 设置面板可直接发送极小探测请求（支持 `/chat/completions` 与 `/responses` 两种风格），显示成功/错误、模型、耗时和 token 用量
 - **跨周目元进度** — 按 presetId 隔离存档 + 图鉴 + 解锁项；3 个题材并存互不污染
 - **可视化场景编辑器** — 浏览器内编辑节点 / 出边 / 门控 / 事件挂载 / vignettes（无需写 JSON）
-- **MCP 服务器** — 暴露 **67 个工具**让 Claude 等 MCP 客户端批量、精细化生成 TRPG 剧本（参见 [mcp-server/README](mcp-server/README.md)），含**小说→预设三段确定性管线**（`novel_digest`→`blueprint_draft`→`preset_build_from_blueprint`）、战略层生成/审稿、`combat_simulate` Monte Carlo 数值平衡审计和生态位掉落烘焙
+- **MCP 服务器** — 暴露 **68 个工具**让 Claude 等 MCP 客户端批量、精细化生成 TRPG 剧本（参见 [mcp-server/README](mcp-server/README.md)），含**小说→预设三段确定性管线**（`novel_digest`→`blueprint_draft`→`preset_build_from_blueprint`，蓝图可编排个人战与军团战）、战略层生成/审稿、`combat_simulate` / `legion_simulate` Monte Carlo 数值平衡审计和生态位掉落烘焙
 - **AI GM 接地** — 通过结构化地图上下文 + JSON 响应格式 + Action 白名单校验，避免 AI 编造内容
 - **本地权威状态 + 相关性检索** — AI 调用前注入当前场景、变量、队伍、战斗、相关事件/物品/势力摘要；大剧本不依赖把全文塞进上下文
 - **快速旅行** — 只允许前往已探索且当前路径连通的场景；耗时、路途损耗、随机遭遇由代码结算，GM 仅负责结果叙事
@@ -154,11 +155,11 @@ docs/                 # 创作者手册 + AI 集成手册 + 接手指南
 
 ```bash
 npm test
-# 545 tests across 35 suites
+# 598 tests across 39 suites
 
 # MCP 工具端到端烟雾测试
 npm run test:mcp
-# 44 tests
+# 45 tests
 ```
 
 - Core: EventSystem / GameEngine / StateManager
@@ -182,10 +183,13 @@ npm run test:mcp
 ✅ **Phase 28**：生态位 → 掉落表 → 图像显式结构化、动态掉落、MCP 生态工具、AI 本地权威状态/相关性检索、快速旅行代码结算
 ✅ **Phase 29**：AI 参与度阶梯（L0–L4 权限模型）、L3 编剧 / L4 创世动作（校验+快照+可撤销）、设置/结算滑杆、多人房主独占调档
 ✅ **Phase 30**：小说→预设三段确定性管线（`novel_digest`→`blueprint_draft`→`preset_build_from_blueprint`，废弃旧 mega-emit）、Responses-API 支持
+✅ **Phase 31**：军团战争系统（单位栈战术制：野战/攻城/守城/水战 + 兵种克制/阵型/器械/粮草/士气/主将），管线可编排军团战，`legion_simulate` 平衡模拟器
+✅ **Phase 32**：三国题材剧本（手写 digest/blueprint，10 场军团战覆盖四种战型 + 4 场个人战，真 GM 玩测通过）
 
 🔮 后续可能方向：
+- 军团战浏览器对战面板（`LegionBattlePanel` UI）
+- 战役级大地图 / 连战元层（multi-battle campaign）
 - 编辑器加场景图可视化拖拽（节点 + 连线）
-- 三段管线在更多小说题材上验证、扩充蓝图设计与构建规则
 - 继续扩展像素素材库：更多地区、建筑状态、职业年龄变体、同类 NPC 多变体
 - 云存档同步（社区预设库）
 - 多语言（英文版预设）

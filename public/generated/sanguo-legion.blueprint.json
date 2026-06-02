@@ -1,0 +1,1125 @@
+{
+  "schemaVersion": 1,
+  "title": "三国演义·群雄逐鹿",
+  "logline": "汉室倾颓，群雄并起；自桃园结义至六出祁山，运筹于阵前，决胜于沙场。",
+  "tone": "历史·战争·群像",
+  "scale": {
+    "sizeClass": "large",
+    "sceneCount": 31,
+    "chapterCount": 15,
+    "enemyCount": 12,
+    "endingCount": 3
+  },
+  "scope": {
+    "includeBeatIds": [
+      "b_taoyuan",
+      "b_hulao",
+      "b_xiapi",
+      "b_guandu",
+      "b_sangu",
+      "b_bowang",
+      "b_changban",
+      "b_chibi",
+      "b_nanjun",
+      "b_hanzhong",
+      "b_fancheng",
+      "b_maicheng",
+      "b_yiling",
+      "b_nanman",
+      "b_jieting"
+    ],
+    "startBeatId": "b_taoyuan",
+    "endBeatId": "b_jieting",
+    "excludedBeatIds": [],
+    "note": "桃园结义至街亭，覆盖野战/水战/攻城/守城与单挑/突围。"
+  },
+  "characterMapping": [
+    {
+      "digestCharId": "liubei",
+      "gameRole": "protagonist",
+      "notes": ""
+    },
+    {
+      "digestCharId": "guanyu",
+      "gameRole": "companion",
+      "notes": ""
+    },
+    {
+      "digestCharId": "zhangfei",
+      "gameRole": "companion",
+      "notes": ""
+    },
+    {
+      "digestCharId": "zhaoyun",
+      "gameRole": "companion",
+      "notes": ""
+    },
+    {
+      "digestCharId": "zhugeliang",
+      "gameRole": "companion",
+      "notes": ""
+    },
+    {
+      "digestCharId": "huangzhong",
+      "gameRole": "companion",
+      "notes": ""
+    },
+    {
+      "digestCharId": "weiyan",
+      "gameRole": "companion",
+      "notes": ""
+    }
+  ],
+  "chapters": [
+    {
+      "id": "taoyuan",
+      "title": "桃园结义",
+      "fromBeatIds": [
+        "b_taoyuan"
+      ],
+      "hubScene": {
+        "name": "桃园结义",
+        "type": "wilderness"
+      },
+      "mainEvent": {
+        "title": "桃园三结义",
+        "summary": "刘关张义结金兰，誓共匡扶汉室。"
+      },
+      "combatPlan": [],
+      "legionBattlePlan": [],
+      "branchPoints": [
+        {
+          "prompt": "桃园三结义",
+          "options": [
+            {
+              "label": "即刻招募乡勇起兵",
+              "effectHint": ""
+            },
+            {
+              "label": "先观望天下大势",
+              "effectHint": ""
+            }
+          ]
+        }
+      ],
+      "sideContent": [
+        {
+          "type": "sidequest",
+          "name": "招募乡勇",
+          "summary": "在涿县募集义军。"
+        }
+      ]
+    },
+    {
+      "id": "hulao",
+      "title": "虎牢关·三英战吕布",
+      "fromBeatIds": [
+        "b_hulao"
+      ],
+      "hubScene": {
+        "name": "虎牢关·三英战吕布",
+        "type": "wilderness"
+      },
+      "mainEvent": {
+        "title": "会盟讨董",
+        "summary": "诸侯结盟，进逼虎牢关。"
+      },
+      "combatPlan": [
+        {
+          "enemyConcept": "吕布",
+          "ecology": {
+            "biome": "plains",
+            "creatureType": "humanoid",
+            "tier": "boss"
+          },
+          "count": 1
+        }
+      ],
+      "legionBattlePlan": [],
+      "branchPoints": [
+        {
+          "prompt": "会盟讨董",
+          "options": [
+            {
+              "label": "三兄弟合力上前迎战吕布",
+              "effectHint": ""
+            },
+            {
+              "label": "按兵不动以待战机",
+              "effectHint": ""
+            }
+          ]
+        }
+      ],
+      "sideContent": [
+        {
+          "type": "vignette",
+          "name": "辕门射戟",
+          "summary": "吕布辕门立戟，箭定纷争。"
+        }
+      ]
+    },
+    {
+      "id": "xiapi",
+      "title": "下邳·白门楼",
+      "fromBeatIds": [
+        "b_xiapi"
+      ],
+      "hubScene": {
+        "name": "下邳·白门楼",
+        "type": "wilderness"
+      },
+      "mainEvent": {
+        "title": "水淹下邳",
+        "summary": "决泗水灌城，困死吕布。"
+      },
+      "combatPlan": [
+        {
+          "enemyConcept": "白门楼·吕布殊死一搏",
+          "ecology": {
+            "biome": "plains",
+            "creatureType": "humanoid",
+            "tier": "boss"
+          },
+          "count": 1
+        }
+      ],
+      "legionBattlePlan": [
+        {
+          "name": "下邳攻城",
+          "battleType": "siege",
+          "summary": "决泗水灌城，困死吕布。",
+          "supply": {
+            "player": 160,
+            "enemy": 90
+          },
+          "ourForces": [
+            {
+              "unitType": "siege",
+              "troops": 1500,
+              "generalRef": "liubei",
+              "machines": [
+                "ram"
+              ]
+            },
+            {
+              "unitType": "siege",
+              "troops": 1500,
+              "generalRef": "guanyu",
+              "machines": [
+                "catapult"
+              ]
+            },
+            {
+              "unitType": "infantry",
+              "troops": 6000,
+              "generalRef": "zhangfei"
+            },
+            {
+              "unitType": "archer",
+              "troops": 2500,
+              "generalRef": "guanyu"
+            }
+          ],
+          "enemyForces": [
+            {
+              "unitType": "cavalry",
+              "troops": 4800,
+              "generalRef": "lvbu"
+            },
+            {
+              "unitType": "infantry",
+              "troops": 6500,
+              "generalRef": "lvbu"
+            }
+          ]
+        }
+      ],
+      "branchPoints": [
+        {
+          "prompt": "水淹下邳",
+          "options": [
+            {
+              "label": "强攻城门速战速决",
+              "effectHint": ""
+            },
+            {
+              "label": "断其粮道徐徐图之",
+              "effectHint": ""
+            }
+          ]
+        }
+      ],
+      "sideContent": []
+    },
+    {
+      "id": "guandu",
+      "title": "官渡之战",
+      "fromBeatIds": [
+        "b_guandu"
+      ],
+      "hubScene": {
+        "name": "官渡之战",
+        "type": "wilderness"
+      },
+      "mainEvent": {
+        "title": "官渡对峙",
+        "summary": "两军隔河相持，粮草成胜负之机。"
+      },
+      "combatPlan": [],
+      "legionBattlePlan": [
+        {
+          "name": "官渡会战",
+          "battleType": "field",
+          "summary": "两军隔河相持，粮草成胜负之机。",
+          "supply": {
+            "player": 120,
+            "enemy": 80
+          },
+          "ourForces": [
+            {
+              "unitType": "cavalry",
+              "troops": 5000,
+              "generalRef": "zhaoyun",
+              "formation": "fengshi"
+            },
+            {
+              "unitType": "infantry",
+              "troops": 8000,
+              "generalRef": "liubei",
+              "formation": "yulin"
+            },
+            {
+              "unitType": "archer",
+              "troops": 4000,
+              "generalRef": "liubei"
+            }
+          ],
+          "enemyForces": [
+            {
+              "unitType": "cavalry",
+              "troops": 4000,
+              "generalRef": "caocao"
+            },
+            {
+              "unitType": "infantry",
+              "troops": 6000,
+              "generalRef": "xiahoudun"
+            },
+            {
+              "unitType": "archer",
+              "troops": 3000,
+              "generalRef": "caocao"
+            }
+          ]
+        }
+      ],
+      "branchPoints": [
+        {
+          "prompt": "官渡对峙",
+          "options": [
+            {
+              "label": "奇袭乌巢断曹军粮道",
+              "effectHint": ""
+            },
+            {
+              "label": "正面列阵堂堂决战",
+              "effectHint": ""
+            }
+          ]
+        }
+      ],
+      "sideContent": []
+    },
+    {
+      "id": "sangu",
+      "title": "三顾茅庐",
+      "fromBeatIds": [
+        "b_sangu"
+      ],
+      "hubScene": {
+        "name": "三顾茅庐",
+        "type": "wilderness"
+      },
+      "mainEvent": {
+        "title": "隆中对策",
+        "summary": "诸葛亮分析天下三分之势。"
+      },
+      "combatPlan": [],
+      "legionBattlePlan": [],
+      "branchPoints": [
+        {
+          "prompt": "隆中对策",
+          "options": [
+            {
+              "label": "依隆中对先取荆益",
+              "effectHint": ""
+            },
+            {
+              "label": "急于北伐中原",
+              "effectHint": ""
+            }
+          ]
+        }
+      ],
+      "sideContent": [
+        {
+          "type": "sidequest",
+          "name": "隆中访贤",
+          "summary": "冒雪三访草庐。"
+        }
+      ]
+    },
+    {
+      "id": "bowang",
+      "title": "博望坡·新野",
+      "fromBeatIds": [
+        "b_bowang"
+      ],
+      "hubScene": {
+        "name": "博望坡·新野",
+        "type": "wilderness"
+      },
+      "mainEvent": {
+        "title": "初出茅庐",
+        "summary": "孔明设伏，诱敌深入。"
+      },
+      "combatPlan": [],
+      "legionBattlePlan": [
+        {
+          "name": "火烧博望坡",
+          "battleType": "field",
+          "summary": "孔明设伏，诱敌深入。",
+          "supply": {
+            "player": 90,
+            "enemy": 80
+          },
+          "ourForces": [
+            {
+              "unitType": "archer",
+              "troops": 3000,
+              "generalRef": "zhugeliang",
+              "formation": "yanxing"
+            },
+            {
+              "unitType": "cavalry",
+              "troops": 2500,
+              "generalRef": "zhaoyun",
+              "formation": "fengshi"
+            },
+            {
+              "unitType": "infantry",
+              "troops": 4000,
+              "generalRef": "zhangfei"
+            }
+          ],
+          "enemyForces": [
+            {
+              "unitType": "infantry",
+              "troops": 9500,
+              "generalRef": "xiahoudun"
+            },
+            {
+              "unitType": "cavalry",
+              "troops": 4500,
+              "generalRef": "xiahoudun"
+            }
+          ]
+        }
+      ],
+      "branchPoints": [
+        {
+          "prompt": "初出茅庐",
+          "options": [
+            {
+              "label": "依计火攻夏侯惇",
+              "effectHint": ""
+            },
+            {
+              "label": "正兵据守新野",
+              "effectHint": ""
+            }
+          ]
+        }
+      ],
+      "sideContent": []
+    },
+    {
+      "id": "changban",
+      "title": "长坂坡",
+      "fromBeatIds": [
+        "b_changban"
+      ],
+      "hubScene": {
+        "name": "长坂坡",
+        "type": "wilderness"
+      },
+      "mainEvent": {
+        "title": "当阳危局",
+        "summary": "百姓相随，曹军铁骑掩至。"
+      },
+      "combatPlan": [
+        {
+          "enemyConcept": "长坂坡曹军追兵（七进七出）",
+          "ecology": {
+            "biome": "plains",
+            "creatureType": "humanoid",
+            "tier": "elite"
+          },
+          "count": 3
+        }
+      ],
+      "legionBattlePlan": [],
+      "branchPoints": [
+        {
+          "prompt": "当阳危局",
+          "options": [
+            {
+              "label": "赵云杀回乱军救阿斗",
+              "effectHint": ""
+            },
+            {
+              "label": "张飞据桥断后",
+              "effectHint": ""
+            }
+          ]
+        }
+      ],
+      "sideContent": [
+        {
+          "type": "vignette",
+          "name": "当阳桥头",
+          "summary": "张飞一吼，水为之断流。"
+        }
+      ]
+    },
+    {
+      "id": "chibi",
+      "title": "赤壁之战",
+      "fromBeatIds": [
+        "b_chibi"
+      ],
+      "hubScene": {
+        "name": "赤壁之战",
+        "type": "wilderness"
+      },
+      "mainEvent": {
+        "title": "联吴抗曹",
+        "summary": "诸葛亮舌战群儒，定下火攻之策。"
+      },
+      "combatPlan": [],
+      "legionBattlePlan": [
+        {
+          "name": "火烧赤壁",
+          "battleType": "naval",
+          "summary": "诸葛亮舌战群儒，定下火攻之策。",
+          "supply": {
+            "player": 140,
+            "enemy": 120
+          },
+          "ourForces": [
+            {
+              "unitType": "navy",
+              "troops": 6000,
+              "generalRef": "zhouyu",
+              "machines": [
+                "mengchong",
+                "mengchong",
+                "towerShip"
+              ]
+            },
+            {
+              "unitType": "navy",
+              "troops": 4000,
+              "generalRef": "zhugeliang",
+              "machines": [
+                "mengchong"
+              ]
+            }
+          ],
+          "enemyForces": [
+            {
+              "unitType": "navy",
+              "troops": 9000,
+              "generalRef": "caocao",
+              "machines": [
+                "towerShip"
+              ]
+            },
+            {
+              "unitType": "infantry",
+              "troops": 6000,
+              "generalRef": "caocao"
+            }
+          ]
+        }
+      ],
+      "branchPoints": [
+        {
+          "prompt": "联吴抗曹",
+          "options": [
+            {
+              "label": "借东风纵火烧连环船",
+              "effectHint": ""
+            },
+            {
+              "label": "稳守待曹军自溃",
+              "effectHint": ""
+            }
+          ]
+        }
+      ],
+      "sideContent": [
+        {
+          "type": "vignette",
+          "name": "草船借箭",
+          "summary": "大雾漫江，借得十万雕翎。"
+        }
+      ]
+    },
+    {
+      "id": "nanjun",
+      "title": "取南郡·借荆州",
+      "fromBeatIds": [
+        "b_nanjun"
+      ],
+      "hubScene": {
+        "name": "取南郡·借荆州",
+        "type": "wilderness"
+      },
+      "mainEvent": {
+        "title": "智取南郡",
+        "summary": "诸葛亮三气周瑜，坐收荆州。"
+      },
+      "combatPlan": [],
+      "legionBattlePlan": [
+        {
+          "name": "南郡攻城",
+          "battleType": "siege",
+          "summary": "诸葛亮三气周瑜，坐收荆州。",
+          "supply": {
+            "player": 150,
+            "enemy": 100
+          },
+          "ourForces": [
+            {
+              "unitType": "siege",
+              "troops": 1800,
+              "generalRef": "zhaoyun",
+              "machines": [
+                "catapult",
+                "ram"
+              ]
+            },
+            {
+              "unitType": "infantry",
+              "troops": 6000,
+              "generalRef": "zhangfei"
+            },
+            {
+              "unitType": "archer",
+              "troops": 3000,
+              "generalRef": "guanyu"
+            }
+          ],
+          "enemyForces": [
+            {
+              "unitType": "spearman",
+              "troops": 5000,
+              "generalRef": "caocao"
+            },
+            {
+              "unitType": "archer",
+              "troops": 3000,
+              "generalRef": "caocao"
+            }
+          ]
+        }
+      ],
+      "branchPoints": [
+        {
+          "prompt": "智取南郡",
+          "options": [
+            {
+              "label": "趁势夺取南郡城",
+              "effectHint": ""
+            },
+            {
+              "label": "与东吴暂修盟好",
+              "effectHint": ""
+            }
+          ]
+        }
+      ],
+      "sideContent": []
+    },
+    {
+      "id": "hanzhong",
+      "title": "汉中之战·定军山",
+      "fromBeatIds": [
+        "b_hanzhong"
+      ],
+      "hubScene": {
+        "name": "汉中之战·定军山",
+        "type": "wilderness"
+      },
+      "mainEvent": {
+        "title": "决战定军山",
+        "summary": "法正献计，黄忠居高临下。"
+      },
+      "combatPlan": [],
+      "legionBattlePlan": [
+        {
+          "name": "定军山之战",
+          "battleType": "field",
+          "summary": "法正献计，黄忠居高临下。",
+          "supply": {
+            "player": 130,
+            "enemy": 90
+          },
+          "ourForces": [
+            {
+              "unitType": "cavalry",
+              "troops": 4000,
+              "generalRef": "huangzhong",
+              "formation": "fengshi"
+            },
+            {
+              "unitType": "infantry",
+              "troops": 7000,
+              "generalRef": "weiyan",
+              "formation": "yulin"
+            },
+            {
+              "unitType": "archer",
+              "troops": 3500,
+              "generalRef": "huangzhong"
+            }
+          ],
+          "enemyForces": [
+            {
+              "unitType": "cavalry",
+              "troops": 4000,
+              "generalRef": "xiahoudun"
+            },
+            {
+              "unitType": "infantry",
+              "troops": 6000,
+              "generalRef": "caocao"
+            },
+            {
+              "unitType": "archer",
+              "troops": 2500,
+              "generalRef": "caocao"
+            }
+          ]
+        }
+      ],
+      "branchPoints": [
+        {
+          "prompt": "决战定军山",
+          "options": [
+            {
+              "label": "黄忠抢占定军山势",
+              "effectHint": ""
+            },
+            {
+              "label": "据守阳平关消耗",
+              "effectHint": ""
+            }
+          ]
+        }
+      ],
+      "sideContent": []
+    },
+    {
+      "id": "fancheng",
+      "title": "水淹七军·围樊城",
+      "fromBeatIds": [
+        "b_fancheng"
+      ],
+      "hubScene": {
+        "name": "水淹七军·围樊城",
+        "type": "wilderness"
+      },
+      "mainEvent": {
+        "title": "水淹七军",
+        "summary": "关羽决堤灌军，进围樊城。"
+      },
+      "combatPlan": [],
+      "legionBattlePlan": [
+        {
+          "name": "围攻樊城",
+          "battleType": "siege",
+          "summary": "关羽决堤灌军，进围樊城。",
+          "supply": {
+            "player": 160,
+            "enemy": 70
+          },
+          "ourForces": [
+            {
+              "unitType": "siege",
+              "troops": 2000,
+              "generalRef": "guanyu",
+              "machines": [
+                "ram",
+                "catapult"
+              ]
+            },
+            {
+              "unitType": "infantry",
+              "troops": 8000,
+              "generalRef": "guanyu"
+            },
+            {
+              "unitType": "archer",
+              "troops": 4000,
+              "generalRef": "guanyu"
+            }
+          ],
+          "enemyForces": [
+            {
+              "unitType": "spearman",
+              "troops": 6500,
+              "generalRef": "zhangliao"
+            },
+            {
+              "unitType": "infantry",
+              "troops": 4000,
+              "generalRef": "zhangliao"
+            },
+            {
+              "unitType": "archer",
+              "troops": 4000,
+              "generalRef": "caocao"
+            }
+          ]
+        }
+      ],
+      "branchPoints": [
+        {
+          "prompt": "水淹七军",
+          "options": [
+            {
+              "label": "乘水势猛攻樊城",
+              "effectHint": ""
+            },
+            {
+              "label": "稳扎稳打围而后取",
+              "effectHint": ""
+            }
+          ]
+        }
+      ],
+      "sideContent": []
+    },
+    {
+      "id": "maicheng",
+      "title": "败走麦城",
+      "fromBeatIds": [
+        "b_maicheng"
+      ],
+      "hubScene": {
+        "name": "败走麦城",
+        "type": "wilderness"
+      },
+      "mainEvent": {
+        "title": "麦城突围",
+        "summary": "腹背受敌，关羽率残部突围。"
+      },
+      "combatPlan": [
+        {
+          "enemyConcept": "麦城吴军伏兵",
+          "ecology": {
+            "biome": "plains",
+            "creatureType": "humanoid",
+            "tier": "boss"
+          },
+          "count": 2
+        }
+      ],
+      "legionBattlePlan": [],
+      "branchPoints": [
+        {
+          "prompt": "麦城突围",
+          "options": [
+            {
+              "label": "率亲兵死战突围",
+              "effectHint": ""
+            },
+            {
+              "label": "固守待援",
+              "effectHint": ""
+            }
+          ]
+        }
+      ],
+      "sideContent": []
+    },
+    {
+      "id": "yiling",
+      "title": "夷陵之战",
+      "fromBeatIds": [
+        "b_yiling"
+      ],
+      "hubScene": {
+        "name": "夷陵之战",
+        "type": "wilderness"
+      },
+      "mainEvent": {
+        "title": "为弟复仇",
+        "summary": "刘备倾国之兵东征，连营七百里。"
+      },
+      "combatPlan": [],
+      "legionBattlePlan": [
+        {
+          "name": "夷陵·火烧连营",
+          "battleType": "field",
+          "summary": "刘备倾国之兵东征，连营七百里。",
+          "supply": {
+            "player": 110,
+            "enemy": 130
+          },
+          "ourForces": [
+            {
+              "unitType": "infantry",
+              "troops": 9000,
+              "generalRef": "liubei",
+              "formation": "changshe"
+            },
+            {
+              "unitType": "cavalry",
+              "troops": 3000,
+              "generalRef": "zhaoyun"
+            },
+            {
+              "unitType": "archer",
+              "troops": 3000,
+              "generalRef": "liubei"
+            }
+          ],
+          "enemyForces": [
+            {
+              "unitType": "navy",
+              "troops": 4000,
+              "generalRef": "luxun"
+            },
+            {
+              "unitType": "infantry",
+              "troops": 7000,
+              "generalRef": "luxun",
+              "formation": "fangyuan"
+            },
+            {
+              "unitType": "archer",
+              "troops": 3000,
+              "generalRef": "luxun"
+            }
+          ]
+        }
+      ],
+      "branchPoints": [
+        {
+          "prompt": "为弟复仇",
+          "options": [
+            {
+              "label": "依山林扎连营持久",
+              "effectHint": ""
+            },
+            {
+              "label": "集中兵力速取夷陵",
+              "effectHint": ""
+            }
+          ]
+        }
+      ],
+      "sideContent": []
+    },
+    {
+      "id": "nanman",
+      "title": "七擒孟获",
+      "fromBeatIds": [
+        "b_nanman"
+      ],
+      "hubScene": {
+        "name": "七擒孟获",
+        "type": "wilderness"
+      },
+      "mainEvent": {
+        "title": "深入不毛",
+        "summary": "诸葛亮平定南中，七擒七纵。"
+      },
+      "combatPlan": [],
+      "legionBattlePlan": [
+        {
+          "name": "南中之战",
+          "battleType": "field",
+          "summary": "诸葛亮平定南中，七擒七纵。",
+          "supply": {
+            "player": 120,
+            "enemy": 70
+          },
+          "ourForces": [
+            {
+              "unitType": "cavalry",
+              "troops": 4000,
+              "generalRef": "zhaoyun",
+              "formation": "fengshi"
+            },
+            {
+              "unitType": "infantry",
+              "troops": 6000,
+              "generalRef": "weiyan"
+            },
+            {
+              "unitType": "archer",
+              "troops": 3500,
+              "generalRef": "zhugeliang",
+              "formation": "yanxing"
+            }
+          ],
+          "enemyForces": [
+            {
+              "unitType": "infantry",
+              "troops": 9000,
+              "generalRef": "menghuo"
+            },
+            {
+              "unitType": "cavalry",
+              "troops": 4500,
+              "generalRef": "menghuo"
+            }
+          ]
+        }
+      ],
+      "branchPoints": [
+        {
+          "prompt": "深入不毛",
+          "options": [
+            {
+              "label": "以攻心之策七擒七纵",
+              "effectHint": ""
+            },
+            {
+              "label": "雷霆扫穴速定南中",
+              "effectHint": ""
+            }
+          ]
+        }
+      ],
+      "sideContent": []
+    },
+    {
+      "id": "jieting",
+      "title": "街亭之战",
+      "fromBeatIds": [
+        "b_jieting"
+      ],
+      "hubScene": {
+        "name": "街亭之战",
+        "type": "wilderness"
+      },
+      "mainEvent": {
+        "title": "北伐·街亭",
+        "summary": "街亭乃汉中咽喉，魏军张郃疾进。"
+      },
+      "combatPlan": [],
+      "legionBattlePlan": [
+        {
+          "name": "死守街亭",
+          "battleType": "defense",
+          "summary": "街亭乃汉中咽喉，魏军张郃疾进。",
+          "supply": {
+            "player": 200,
+            "enemy": 100
+          },
+          "ourForces": [
+            {
+              "unitType": "spearman",
+              "troops": 5000,
+              "generalRef": "masu",
+              "formation": "fangyuan"
+            },
+            {
+              "unitType": "archer",
+              "troops": 4000,
+              "generalRef": "masu",
+              "formation": "yanxing"
+            },
+            {
+              "unitType": "infantry",
+              "troops": 4000,
+              "generalRef": "weiyan"
+            }
+          ],
+          "enemyForces": [
+            {
+              "unitType": "cavalry",
+              "troops": 5000,
+              "generalRef": "simayi"
+            },
+            {
+              "unitType": "infantry",
+              "troops": 7000,
+              "generalRef": "simayi"
+            },
+            {
+              "unitType": "archer",
+              "troops": 3000,
+              "generalRef": "simayi"
+            }
+          ]
+        }
+      ],
+      "branchPoints": [
+        {
+          "prompt": "北伐·街亭",
+          "options": [
+            {
+              "label": "当道下寨据险死守",
+              "effectHint": ""
+            },
+            {
+              "label": "依山屯兵居高临下",
+              "effectHint": ""
+            }
+          ]
+        }
+      ],
+      "sideContent": [
+        {
+          "type": "vignette",
+          "name": "空城抚琴",
+          "summary": "孔明焚香操琴，退司马十五万兵。"
+        }
+      ]
+    }
+  ],
+  "endings": [
+    {
+      "id": "unify",
+      "name": "匡复汉室",
+      "condition": "历经百战，蜀汉得鼎天下",
+      "summary": "汉室三兴，海内归一。",
+      "tone": "雄浑"
+    },
+    {
+      "id": "three",
+      "name": "三分天下",
+      "condition": "魏蜀吴鼎足而立",
+      "summary": "天下三分，各据一方，征战不息。",
+      "tone": "苍凉"
+    },
+    {
+      "id": "fall",
+      "name": "出师未捷",
+      "condition": "壮志难酬",
+      "summary": "出师未捷身先死，长使英雄泪满襟。",
+      "tone": "悲壮"
+    }
+  ],
+  "expansionNotes": [
+    "军团战覆盖野战(官渡/博望/定军山/夷陵/南中)、水战(赤壁)、攻城(下邳/南郡/樊城)、守城(街亭)。",
+    "个人战覆盖单挑(三英战吕布/白门楼)、突围逃脱(长坂坡/麦城)。"
+  ]
+}

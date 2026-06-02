@@ -4,6 +4,48 @@
 
 ## [Unreleased]
 
+### Phase 32 — 三国题材剧本（军团战示范）⚔️🀄
+
+用 Phase 31 的军团战系统 + 小说→预设管线，手写 `NovelDigest`/`PresetBlueprint`（不调 LLM）确定性生成的三国剧本。
+
+**Added**
+- `scripts/generate-sanguo-preset.mjs` — 数据驱动手写三国 digest + blueprint（17 主将含武备、15 章节，覆盖桃园结义→街亭）。
+- `public/generated/sanguo-legion-preset.json`（段③确定性构建产物）+ 同名 `.digest.json` / `.blueprint.json`。
+- 规模：22 场景 / 30 事件 / 10 场军团战 + 4 场个人战，体检 **0 必修 / 全可达**。
+- 战型全覆盖：野战（官渡/博望坡/定军山/夷陵/南中）、水战（赤壁）、攻城（下邳/南郡/樊城）、守城（街亭）；个人战覆盖单挑（三英战吕布/白门楼）与突围（长坂坡/麦城）。
+
+**验证**
+- `legion_simulate` 平衡：刘备的胜仗高胜率、官渡/赤壁/南郡/定军山适中、**夷陵 42%（偏难）、街亭 16%（过难）正对应史上两场大败**。
+- hy3-preview 真 GM headless 玩测通过：个人战（三英战吕布 → 吕布被击败）与军团战（官渡野战展现列阵/突击/伏兵；赤壁水战展现火攻）均由真 GM 叙述、忠于史实并基于真实战况。
+
+**Fixed**
+- `AIGMEngine._sanitizeNarrative`：修复 Responses-API + 结构化输出偶发的 `narrative":"…` JSON 片段泄漏，兜底抠出真正叙事。
+
+### Phase 31 — 军团战争系统（单位栈战术制）⚔️
+
+与个人战（`CombatSystem`）完全平行、零耦合的另一套战斗：适用于野战/攻城/守城/水战，具备兵力/兵种/粮草/士气，按战型有限携带器械，主将属性/阵法/战法影响阵型与作战。个人战仅保留给单挑/切磋/暗杀/逃脱。
+
+**Added — 战争数据层**
+- `src/data/warfare.js`（纯数据+纯函数，runtime/MCP 共享）：
+  - 兵种表 `UNIT_TYPES`（步/骑/弓/枪/水军/器械兵）+ 克制矩阵 `COUNTER_MATRIX`（枪克骑、骑克弓…）
+  - 阵型 `FORMATIONS`（方圆/鱼鳞/锋矢/鹤翼/雁行…，按主将阵法等级 `requiresTactics` 解锁）
+  - 器械 `WAR_MACHINES`（投石车/攻城锤/弩车/楼船/蒙冲，按战型白名单+携带上限）
+  - 战型 `BATTLE_TYPES`（分区/胜负条件/允许器械）：野战歼灭、攻城破门、守城守满回合、水战控渡口
+  - 战法 `TACTICS`（突击/火攻/伏兵/鼓舞，成功率走主将智力/统率）
+  - 纯函数 `resolveAttack`/`moraleShift`/`resolveMachine`/`supplyDrain`/`checkVictory`/`validateLegionBattle`
+
+**Added — 战斗系统与接线**
+- `src/systems/LegionWarfareSystem.js`：单位栈战斗状态、回合循环、指令集（move/attack/set_formation/bombard/tactic/hold/retreat）、主将影响、粮草消耗、士气崩溃溃退、各战型胜负、auto(`decideLegion`)+interactive 双模式。
+- `GameSession`：事件效果 `start_legion_battle`、`legion` 动作、`getState` 的 `situation:'legion'` 快照与指令选项、`_autoResolveLegion`/`_advanceLegionToActor`/`submitLegionOrder`/`_endLegionBattle`，复用 `combatMode`。
+- `GameState.activeLegionBattle` 字段 + 序列化。
+- `AIGMEngine` + `AIPromptBuilder`：`narrate_legion_start` / `narrate_legion_result` 叙述钩子（开战气势 + 战果，基于真实战况）。
+
+**Added — 管线编排与平衡器**
+- 蓝图 chapter 新增 `legionBattlePlan`（与个人战 `combatPlan` 并列）；`buildPresetFromBlueprint` 编译为内联 `start_legion_battle` 事件（双方单位栈 + 主将武备从 digest 装配），并以 `validateLegionBattle` 校验编制（器械携带上限/兵种/阵型/主将引用）。角色携带 `warfare` 主将属性。
+- `src/systems/legionSimulator.js` + `scripts/legion-balance-check.mjs`（CLI）+ MCP `legion_simulate`：蒙特卡洛模拟某场军团战，输出我方胜率/平均回合/双方损耗 + 平衡标志。
+
+**Tests** — warfare 数据层 30、LegionWarfareSystem 10、RPC 集成 4、平衡模拟器 5、builder 军团战 1（MCP）、叙事清洗 4。
+
 ### Phase 30 — 小说 → 预设 三段确定性管线 📖→🎲
 
 废弃旧的「读全文自由发挥」式超大型剧本生成（效果不可控），改为 **概括 → 设计 → 确定性构建** 三段管线：把 LLM 的「自由发挥」风险隔离在前两段（产物可人工确认），第三段完全确定性、由成熟工具校验。

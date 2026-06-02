@@ -25,6 +25,9 @@ export class GameState {
     this.activeCombat = data.activeCombat || null;
     // 示例: { enemies: [...], turnOrder: [...], round: 1, currentActorIndex: 0 }
 
+    // 当前军团战状态（Phase 31，与 activeCombat 互斥；单位栈战术制）
+    this.activeLegionBattle = data.activeLegionBattle || null;
+
     // 当前活跃事件
     this.activeEvent = data.activeEvent || null;
 
@@ -247,6 +250,7 @@ export class GameState {
       currentPhase: this.currentPhase,
       activeCharacters: this.activeCharacters,
       activeCombat: this.activeCombat,
+      activeLegionBattle: this.activeLegionBattle,
       activeEvent: this.activeEvent,
       mapState: this.mapState,
       completedEventIds: this.completedEventIds,

@@ -22,6 +22,7 @@ import { CardManager } from '../systems/CardManager.js';
 import { DiceSystem } from '../systems/DiceSystem.js';
 import { MapSystem } from '../systems/MapSystem.js';
 import { CombatSystem } from '../systems/CombatSystem.js';
+import { LegionWarfareSystem } from '../systems/LegionWarfareSystem.js';
 import { TurnManager } from '../systems/TurnManager.js';
 import { AIGMEngine } from '../systems/AIGMEngine.js';
 import { EventTriggerEngine, TRIGGER_MOMENTS } from '../systems/EventTriggerEngine.js';
@@ -37,6 +38,7 @@ import { ContextRetriever } from '../systems/ContextRetriever.js';
 
 import { GamePreset } from '../models/GamePreset.js';
 import { GameState } from '../models/GameState.js';
+import { FORMATIONS, canUseFormation, generalHasTactic, TACTICS } from '../data/warfare.js';
 
 /** 默认战斗决策：有可用主动技能就用（集火最低血敌人），否则普攻 */
 function defaultDecideCombat(combatant, enemies) {
@@ -74,6 +76,7 @@ export class GameSession {
     this.engine.registerSystem(new DiceSystem(), 70);
     this.engine.registerSystem(new MapSystem(), 60);
     this.engine.registerSystem(new CombatSystem(), 50);
+    this.engine.registerSystem(new LegionWarfareSystem(), 49);
     this.engine.registerSystem(new TurnManager(), 40);
     this.engine.registerSystem(new AIGMEngine(), 30);
     this.engine.registerSystem(new EventTriggerEngine(), 35);
@@ -216,7 +219,7 @@ export class GameSession {
   }
 
   async _scanAfter(moment) {
-    if (this.gameState.activeCombat && moment !== TRIGGER_MOMENTS.COMBAT_END) return;
+    if ((this.gameState.activeCombat || this.gameState.activeLegionBattle) && moment !== TRIGGER_MOMENTS.COMBAT_END) return;
     const ids = this.sys('EventTriggerEngine').scan(this.gameState, { moment });
     if (ids.length > 0) await this._triggerEvent(ids[0]);
   }
@@ -263,6 +266,7 @@ export class GameSession {
 
     this._checkMainQuestComplete(card);
     if (this.gameState.activeCombat) await this._enterCombat();
+    if (this.gameState.activeLegionBattle) await this._enterLegionBattle();
     await this._scanAfter(TRIGGER_MOMENTS.EVENT_COMPLETE);
     return { ok: true, outcome };
   }
@@ -283,6 +287,7 @@ export class GameSession {
         break;
       }
       case 'start_combat': this._startCombat(eff.enemyIds || []); break;
+      case 'start_legion_battle': this._startLegionBattle(eff.battle || eff.battleDef || eff); break;
       case 'heal': {
         const targets = eff.target === 'all' ? gs.activeCharacters : [gs.activeCharacters[0]];
         for (const c of targets) if (c) c.stats.hpCurrent = Math.min(c.stats.hp, c.stats.hpCurrent + (eff.value || 0));
@@ -402,10 +407,11 @@ export class GameSession {
       if (candidates[0]) await this._triggerEvent(candidates[0].id);
     }
     // SCENE_ENTER 触发器（inScene 条件 / 概率遭遇）
-    if (!this.gameState.activeEvent && !this.gameState.activeCombat) {
+    if (!this.gameState.activeEvent && !this.gameState.activeCombat && !this.gameState.activeLegionBattle) {
       await this._scanAfter(TRIGGER_MOMENTS.SCENE_ENTER);
     }
     if (this.gameState.activeCombat) await this._enterCombat();
+    if (this.gameState.activeLegionBattle) await this._enterLegionBattle();
     return { ok: true };
   }
 
@@ -562,6 +568,122 @@ export class GameSession {
   }
 
   // ============================================================
+  // 军团战争（Phase 31）—— 与个人战平行的另一套战斗，单位栈战术制
+  // ============================================================
+  /** 从事件效果/预设装配一场军团战并交给 LegionWarfareSystem */
+  _startLegionBattle(battleDef) {
+    if (!battleDef || !Array.isArray(battleDef.units) || battleDef.units.length === 0) return;
+    const lw = this.sys('LegionWarfareSystem');
+    const cm = this.sys('CardManager');
+    // 装配主将信息（武备）：先用 battleDef.generals 内联，再从预设角色/NPC 卡补全
+    const generals = { ...(battleDef.generals || {}) };
+    for (const u of battleDef.units) {
+      if (u.generalId && !generals[u.generalId]) {
+        const card = cm ? cm.getCard(u.generalId) : null;
+        if (card) generals[u.generalId] = { name: card.name, warfare: card.warfare || null };
+      }
+    }
+    lw.startBattle(this.gameState, { ...battleDef, generals });
+  }
+
+  /** 军团战启动后的处理：开场叙述 + 按 combatMode 分派 */
+  async _enterLegionBattle() {
+    const b = this.gameState.activeLegionBattle;
+    if (b) {
+      const lw = this.sys('LegionWarfareSystem');
+      try {
+        await this.sys('AIGMEngine').processGameAction('narrate_legion_start', {
+          battleType: b.battleType,
+          battleTypeName: ({ field: '野战', siege: '攻城', defense: '守城', naval: '水战' })[b.battleType] || '大战',
+          objectiveName: b.objectiveName,
+          player: lw._sideSummary(this.gameState, 'player'),
+          enemy: lw._sideSummary(this.gameState, 'enemy'),
+        }, this.gameState);
+      } catch { /* */ }
+    }
+    if (this.combatMode === 'interactive') return this._advanceLegionToActor();
+    return this._autoResolveLegion();
+  }
+
+  /** 自动结算（auto 模式 / 脚本测试）：双方都用 decideLegion 启发式 */
+  async _autoResolveLegion() {
+    const lw = this.sys('LegionWarfareSystem');
+    let safety = 0;
+    while (this.gameState.activeLegionBattle && safety++ < 400) {
+      const actor = lw.getCurrentActor(this.gameState);
+      if (!actor || actor.troops <= 0) {
+        const r = lw.nextTurn(this.gameState);
+        if (r.battleEnd) { await this._endLegionBattle(r); return; }
+        continue;
+      }
+      const order = lw.decideLegion(this.gameState, actor);
+      const res = lw.executeOrder(this.gameState, actor.id, order);
+      if (res && res.narrative) this.gameState.addNarrative('system', res.narrative);
+      const r = lw.nextTurn(this.gameState);
+      if (r.battleEnd) { await this._endLegionBattle(r); return; }
+    }
+  }
+
+  /** 交互模式：自动跑敌方栈 / 跳过阵亡，直到轮到一支存活我方部队（暂停等指令），或战斗结束 */
+  async _advanceLegionToActor() {
+    const lw = this.sys('LegionWarfareSystem');
+    let safety = 0;
+    while (this.gameState.activeLegionBattle && safety++ < 400) {
+      const actor = lw.getCurrentActor(this.gameState);
+      if (!actor || actor.troops <= 0) {
+        const r = lw.nextTurn(this.gameState);
+        if (r.battleEnd) { await this._endLegionBattle(r); return; }
+        continue;
+      }
+      if (actor.side === 'enemy') {
+        const order = lw.decideLegion(this.gameState, actor);
+        const res = lw.executeOrder(this.gameState, actor.id, order);
+        if (res && res.narrative) this.gameState.addNarrative('system', res.narrative);
+        const r = lw.nextTurn(this.gameState);
+        if (r.battleEnd) { await this._endLegionBattle(r); return; }
+        continue;
+      }
+      return; // 轮到我方部队 → 暂停等指令
+    }
+  }
+
+  /** 交互模式：当前应下令的我方部队（无则 null） */
+  _currentLegionActor() {
+    const lw = this.sys('LegionWarfareSystem');
+    const actor = lw.getCurrentActor(this.gameState);
+    return (actor && actor.side === 'player' && actor.troops > 0) ? actor : null;
+  }
+
+  /** 交互模式：提交一条军团指令，推进到下一支我方部队或战斗结束 */
+  async submitLegionOrder(order) {
+    if (!this.gameState.activeLegionBattle) return { ok: false, reason: '当前不在军团战中' };
+    const actor = this._currentLegionActor();
+    if (!actor) return { ok: false, reason: '当前不是我方部队的回合' };
+    const lw = this.sys('LegionWarfareSystem');
+    const res = lw.executeOrder(this.gameState, actor.id, order || { type: 'attack' });
+    if (res && res.narrative) this.gameState.addNarrative('system', res.narrative);
+    const r = lw.nextTurn(this.gameState);
+    if (r.battleEnd) { await this._endLegionBattle(r); return { ok: true, battleEnd: true }; }
+    await this._advanceLegionToActor();
+    return { ok: true, battleEnd: !this.gameState.activeLegionBattle };
+  }
+
+  async _endLegionBattle(turnResult) {
+    const won = (turnResult.result || 'victory') === 'victory';
+    const s = turnResult.summary || {};
+    this.gameState.addNarrative('system', won
+      ? `⚔ 此役我军获胜！（歼敌约 ${s.enemyLosses ?? '?'}，我军折损约 ${s.playerLosses ?? '?'}）`
+      : `⚔ 此役我军败退。（我军折损约 ${s.playerLosses ?? '?'}）`);
+    try {
+      await this.sys('AIGMEngine').processGameAction('narrate_legion_result', { won, summary: s }, this.gameState);
+    } catch { /* */ }
+    await this._scanAfter(TRIGGER_MOMENTS.COMBAT_END);
+    if (!this.gameState.activeCombat && !this.gameState.activeLegionBattle && !this.gameState.activeEvent) {
+      await this._scanAfter(TRIGGER_MOMENTS.SCENE_ENTER);
+    }
+  }
+
+  // ============================================================
   // 物品 / 休整
   // ============================================================
   useItem(itemId, ownerCharId = null, targetCharId = null) {
@@ -616,6 +738,16 @@ export class GameSession {
           abilityId: action.abilityId,
         });
         break;
+      case 'legion':
+        // 交互式军团战：提交当前我方部队的一条指令，推进到下一支我方部队或战斗结束
+        await this.submitLegionOrder(action.order || {
+          type: action.orderType || 'attack',
+          targetId: action.targetId,
+          zone: action.zone,
+          formation: action.formation,
+          tacticKey: action.tacticKey,
+        });
+        break;
       case 'say':
         if (action.text) this.gameState.addNarrative('player', action.text);
         break;
@@ -659,7 +791,11 @@ export class GameSession {
     let event = null;
     let options = [];
     let combat = null;
-    if (gs.activeCombat) {
+    let legion = null;
+    if (gs.activeLegionBattle) {
+      situation = 'legion';
+      legion = this._buildLegionSnapshot(gs, options);
+    } else if (gs.activeCombat) {
       situation = 'combat';
       const c = gs.activeCombat;
       const livingEnemies = (c.enemies || []).filter(e => e.stats.hpCurrent > 0)
@@ -717,7 +853,8 @@ export class GameSession {
       scene: current ? { id: current.id, name: current.name, type: current.type, tags: current.tags || [] } : null,
       event,
       combat,
-      options: situation === 'combat' ? options : options.filter(o => o.type !== 'travel' || o.reachable),
+      legion,
+      options: (situation === 'combat' || situation === 'legion') ? options : options.filter(o => o.type !== 'travel' || o.reachable),
       party,
       usableItems,
       narrative,
@@ -730,6 +867,60 @@ export class GameSession {
         eventsTotal: this.preset?.events?.length || 0,
       },
     };
+  }
+
+  /** 构建军团战快照 + 交互模式下当前我方部队的可选指令（写入 options） */
+  _buildLegionSnapshot(gs, options) {
+    const b = gs.activeLegionBattle;
+    const lw = this.sys('LegionWarfareSystem');
+    const mapStack = (u) => ({
+      id: u.id, name: u.name, unitType: u.unitType, troops: u.troops,
+      morale: u.morale, zone: u.zone, formation: u.formation,
+      generalId: u.generalId || null, machines: u.machines || [],
+    });
+    const actor = this._currentLegionActor();
+    const snap = {
+      battleType: b.battleType,
+      objectiveName: b.objectiveName,
+      round: b.round,
+      zones: b.zones,
+      supply: b.supply,
+      works: b.works,
+      control: b.control,
+      player: b.units.filter(u => u.side === 'player' && u.troops > 0).map(mapStack),
+      enemy: b.units.filter(u => u.side === 'enemy' && u.troops > 0).map(mapStack),
+      currentActor: actor ? mapStack(actor) : null,
+      awaitingInput: !!actor,
+    };
+    // 仅交互模式 + 轮到我方部队时给出可选指令
+    if (actor && this.combatMode === 'interactive') {
+      let n = 0;
+      const targets = lw.attackableTargets(gs, actor);
+      for (const t of targets) {
+        options.push({ n: ++n, type: 'legion', orderType: 'attack', targetId: t.id, text: `进攻 ${t.name}（${t.troops}众）` });
+      }
+      // 列阵（仅主将阵法够格的）
+      const g = actor.generalId ? (b.generals[actor.generalId] || null) : null;
+      for (const fk of Object.keys(FORMATIONS)) {
+        if (fk === 'none' || fk === actor.formation) continue;
+        if (canUseFormation(g, fk)) {
+          options.push({ n: ++n, type: 'legion', orderType: 'set_formation', formation: fk, text: `列「${FORMATIONS[fk].name}」阵` });
+        }
+      }
+      // 器械轰击
+      if ((actor.machines || []).some(Boolean)) {
+        options.push({ n: ++n, type: 'legion', orderType: 'bombard', text: '器械轰击' });
+      }
+      // 战法
+      for (const tk of (g?.warfare?.abilities || [])) {
+        if (generalHasTactic(g, tk) && !b.tacticsUsed[`${actor.id}:${tk}`]) {
+          options.push({ n: ++n, type: 'legion', orderType: 'tactic', tacticKey: tk, targetId: targets[0]?.id, text: `战法「${TACTICS[tk]?.name || tk}」` });
+        }
+      }
+      options.push({ n: ++n, type: 'legion', orderType: 'hold', text: '据守不动' });
+      options.push({ n: ++n, type: 'legion', orderType: 'retreat', text: '撤退脱离' });
+    }
+    return snap;
   }
 
   isMainQuestComplete() { return !!this._mainQuestComplete; }

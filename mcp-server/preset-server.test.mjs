@@ -1006,6 +1006,76 @@ async function main() {
     } finally { await mock.close(); }
   });
 
+  await test('preset_build_from_blueprint 编排军团战：legionBattlePlan → start_legion_battle 事件', async () => {
+    const { validateLegionBattle } = await import('../src/data/warfare.js');
+    const digest = {
+      schemaVersion: 1, title: '三国·军团战测试', logline: '', themes: [], tone: 'history',
+      world: { name: '汉末', setting: '', gmStyle: '', factions: [{ id: 'wei', name: '魏' }, { id: 'shu', name: '蜀' }] },
+      characters: [
+        { id: 'liubei', name: '刘备', role: 'protagonist', warfare: { command: 80, might: 65, intellect: 75, tactics: 2, abilities: ['rally', 'charge'] } },
+        { id: 'caocao', name: '曹操', role: 'boss', warfare: { command: 95, might: 70, intellect: 92, tactics: 3, abilities: ['fire', 'ambush', 'rally'] } },
+      ],
+      locations: [], plotBeats: [{ id: 'b1', order: 1, title: '官渡', summary: '袁曹决战', type: 'battle' }], sourceMaterial: {},
+    };
+    const blueprint = {
+      schemaVersion: 1, title: '三国·军团战测试', tone: 'history',
+      scale: { sizeClass: 'small', sceneCount: 3, chapterCount: 1, enemyCount: 0, endingCount: 1 },
+      scope: { includeBeatIds: ['b1'], startBeatId: 'b1', endBeatId: 'b1', excludedBeatIds: [], note: '' },
+      characterMapping: [{ digestCharId: 'liubei', gameRole: 'protagonist' }],
+      chapters: [{
+        id: 'ch_guandu', title: '官渡之战', fromBeatIds: ['b1'],
+        hubScene: { name: '官渡前线', type: 'wilderness' },
+        mainEvent: { title: '两军对峙', summary: '袁曹两军隔河对峙于官渡。' },
+        combatPlan: [],
+        legionBattlePlan: [{
+          name: '官渡决战', battleType: 'field', summary: '决定北方归属的会战。',
+          supply: { player: 80, enemy: 60 },
+          ourForces: [
+            { unitType: 'infantry', troops: 5000, generalRef: 'liubei', formation: 'yulin' },
+            { unitType: 'archer', troops: 2000, generalRef: 'liubei' },
+          ],
+          enemyForces: [
+            { unitType: 'cavalry', troops: 4000, generalRef: 'caocao', machines: ['ballista', 'ballista'] },
+            { unitType: 'spearman', troops: 3000, generalRef: 'caocao' },
+          ],
+        }],
+        branchPoints: [], sideContent: [],
+      }],
+      endings: [{ id: 'win', name: '北方一统', condition: '胜', summary: '袁军溃败。', tone: '雄浑' }],
+    };
+    const digestPath = path.join(os.tmpdir(), `trpg-mcp-sg-digest-${Date.now()}.json`);
+    const bpPath = path.join(os.tmpdir(), `trpg-mcp-sg-bp-${Date.now()}.json`);
+    fs.writeFileSync(digestPath, JSON.stringify(digest));
+    fs.writeFileSync(bpPath, JSON.stringify(blueprint));
+
+    const r = JSON.parse(await client.call('preset_build_from_blueprint', { blueprintPath: bpPath, digestPath, assignImages: false, confirm: true }));
+    assert(r.validation === 'ok', `生成应通过引用校验，实际：${JSON.stringify(r.validation)}`);
+
+    const exported = JSON.parse(await client.call('preset_export'));
+    const legionEv = exported.events.find(e => (e.tags || []).includes('legion'));
+    assert(legionEv, '应生成军团战事件（tags 含 legion）');
+    const eff = legionEv.choices[0].outcomes[0].effects.find(x => x.type === 'start_legion_battle');
+    assert(eff && eff.battle, 'start_legion_battle 效果应内联整场战斗编制');
+    const battle = eff.battle;
+    assert(battle.battleType === 'field', '战型应为 field');
+    assert(battle.units.some(u => u.side === 'player') && battle.units.some(u => u.side === 'enemy'), '应含双方单位栈');
+    assert(battle.generals.liubei?.warfare && battle.generals.caocao?.warfare, '主将武备应从 digest 装配');
+    // 编制本身合法（器械携带上限/兵种/阵型/主将引用）
+    assert(validateLegionBattle(battle, Object.keys(battle.generals)).length === 0, '内联编制应通过 validateLegionBattle');
+    // 主角应带 warfare（主将属性）
+    assert(exported.characters.find(c => c.id === 'char_player')?.warfare, '主角应携带 warfare');
+
+    const an = await client.call('preset_analyze');
+    assert(/0 必修/.test(an), `analyze 应 0 必修，实际尾部：${an.slice(-160)}`);
+
+    // legion_simulate：对刚生成的军团战做平衡模拟，应给出胜率与标志
+    const sim = await client.call('legion_simulate', { runs: 200 });
+    assert(/胜率/.test(sim), `legion_simulate 应输出胜率，实际：${sim.slice(0, 120)}`);
+    assert(/官渡决战/.test(sim), 'legion_simulate 应覆盖到军团战事件');
+
+    fs.unlinkSync(digestPath); fs.unlinkSync(bpPath);
+  });
+
   // 战略层工具链：在"成熟管线产物形态"的 faction 型预设上验证（替代已删的 mega setup）。
   // fixture = 正常结构（factions + scene_start_<id> + startingOptions.origins），不依赖小说源。
   await test('strategic-layer 工具链（canonicalize/expand/strategic/review）在管线型 fixture 上工作', async () => {

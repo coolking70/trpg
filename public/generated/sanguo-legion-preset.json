@@ -1,0 +1,4017 @@
+{
+  "version": "1.0.0",
+  "presetId": "preset_mpvxf1s6",
+  "name": "三国演义·群雄逐鹿",
+  "author": "",
+  "createdAt": "2026-06-02T00:55:49.446Z",
+  "description": "",
+  "lore": {
+    "worldName": "汉末三国",
+    "era": "",
+    "background": "东汉末年，黄巾乱起，董卓乱政，群雄割据，终成魏蜀吴三分之势。",
+    "rules": "",
+    "gmStyle": "历史·战争·群像"
+  },
+  "characters": [
+    {
+      "id": "char_player",
+      "name": "刘备",
+      "title": "汉左将军",
+      "description": "仁德之主，矢志匡扶汉室。",
+      "stats": {
+        "hp": 120,
+        "hpCurrent": 120,
+        "mp": 30,
+        "mpCurrent": 30,
+        "attack": 12,
+        "defense": 6,
+        "speed": 10,
+        "luck": 1
+      },
+      "abilities": [
+        {
+          "id": "ability_strike",
+          "name": "强袭",
+          "type": "active",
+          "cost": {
+            "mp": 0
+          },
+          "effect": {
+            "damage": {
+              "formula": "attack+1d8"
+            }
+          },
+          "cooldown": 0
+        }
+      ],
+      "inventory": [],
+      "warfare": {
+        "command": 80,
+        "might": 70,
+        "intellect": 76,
+        "tactics": 2,
+        "abilities": [
+          "rally",
+          "charge"
+        ]
+      },
+      "image": "/assets/library/characters/npc-guard-young-male-01.png"
+    },
+    {
+      "id": "char_guanyu",
+      "name": "关羽",
+      "title": "汉寿亭侯",
+      "description": "义薄云天，万人之敌。",
+      "stats": {
+        "hp": 80,
+        "hpCurrent": 80,
+        "mp": 20,
+        "mpCurrent": 20,
+        "attack": 9,
+        "defense": 5,
+        "speed": 11,
+        "luck": 1
+      },
+      "abilities": [
+        {
+          "id": "ab_guanyu_slash",
+          "name": "斩击",
+          "type": "active",
+          "cost": {
+            "mp": 0
+          },
+          "effect": {
+            "damage": {
+              "formula": "attack+1d6"
+            }
+          },
+          "cooldown": 0
+        }
+      ],
+      "_isCompanion": true,
+      "warfare": {
+        "command": 90,
+        "might": 97,
+        "intellect": 75,
+        "tactics": 2,
+        "abilities": [
+          "charge",
+          "rally"
+        ]
+      },
+      "image": "/assets/library/characters/elf-female-rogue.png"
+    },
+    {
+      "id": "char_zhangfei",
+      "name": "张飞",
+      "title": "万夫不当",
+      "description": "当阳桥头一声吼，吓退曹兵百万。",
+      "stats": {
+        "hp": 80,
+        "hpCurrent": 80,
+        "mp": 20,
+        "mpCurrent": 20,
+        "attack": 9,
+        "defense": 5,
+        "speed": 11,
+        "luck": 1
+      },
+      "abilities": [
+        {
+          "id": "ab_zhangfei_slash",
+          "name": "斩击",
+          "type": "active",
+          "cost": {
+            "mp": 0
+          },
+          "effect": {
+            "damage": {
+              "formula": "attack+1d6"
+            }
+          },
+          "cooldown": 0
+        }
+      ],
+      "_isCompanion": true,
+      "warfare": {
+        "command": 80,
+        "might": 96,
+        "intellect": 48,
+        "tactics": 1,
+        "abilities": [
+          "charge"
+        ]
+      },
+      "image": "/assets/library/characters/human-male-warrior.png"
+    },
+    {
+      "id": "char_zhaoyun",
+      "name": "赵云",
+      "title": "常山赵子龙",
+      "description": "一身是胆，长坂坡七进七出。",
+      "stats": {
+        "hp": 80,
+        "hpCurrent": 80,
+        "mp": 20,
+        "mpCurrent": 20,
+        "attack": 9,
+        "defense": 5,
+        "speed": 11,
+        "luck": 1
+      },
+      "abilities": [
+        {
+          "id": "ab_zhaoyun_slash",
+          "name": "斩击",
+          "type": "active",
+          "cost": {
+            "mp": 0
+          },
+          "effect": {
+            "damage": {
+              "formula": "attack+1d6"
+            }
+          },
+          "cooldown": 0
+        }
+      ],
+      "_isCompanion": true,
+      "warfare": {
+        "command": 86,
+        "might": 95,
+        "intellect": 76,
+        "tactics": 2,
+        "abilities": [
+          "charge",
+          "ambush"
+        ]
+      },
+      "image": "/assets/library/characters/npc-noble-faceless-servant-01.png"
+    },
+    {
+      "id": "char_zhugeliang",
+      "name": "诸葛亮",
+      "title": "卧龙",
+      "description": "运筹帷幄，神机妙算。",
+      "stats": {
+        "hp": 80,
+        "hpCurrent": 80,
+        "mp": 20,
+        "mpCurrent": 20,
+        "attack": 9,
+        "defense": 5,
+        "speed": 11,
+        "luck": 1
+      },
+      "abilities": [
+        {
+          "id": "ab_zhugeliang_slash",
+          "name": "斩击",
+          "type": "active",
+          "cost": {
+            "mp": 0
+          },
+          "effect": {
+            "damage": {
+              "formula": "attack+1d6"
+            }
+          },
+          "cooldown": 0
+        }
+      ],
+      "_isCompanion": true,
+      "warfare": {
+        "command": 92,
+        "might": 42,
+        "intellect": 100,
+        "tactics": 3,
+        "abilities": [
+          "fire",
+          "ambush",
+          "rally"
+        ]
+      },
+      "image": "/assets/library/characters/npc-noble-male.png"
+    },
+    {
+      "id": "char_huangzhong",
+      "name": "黄忠",
+      "title": "老当益壮",
+      "description": "定军山斩夏侯渊。",
+      "stats": {
+        "hp": 80,
+        "hpCurrent": 80,
+        "mp": 20,
+        "mpCurrent": 20,
+        "attack": 9,
+        "defense": 5,
+        "speed": 11,
+        "luck": 1
+      },
+      "abilities": [
+        {
+          "id": "ab_huangzhong_slash",
+          "name": "斩击",
+          "type": "active",
+          "cost": {
+            "mp": 0
+          },
+          "effect": {
+            "damage": {
+              "formula": "attack+1d6"
+            }
+          },
+          "cooldown": 0
+        }
+      ],
+      "_isCompanion": true,
+      "warfare": {
+        "command": 82,
+        "might": 93,
+        "intellect": 62,
+        "tactics": 2,
+        "abilities": [
+          "charge"
+        ]
+      },
+      "image": "/assets/library/characters/npc-scholar-elder-scrollkeeper-01.png"
+    },
+    {
+      "id": "char_weiyan",
+      "name": "魏延",
+      "title": "镇远将军",
+      "description": "勇略兼备，性情孤高。",
+      "stats": {
+        "hp": 80,
+        "hpCurrent": 80,
+        "mp": 20,
+        "mpCurrent": 20,
+        "attack": 9,
+        "defense": 5,
+        "speed": 11,
+        "luck": 1
+      },
+      "abilities": [
+        {
+          "id": "ab_weiyan_slash",
+          "name": "斩击",
+          "type": "active",
+          "cost": {
+            "mp": 0
+          },
+          "effect": {
+            "damage": {
+              "formula": "attack+1d6"
+            }
+          },
+          "cooldown": 0
+        }
+      ],
+      "_isCompanion": true,
+      "warfare": {
+        "command": 80,
+        "might": 88,
+        "intellect": 62,
+        "tactics": 2,
+        "abilities": [
+          "charge",
+          "ambush"
+        ]
+      },
+      "image": "/assets/library/characters/npc-blacksmith.png"
+    }
+  ],
+  "enemies": [
+    {
+      "id": "enemy_hulao_1_1",
+      "name": "吕布",
+      "description": "",
+      "stats": {
+        "hp": 160,
+        "hpCurrent": 160,
+        "mp": 0,
+        "mpCurrent": 0,
+        "attack": 18,
+        "defense": 14,
+        "magicDefense": 8,
+        "speed": 8,
+        "luck": 1
+      },
+      "difficulty": "boss",
+      "tags": [
+        "enemy",
+        "boss"
+      ],
+      "ecology": {
+        "biome": "plains",
+        "creatureType": "humanoid",
+        "tier": "boss"
+      },
+      "lootMode": "static",
+      "lootTable": [
+        {
+          "itemId": "item_coin_pouch",
+          "dropRate": 0.85
+        },
+        {
+          "itemId": "item_healing_potion",
+          "dropRate": 0.6
+        }
+      ],
+      "image": "/assets/library/enemies/enemy-swamp-hydra-boss.png"
+    },
+    {
+      "id": "enemy_xiapi_1_1",
+      "name": "白门楼·吕布殊死一搏",
+      "description": "",
+      "stats": {
+        "hp": 160,
+        "hpCurrent": 160,
+        "mp": 0,
+        "mpCurrent": 0,
+        "attack": 18,
+        "defense": 14,
+        "magicDefense": 8,
+        "speed": 8,
+        "luck": 1
+      },
+      "difficulty": "boss",
+      "tags": [
+        "enemy",
+        "boss"
+      ],
+      "ecology": {
+        "biome": "plains",
+        "creatureType": "humanoid",
+        "tier": "boss"
+      },
+      "lootMode": "static",
+      "lootTable": [
+        {
+          "itemId": "item_coin_pouch",
+          "dropRate": 0.85
+        },
+        {
+          "itemId": "item_healing_potion",
+          "dropRate": 0.6
+        }
+      ],
+      "image": "/assets/library/enemies/enemy-sandworm-boss.png"
+    },
+    {
+      "id": "enemy_changban_1_1",
+      "name": "长坂坡曹军追兵（七进七出）",
+      "description": "",
+      "stats": {
+        "hp": 90,
+        "hpCurrent": 90,
+        "mp": 0,
+        "mpCurrent": 0,
+        "attack": 16,
+        "defense": 10,
+        "magicDefense": 6,
+        "speed": 8,
+        "luck": 1
+      },
+      "difficulty": "hard",
+      "tags": [
+        "enemy",
+        "elite"
+      ],
+      "ecology": {
+        "biome": "plains",
+        "creatureType": "humanoid",
+        "tier": "elite"
+      },
+      "lootMode": "static",
+      "lootTable": [
+        {
+          "itemId": "item_coin_pouch",
+          "dropRate": 0.7
+        },
+        {
+          "itemId": "item_healing_potion",
+          "dropRate": 0.45
+        }
+      ],
+      "image": "/assets/library/enemies/postapoc-super-mutant.png"
+    },
+    {
+      "id": "enemy_changban_1_2",
+      "name": "长坂坡曹军追兵（七进七出）",
+      "description": "",
+      "stats": {
+        "hp": 90,
+        "hpCurrent": 90,
+        "mp": 0,
+        "mpCurrent": 0,
+        "attack": 16,
+        "defense": 10,
+        "magicDefense": 6,
+        "speed": 8,
+        "luck": 1
+      },
+      "difficulty": "hard",
+      "tags": [
+        "enemy",
+        "elite"
+      ],
+      "ecology": {
+        "biome": "plains",
+        "creatureType": "humanoid",
+        "tier": "elite"
+      },
+      "lootMode": "static",
+      "lootTable": [
+        {
+          "itemId": "item_coin_pouch",
+          "dropRate": 0.7
+        },
+        {
+          "itemId": "item_healing_potion",
+          "dropRate": 0.45
+        }
+      ],
+      "image": "/assets/library/enemies/cyber-cyborg-tank.png"
+    },
+    {
+      "id": "enemy_maicheng_1_1",
+      "name": "麦城吴军伏兵",
+      "description": "",
+      "stats": {
+        "hp": 160,
+        "hpCurrent": 160,
+        "mp": 0,
+        "mpCurrent": 0,
+        "attack": 18,
+        "defense": 14,
+        "magicDefense": 8,
+        "speed": 8,
+        "luck": 1
+      },
+      "difficulty": "boss",
+      "tags": [
+        "enemy",
+        "boss"
+      ],
+      "ecology": {
+        "biome": "plains",
+        "creatureType": "humanoid",
+        "tier": "boss"
+      },
+      "lootMode": "static",
+      "lootTable": [
+        {
+          "itemId": "item_coin_pouch",
+          "dropRate": 0.85
+        },
+        {
+          "itemId": "item_healing_potion",
+          "dropRate": 0.6
+        }
+      ],
+      "image": "/assets/library/enemies/enemy-eye-horror-boss.png"
+    }
+  ],
+  "items": [
+    {
+      "id": "item_coin_pouch",
+      "type": "item",
+      "name": "Coin Pouch",
+      "description": "",
+      "itemType": "material",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": null,
+      "buyPrice": 0,
+      "sellPrice": 0,
+      "stackable": true,
+      "image": "/assets/library/items/coin-pouch.png",
+      "tags": [
+        "coin",
+        "gold",
+        "currency",
+        "pouch"
+      ]
+    },
+    {
+      "id": "item_healing_potion",
+      "type": "item",
+      "name": "Healing Potion",
+      "description": "",
+      "itemType": "consumable",
+      "equipSlot": null,
+      "statModifiers": {},
+      "consumeEffect": null,
+      "buyPrice": 0,
+      "sellPrice": 0,
+      "stackable": true,
+      "image": "/assets/library/items/healing-potion.png",
+      "tags": [
+        "heal",
+        "healing",
+        "hp",
+        "potion",
+        "red"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "ev_taoyuan_main",
+      "type": "event",
+      "name": "桃园三结义",
+      "description": "刘关张义结金兰，誓共匡扶汉室。",
+      "eventType": "story",
+      "inScene": [
+        "scene_taoyuan"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_taoyuan"
+          ],
+          "excludeCompletedEvents": [
+            "ev_taoyuan_main"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "repeatable": false,
+      "tags": [
+        "main"
+      ],
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "即刻招募乡勇起兵",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "taoyuan_choice_1",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "先观望天下大势",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "taoyuan_choice_2",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/postapoc-subway-camp.png"
+    },
+    {
+      "id": "ev_hulao_main",
+      "type": "event",
+      "name": "会盟讨董",
+      "description": "诸侯结盟，进逼虎牢关。",
+      "eventType": "story",
+      "inScene": [
+        "scene_hulao"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_hulao"
+          ],
+          "excludeCompletedEvents": [
+            "ev_hulao_main"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "repeatable": false,
+      "tags": [
+        "main"
+      ],
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "三兄弟合力上前迎战吕布",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "hulao_choice_1",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "按兵不动以待战机",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "hulao_choice_2",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/biome-mountain-pass-abandoned-dusk-clear.png"
+    },
+    {
+      "id": "ev_hulao_combat_1",
+      "type": "event",
+      "name": "遭遇：吕布",
+      "description": "吕布 拦住去路。",
+      "eventType": "encounter",
+      "inScene": [
+        "scene_hulao"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_hulao"
+          ],
+          "requireCompletedEvents": [
+            "ev_hulao_main"
+          ],
+          "excludeCompletedEvents": [
+            "ev_hulao_combat_1"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 90,
+      "repeatable": false,
+      "tags": [
+        "combat"
+      ],
+      "choices": [
+        {
+          "id": "fight",
+          "text": "应战",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_hulao_1_1"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/cyber-rooftop-chase.png"
+    },
+    {
+      "id": "ev_xiapi_main",
+      "type": "event",
+      "name": "水淹下邳",
+      "description": "决泗水灌城，困死吕布。",
+      "eventType": "story",
+      "inScene": [
+        "scene_xiapi"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_xiapi"
+          ],
+          "excludeCompletedEvents": [
+            "ev_xiapi_main"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "repeatable": false,
+      "tags": [
+        "main"
+      ],
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "强攻城门速战速决",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "xiapi_choice_1",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "断其粮道徐徐图之",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "xiapi_choice_2",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/biome-tunnel-repaired-night-clear.png"
+    },
+    {
+      "id": "ev_xiapi_combat_1",
+      "type": "event",
+      "name": "遭遇：白门楼·吕布殊死一搏",
+      "description": "白门楼·吕布殊死一搏 拦住去路。",
+      "eventType": "encounter",
+      "inScene": [
+        "scene_xiapi"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_xiapi"
+          ],
+          "requireCompletedEvents": [
+            "ev_xiapi_main"
+          ],
+          "excludeCompletedEvents": [
+            "ev_xiapi_combat_1"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 90,
+      "repeatable": false,
+      "tags": [
+        "combat"
+      ],
+      "choices": [
+        {
+          "id": "fight",
+          "text": "应战",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_xiapi_1_1"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/shadow-wolf-ambush.png"
+    },
+    {
+      "id": "ev_xiapi_legion_1",
+      "type": "event",
+      "name": "下邳攻城",
+      "description": "决泗水灌城，困死吕布。",
+      "eventType": "encounter",
+      "inScene": [
+        "scene_xiapi"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_xiapi"
+          ],
+          "requireCompletedEvents": [
+            "ev_xiapi_main"
+          ],
+          "excludeCompletedEvents": [
+            "ev_xiapi_legion_1"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 80,
+      "repeatable": false,
+      "tags": [
+        "legion",
+        "battle"
+      ],
+      "choices": [
+        {
+          "id": "engage",
+          "text": "挥军出战",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "start_legion_battle",
+                  "battle": {
+                    "battleType": "siege",
+                    "units": [
+                      {
+                        "id": "p_xiapi_1_1",
+                        "side": "player",
+                        "unitType": "siege",
+                        "troops": 1500,
+                        "machines": [
+                          "ram"
+                        ],
+                        "generalId": "liubei"
+                      },
+                      {
+                        "id": "p_xiapi_1_2",
+                        "side": "player",
+                        "unitType": "siege",
+                        "troops": 1500,
+                        "machines": [
+                          "catapult"
+                        ],
+                        "generalId": "guanyu"
+                      },
+                      {
+                        "id": "p_xiapi_1_3",
+                        "side": "player",
+                        "unitType": "infantry",
+                        "troops": 6000,
+                        "generalId": "zhangfei"
+                      },
+                      {
+                        "id": "p_xiapi_1_4",
+                        "side": "player",
+                        "unitType": "archer",
+                        "troops": 2500,
+                        "generalId": "guanyu"
+                      },
+                      {
+                        "id": "e_xiapi_1_1",
+                        "side": "enemy",
+                        "unitType": "cavalry",
+                        "troops": 4800,
+                        "generalId": "lvbu"
+                      },
+                      {
+                        "id": "e_xiapi_1_2",
+                        "side": "enemy",
+                        "unitType": "infantry",
+                        "troops": 6500,
+                        "generalId": "lvbu"
+                      }
+                    ],
+                    "generals": {
+                      "liubei": {
+                        "name": "刘备",
+                        "warfare": {
+                          "command": 80,
+                          "might": 70,
+                          "intellect": 76,
+                          "tactics": 2,
+                          "abilities": [
+                            "rally",
+                            "charge"
+                          ]
+                        }
+                      },
+                      "guanyu": {
+                        "name": "关羽",
+                        "warfare": {
+                          "command": 90,
+                          "might": 97,
+                          "intellect": 75,
+                          "tactics": 2,
+                          "abilities": [
+                            "charge",
+                            "rally"
+                          ]
+                        }
+                      },
+                      "zhangfei": {
+                        "name": "张飞",
+                        "warfare": {
+                          "command": 80,
+                          "might": 96,
+                          "intellect": 48,
+                          "tactics": 1,
+                          "abilities": [
+                            "charge"
+                          ]
+                        }
+                      },
+                      "lvbu": {
+                        "name": "吕布",
+                        "warfare": {
+                          "command": 75,
+                          "might": 100,
+                          "intellect": 55,
+                          "tactics": 1,
+                          "abilities": [
+                            "charge"
+                          ]
+                        }
+                      }
+                    },
+                    "supply": {
+                      "player": 160,
+                      "enemy": 90
+                    },
+                    "objectiveName": "下邳攻城"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/cyber-rooftop-chase.png"
+    },
+    {
+      "id": "ev_guandu_main",
+      "type": "event",
+      "name": "官渡对峙",
+      "description": "两军隔河相持，粮草成胜负之机。",
+      "eventType": "story",
+      "inScene": [
+        "scene_guandu"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_guandu"
+          ],
+          "excludeCompletedEvents": [
+            "ev_guandu_main"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "repeatable": false,
+      "tags": [
+        "main"
+      ],
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "奇袭乌巢断曹军粮道",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "guandu_choice_1",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "正面列阵堂堂决战",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "guandu_choice_2",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/state-bridge-construction-day-clear.png"
+    },
+    {
+      "id": "ev_guandu_legion_1",
+      "type": "event",
+      "name": "官渡会战",
+      "description": "两军隔河相持，粮草成胜负之机。",
+      "eventType": "encounter",
+      "inScene": [
+        "scene_guandu"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_guandu"
+          ],
+          "requireCompletedEvents": [
+            "ev_guandu_main"
+          ],
+          "excludeCompletedEvents": [
+            "ev_guandu_legion_1"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 80,
+      "repeatable": false,
+      "tags": [
+        "legion",
+        "battle"
+      ],
+      "choices": [
+        {
+          "id": "engage",
+          "text": "挥军出战",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "start_legion_battle",
+                  "battle": {
+                    "battleType": "field",
+                    "units": [
+                      {
+                        "id": "p_guandu_1_1",
+                        "side": "player",
+                        "unitType": "cavalry",
+                        "troops": 5000,
+                        "formation": "fengshi",
+                        "generalId": "zhaoyun"
+                      },
+                      {
+                        "id": "p_guandu_1_2",
+                        "side": "player",
+                        "unitType": "infantry",
+                        "troops": 8000,
+                        "formation": "yulin",
+                        "generalId": "liubei"
+                      },
+                      {
+                        "id": "p_guandu_1_3",
+                        "side": "player",
+                        "unitType": "archer",
+                        "troops": 4000,
+                        "generalId": "liubei"
+                      },
+                      {
+                        "id": "e_guandu_1_1",
+                        "side": "enemy",
+                        "unitType": "cavalry",
+                        "troops": 4000,
+                        "generalId": "caocao"
+                      },
+                      {
+                        "id": "e_guandu_1_2",
+                        "side": "enemy",
+                        "unitType": "infantry",
+                        "troops": 6000,
+                        "generalId": "xiahoudun"
+                      },
+                      {
+                        "id": "e_guandu_1_3",
+                        "side": "enemy",
+                        "unitType": "archer",
+                        "troops": 3000,
+                        "generalId": "caocao"
+                      }
+                    ],
+                    "generals": {
+                      "zhaoyun": {
+                        "name": "赵云",
+                        "warfare": {
+                          "command": 86,
+                          "might": 95,
+                          "intellect": 76,
+                          "tactics": 2,
+                          "abilities": [
+                            "charge",
+                            "ambush"
+                          ]
+                        }
+                      },
+                      "liubei": {
+                        "name": "刘备",
+                        "warfare": {
+                          "command": 80,
+                          "might": 70,
+                          "intellect": 76,
+                          "tactics": 2,
+                          "abilities": [
+                            "rally",
+                            "charge"
+                          ]
+                        }
+                      },
+                      "caocao": {
+                        "name": "曹操",
+                        "warfare": {
+                          "command": 96,
+                          "might": 72,
+                          "intellect": 91,
+                          "tactics": 3,
+                          "abilities": [
+                            "fire",
+                            "ambush",
+                            "rally"
+                          ]
+                        }
+                      },
+                      "xiahoudun": {
+                        "name": "夏侯惇",
+                        "warfare": {
+                          "command": 85,
+                          "might": 90,
+                          "intellect": 60,
+                          "tactics": 2,
+                          "abilities": [
+                            "charge"
+                          ]
+                        }
+                      }
+                    },
+                    "supply": {
+                      "player": 120,
+                      "enemy": 80
+                    },
+                    "objectiveName": "官渡会战"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/state-bridge-flooded-night-storm.png"
+    },
+    {
+      "id": "ev_sangu_main",
+      "type": "event",
+      "name": "隆中对策",
+      "description": "诸葛亮分析天下三分之势。",
+      "eventType": "story",
+      "inScene": [
+        "scene_sangu"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_sangu"
+          ],
+          "excludeCompletedEvents": [
+            "ev_sangu_main"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "repeatable": false,
+      "tags": [
+        "main"
+      ],
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "依隆中对先取荆益",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "sangu_choice_1",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "急于北伐中原",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "sangu_choice_2",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/state-forest-road-ruined-day-clear.png"
+    },
+    {
+      "id": "ev_bowang_main",
+      "type": "event",
+      "name": "初出茅庐",
+      "description": "孔明设伏，诱敌深入。",
+      "eventType": "story",
+      "inScene": [
+        "scene_bowang"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_bowang"
+          ],
+          "excludeCompletedEvents": [
+            "ev_bowang_main"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "repeatable": false,
+      "tags": [
+        "main"
+      ],
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "依计火攻夏侯惇",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "bowang_choice_1",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "正兵据守新野",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "bowang_choice_2",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/state-tavern-construction-day-clear.png"
+    },
+    {
+      "id": "ev_bowang_legion_1",
+      "type": "event",
+      "name": "火烧博望坡",
+      "description": "孔明设伏，诱敌深入。",
+      "eventType": "encounter",
+      "inScene": [
+        "scene_bowang"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_bowang"
+          ],
+          "requireCompletedEvents": [
+            "ev_bowang_main"
+          ],
+          "excludeCompletedEvents": [
+            "ev_bowang_legion_1"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 80,
+      "repeatable": false,
+      "tags": [
+        "legion",
+        "battle"
+      ],
+      "choices": [
+        {
+          "id": "engage",
+          "text": "挥军出战",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "start_legion_battle",
+                  "battle": {
+                    "battleType": "field",
+                    "units": [
+                      {
+                        "id": "p_bowang_1_1",
+                        "side": "player",
+                        "unitType": "archer",
+                        "troops": 3000,
+                        "formation": "yanxing",
+                        "generalId": "zhugeliang"
+                      },
+                      {
+                        "id": "p_bowang_1_2",
+                        "side": "player",
+                        "unitType": "cavalry",
+                        "troops": 2500,
+                        "formation": "fengshi",
+                        "generalId": "zhaoyun"
+                      },
+                      {
+                        "id": "p_bowang_1_3",
+                        "side": "player",
+                        "unitType": "infantry",
+                        "troops": 4000,
+                        "generalId": "zhangfei"
+                      },
+                      {
+                        "id": "e_bowang_1_1",
+                        "side": "enemy",
+                        "unitType": "infantry",
+                        "troops": 9500,
+                        "generalId": "xiahoudun"
+                      },
+                      {
+                        "id": "e_bowang_1_2",
+                        "side": "enemy",
+                        "unitType": "cavalry",
+                        "troops": 4500,
+                        "generalId": "xiahoudun"
+                      }
+                    ],
+                    "generals": {
+                      "zhugeliang": {
+                        "name": "诸葛亮",
+                        "warfare": {
+                          "command": 92,
+                          "might": 42,
+                          "intellect": 100,
+                          "tactics": 3,
+                          "abilities": [
+                            "fire",
+                            "ambush",
+                            "rally"
+                          ]
+                        }
+                      },
+                      "zhaoyun": {
+                        "name": "赵云",
+                        "warfare": {
+                          "command": 86,
+                          "might": 95,
+                          "intellect": 76,
+                          "tactics": 2,
+                          "abilities": [
+                            "charge",
+                            "ambush"
+                          ]
+                        }
+                      },
+                      "zhangfei": {
+                        "name": "张飞",
+                        "warfare": {
+                          "command": 80,
+                          "might": 96,
+                          "intellect": 48,
+                          "tactics": 1,
+                          "abilities": [
+                            "charge"
+                          ]
+                        }
+                      },
+                      "xiahoudun": {
+                        "name": "夏侯惇",
+                        "warfare": {
+                          "command": 85,
+                          "might": 90,
+                          "intellect": 60,
+                          "tactics": 2,
+                          "abilities": [
+                            "charge"
+                          ]
+                        }
+                      }
+                    },
+                    "supply": {
+                      "player": 90,
+                      "enemy": 80
+                    },
+                    "objectiveName": "火烧博望坡"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/cyber-rooftop-chase.png"
+    },
+    {
+      "id": "ev_changban_main",
+      "type": "event",
+      "name": "当阳危局",
+      "description": "百姓相随，曹军铁骑掩至。",
+      "eventType": "story",
+      "inScene": [
+        "scene_changban"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_changban"
+          ],
+          "excludeCompletedEvents": [
+            "ev_changban_main"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "repeatable": false,
+      "tags": [
+        "main"
+      ],
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "赵云杀回乱军救阿斗",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "changban_choice_1",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "张飞据桥断后",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "changban_choice_2",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/dawn-altar-epilogue.png"
+    },
+    {
+      "id": "ev_changban_combat_1",
+      "type": "event",
+      "name": "遭遇：长坂坡曹军追兵（七进七出）",
+      "description": "长坂坡曹军追兵（七进七出） 拦住去路。",
+      "eventType": "encounter",
+      "inScene": [
+        "scene_changban"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_changban"
+          ],
+          "requireCompletedEvents": [
+            "ev_changban_main"
+          ],
+          "excludeCompletedEvents": [
+            "ev_changban_combat_1"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 90,
+      "repeatable": false,
+      "tags": [
+        "combat"
+      ],
+      "choices": [
+        {
+          "id": "fight",
+          "text": "应战",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_changban_1_1",
+                    "enemy_changban_1_2"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/mechanical-scrapyard.png"
+    },
+    {
+      "id": "ev_chibi_main",
+      "type": "event",
+      "name": "联吴抗曹",
+      "description": "诸葛亮舌战群儒，定下火攻之策。",
+      "eventType": "story",
+      "inScene": [
+        "scene_chibi"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_chibi"
+          ],
+          "excludeCompletedEvents": [
+            "ev_chibi_main"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "repeatable": false,
+      "tags": [
+        "main"
+      ],
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "借东风纵火烧连环船",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "chibi_choice_1",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "稳守待曹军自溃",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "chibi_choice_2",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/dawn-altar-epilogue.png"
+    },
+    {
+      "id": "ev_chibi_legion_1",
+      "type": "event",
+      "name": "火烧赤壁",
+      "description": "诸葛亮舌战群儒，定下火攻之策。",
+      "eventType": "encounter",
+      "inScene": [
+        "scene_chibi"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_chibi"
+          ],
+          "requireCompletedEvents": [
+            "ev_chibi_main"
+          ],
+          "excludeCompletedEvents": [
+            "ev_chibi_legion_1"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 80,
+      "repeatable": false,
+      "tags": [
+        "legion",
+        "battle"
+      ],
+      "choices": [
+        {
+          "id": "engage",
+          "text": "挥军出战",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "start_legion_battle",
+                  "battle": {
+                    "battleType": "naval",
+                    "units": [
+                      {
+                        "id": "p_chibi_1_1",
+                        "side": "player",
+                        "unitType": "navy",
+                        "troops": 6000,
+                        "machines": [
+                          "mengchong",
+                          "mengchong",
+                          "towerShip"
+                        ],
+                        "generalId": "zhouyu"
+                      },
+                      {
+                        "id": "p_chibi_1_2",
+                        "side": "player",
+                        "unitType": "navy",
+                        "troops": 4000,
+                        "machines": [
+                          "mengchong"
+                        ],
+                        "generalId": "zhugeliang"
+                      },
+                      {
+                        "id": "e_chibi_1_1",
+                        "side": "enemy",
+                        "unitType": "navy",
+                        "troops": 9000,
+                        "machines": [
+                          "towerShip"
+                        ],
+                        "generalId": "caocao"
+                      },
+                      {
+                        "id": "e_chibi_1_2",
+                        "side": "enemy",
+                        "unitType": "infantry",
+                        "troops": 6000,
+                        "generalId": "caocao"
+                      }
+                    ],
+                    "generals": {
+                      "zhouyu": {
+                        "name": "周瑜",
+                        "warfare": {
+                          "command": 94,
+                          "might": 70,
+                          "intellect": 96,
+                          "tactics": 3,
+                          "abilities": [
+                            "fire",
+                            "ambush",
+                            "rally"
+                          ]
+                        }
+                      },
+                      "zhugeliang": {
+                        "name": "诸葛亮",
+                        "warfare": {
+                          "command": 92,
+                          "might": 42,
+                          "intellect": 100,
+                          "tactics": 3,
+                          "abilities": [
+                            "fire",
+                            "ambush",
+                            "rally"
+                          ]
+                        }
+                      },
+                      "caocao": {
+                        "name": "曹操",
+                        "warfare": {
+                          "command": 96,
+                          "might": 72,
+                          "intellect": 91,
+                          "tactics": 3,
+                          "abilities": [
+                            "fire",
+                            "ambush",
+                            "rally"
+                          ]
+                        }
+                      }
+                    },
+                    "supply": {
+                      "player": 140,
+                      "enemy": 120
+                    },
+                    "objectiveName": "火烧赤壁"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/cyber-rooftop-chase.png"
+    },
+    {
+      "id": "ev_nanjun_main",
+      "type": "event",
+      "name": "智取南郡",
+      "description": "诸葛亮三气周瑜，坐收荆州。",
+      "eventType": "story",
+      "inScene": [
+        "scene_nanjun"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_nanjun"
+          ],
+          "excludeCompletedEvents": [
+            "ev_nanjun_main"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "repeatable": false,
+      "tags": [
+        "main"
+      ],
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "趁势夺取南郡城",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "nanjun_choice_1",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "与东吴暂修盟好",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "nanjun_choice_2",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/state-temple-construction-day-clear.png"
+    },
+    {
+      "id": "ev_nanjun_legion_1",
+      "type": "event",
+      "name": "南郡攻城",
+      "description": "诸葛亮三气周瑜，坐收荆州。",
+      "eventType": "encounter",
+      "inScene": [
+        "scene_nanjun"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_nanjun"
+          ],
+          "requireCompletedEvents": [
+            "ev_nanjun_main"
+          ],
+          "excludeCompletedEvents": [
+            "ev_nanjun_legion_1"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 80,
+      "repeatable": false,
+      "tags": [
+        "legion",
+        "battle"
+      ],
+      "choices": [
+        {
+          "id": "engage",
+          "text": "挥军出战",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "start_legion_battle",
+                  "battle": {
+                    "battleType": "siege",
+                    "units": [
+                      {
+                        "id": "p_nanjun_1_1",
+                        "side": "player",
+                        "unitType": "siege",
+                        "troops": 1800,
+                        "machines": [
+                          "catapult",
+                          "ram"
+                        ],
+                        "generalId": "zhaoyun"
+                      },
+                      {
+                        "id": "p_nanjun_1_2",
+                        "side": "player",
+                        "unitType": "infantry",
+                        "troops": 6000,
+                        "generalId": "zhangfei"
+                      },
+                      {
+                        "id": "p_nanjun_1_3",
+                        "side": "player",
+                        "unitType": "archer",
+                        "troops": 3000,
+                        "generalId": "guanyu"
+                      },
+                      {
+                        "id": "e_nanjun_1_1",
+                        "side": "enemy",
+                        "unitType": "spearman",
+                        "troops": 5000,
+                        "generalId": "caocao"
+                      },
+                      {
+                        "id": "e_nanjun_1_2",
+                        "side": "enemy",
+                        "unitType": "archer",
+                        "troops": 3000,
+                        "generalId": "caocao"
+                      }
+                    ],
+                    "generals": {
+                      "zhaoyun": {
+                        "name": "赵云",
+                        "warfare": {
+                          "command": 86,
+                          "might": 95,
+                          "intellect": 76,
+                          "tactics": 2,
+                          "abilities": [
+                            "charge",
+                            "ambush"
+                          ]
+                        }
+                      },
+                      "zhangfei": {
+                        "name": "张飞",
+                        "warfare": {
+                          "command": 80,
+                          "might": 96,
+                          "intellect": 48,
+                          "tactics": 1,
+                          "abilities": [
+                            "charge"
+                          ]
+                        }
+                      },
+                      "guanyu": {
+                        "name": "关羽",
+                        "warfare": {
+                          "command": 90,
+                          "might": 97,
+                          "intellect": 75,
+                          "tactics": 2,
+                          "abilities": [
+                            "charge",
+                            "rally"
+                          ]
+                        }
+                      },
+                      "caocao": {
+                        "name": "曹操",
+                        "warfare": {
+                          "command": 96,
+                          "might": 72,
+                          "intellect": 91,
+                          "tactics": 3,
+                          "abilities": [
+                            "fire",
+                            "ambush",
+                            "rally"
+                          ]
+                        }
+                      }
+                    },
+                    "supply": {
+                      "player": 150,
+                      "enemy": 100
+                    },
+                    "objectiveName": "南郡攻城"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/postapoc-radiation-field.png"
+    },
+    {
+      "id": "ev_hanzhong_main",
+      "type": "event",
+      "name": "决战定军山",
+      "description": "法正献计，黄忠居高临下。",
+      "eventType": "story",
+      "inScene": [
+        "scene_hanzhong"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_hanzhong"
+          ],
+          "excludeCompletedEvents": [
+            "ev_hanzhong_main"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "repeatable": false,
+      "tags": [
+        "main"
+      ],
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "黄忠抢占定军山势",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "hanzhong_choice_1",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "据守阳平关消耗",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "hanzhong_choice_2",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/sandstone-canyon.png"
+    },
+    {
+      "id": "ev_hanzhong_legion_1",
+      "type": "event",
+      "name": "定军山之战",
+      "description": "法正献计，黄忠居高临下。",
+      "eventType": "encounter",
+      "inScene": [
+        "scene_hanzhong"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_hanzhong"
+          ],
+          "requireCompletedEvents": [
+            "ev_hanzhong_main"
+          ],
+          "excludeCompletedEvents": [
+            "ev_hanzhong_legion_1"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 80,
+      "repeatable": false,
+      "tags": [
+        "legion",
+        "battle"
+      ],
+      "choices": [
+        {
+          "id": "engage",
+          "text": "挥军出战",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "start_legion_battle",
+                  "battle": {
+                    "battleType": "field",
+                    "units": [
+                      {
+                        "id": "p_hanzhong_1_1",
+                        "side": "player",
+                        "unitType": "cavalry",
+                        "troops": 4000,
+                        "formation": "fengshi",
+                        "generalId": "huangzhong"
+                      },
+                      {
+                        "id": "p_hanzhong_1_2",
+                        "side": "player",
+                        "unitType": "infantry",
+                        "troops": 7000,
+                        "formation": "yulin",
+                        "generalId": "weiyan"
+                      },
+                      {
+                        "id": "p_hanzhong_1_3",
+                        "side": "player",
+                        "unitType": "archer",
+                        "troops": 3500,
+                        "generalId": "huangzhong"
+                      },
+                      {
+                        "id": "e_hanzhong_1_1",
+                        "side": "enemy",
+                        "unitType": "cavalry",
+                        "troops": 4000,
+                        "generalId": "xiahoudun"
+                      },
+                      {
+                        "id": "e_hanzhong_1_2",
+                        "side": "enemy",
+                        "unitType": "infantry",
+                        "troops": 6000,
+                        "generalId": "caocao"
+                      },
+                      {
+                        "id": "e_hanzhong_1_3",
+                        "side": "enemy",
+                        "unitType": "archer",
+                        "troops": 2500,
+                        "generalId": "caocao"
+                      }
+                    ],
+                    "generals": {
+                      "huangzhong": {
+                        "name": "黄忠",
+                        "warfare": {
+                          "command": 82,
+                          "might": 93,
+                          "intellect": 62,
+                          "tactics": 2,
+                          "abilities": [
+                            "charge"
+                          ]
+                        }
+                      },
+                      "weiyan": {
+                        "name": "魏延",
+                        "warfare": {
+                          "command": 80,
+                          "might": 88,
+                          "intellect": 62,
+                          "tactics": 2,
+                          "abilities": [
+                            "charge",
+                            "ambush"
+                          ]
+                        }
+                      },
+                      "xiahoudun": {
+                        "name": "夏侯惇",
+                        "warfare": {
+                          "command": 85,
+                          "might": 90,
+                          "intellect": 60,
+                          "tactics": 2,
+                          "abilities": [
+                            "charge"
+                          ]
+                        }
+                      },
+                      "caocao": {
+                        "name": "曹操",
+                        "warfare": {
+                          "command": 96,
+                          "might": 72,
+                          "intellect": 91,
+                          "tactics": 3,
+                          "abilities": [
+                            "fire",
+                            "ambush",
+                            "rally"
+                          ]
+                        }
+                      }
+                    },
+                    "supply": {
+                      "player": 130,
+                      "enemy": 90
+                    },
+                    "objectiveName": "定军山之战"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/cyber-rooftop-chase.png"
+    },
+    {
+      "id": "ev_fancheng_main",
+      "type": "event",
+      "name": "水淹七军",
+      "description": "关羽决堤灌军，进围樊城。",
+      "eventType": "story",
+      "inScene": [
+        "scene_fancheng"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_fancheng"
+          ],
+          "excludeCompletedEvents": [
+            "ev_fancheng_main"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "repeatable": false,
+      "tags": [
+        "main"
+      ],
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "乘水势猛攻樊城",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "fancheng_choice_1",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "稳扎稳打围而后取",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "fancheng_choice_2",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/state-camp-normal-day-clear.png"
+    },
+    {
+      "id": "ev_fancheng_legion_1",
+      "type": "event",
+      "name": "围攻樊城",
+      "description": "关羽决堤灌军，进围樊城。",
+      "eventType": "encounter",
+      "inScene": [
+        "scene_fancheng"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_fancheng"
+          ],
+          "requireCompletedEvents": [
+            "ev_fancheng_main"
+          ],
+          "excludeCompletedEvents": [
+            "ev_fancheng_legion_1"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 80,
+      "repeatable": false,
+      "tags": [
+        "legion",
+        "battle"
+      ],
+      "choices": [
+        {
+          "id": "engage",
+          "text": "挥军出战",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "start_legion_battle",
+                  "battle": {
+                    "battleType": "siege",
+                    "units": [
+                      {
+                        "id": "p_fancheng_1_1",
+                        "side": "player",
+                        "unitType": "siege",
+                        "troops": 2000,
+                        "machines": [
+                          "ram",
+                          "catapult"
+                        ],
+                        "generalId": "guanyu"
+                      },
+                      {
+                        "id": "p_fancheng_1_2",
+                        "side": "player",
+                        "unitType": "infantry",
+                        "troops": 8000,
+                        "generalId": "guanyu"
+                      },
+                      {
+                        "id": "p_fancheng_1_3",
+                        "side": "player",
+                        "unitType": "archer",
+                        "troops": 4000,
+                        "generalId": "guanyu"
+                      },
+                      {
+                        "id": "e_fancheng_1_1",
+                        "side": "enemy",
+                        "unitType": "spearman",
+                        "troops": 6500,
+                        "generalId": "zhangliao"
+                      },
+                      {
+                        "id": "e_fancheng_1_2",
+                        "side": "enemy",
+                        "unitType": "infantry",
+                        "troops": 4000,
+                        "generalId": "zhangliao"
+                      },
+                      {
+                        "id": "e_fancheng_1_3",
+                        "side": "enemy",
+                        "unitType": "archer",
+                        "troops": 4000,
+                        "generalId": "caocao"
+                      }
+                    ],
+                    "generals": {
+                      "guanyu": {
+                        "name": "关羽",
+                        "warfare": {
+                          "command": 90,
+                          "might": 97,
+                          "intellect": 75,
+                          "tactics": 2,
+                          "abilities": [
+                            "charge",
+                            "rally"
+                          ]
+                        }
+                      },
+                      "zhangliao": {
+                        "name": "张辽",
+                        "warfare": {
+                          "command": 90,
+                          "might": 92,
+                          "intellect": 78,
+                          "tactics": 2,
+                          "abilities": [
+                            "charge",
+                            "ambush"
+                          ]
+                        }
+                      },
+                      "caocao": {
+                        "name": "曹操",
+                        "warfare": {
+                          "command": 96,
+                          "might": 72,
+                          "intellect": 91,
+                          "tactics": 3,
+                          "abilities": [
+                            "fire",
+                            "ambush",
+                            "rally"
+                          ]
+                        }
+                      }
+                    },
+                    "supply": {
+                      "player": 160,
+                      "enemy": 70
+                    },
+                    "objectiveName": "围攻樊城"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/postapoc-radiation-field.png"
+    },
+    {
+      "id": "ev_maicheng_main",
+      "type": "event",
+      "name": "麦城突围",
+      "description": "腹背受敌，关羽率残部突围。",
+      "eventType": "story",
+      "inScene": [
+        "scene_maicheng"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_maicheng"
+          ],
+          "excludeCompletedEvents": [
+            "ev_maicheng_main"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "repeatable": false,
+      "tags": [
+        "main"
+      ],
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "率亲兵死战突围",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "maicheng_choice_1",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "固守待援",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "maicheng_choice_2",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/survivor-camp-ruins.png"
+    },
+    {
+      "id": "ev_maicheng_combat_1",
+      "type": "event",
+      "name": "遭遇：麦城吴军伏兵",
+      "description": "麦城吴军伏兵 拦住去路。",
+      "eventType": "encounter",
+      "inScene": [
+        "scene_maicheng"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_maicheng"
+          ],
+          "requireCompletedEvents": [
+            "ev_maicheng_main"
+          ],
+          "excludeCompletedEvents": [
+            "ev_maicheng_combat_1"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 90,
+      "repeatable": false,
+      "tags": [
+        "combat"
+      ],
+      "choices": [
+        {
+          "id": "fight",
+          "text": "应战",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "start_combat",
+                  "enemyIds": [
+                    "enemy_maicheng_1_1"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/mechanical-scrapyard.png"
+    },
+    {
+      "id": "ev_yiling_main",
+      "type": "event",
+      "name": "为弟复仇",
+      "description": "刘备倾国之兵东征，连营七百里。",
+      "eventType": "story",
+      "inScene": [
+        "scene_yiling"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_yiling"
+          ],
+          "excludeCompletedEvents": [
+            "ev_yiling_main"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "repeatable": false,
+      "tags": [
+        "main"
+      ],
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "依山林扎连营持久",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "yiling_choice_1",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "集中兵力速取夷陵",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "yiling_choice_2",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/state-forest-road-normal-morning-snow.png"
+    },
+    {
+      "id": "ev_yiling_legion_1",
+      "type": "event",
+      "name": "夷陵·火烧连营",
+      "description": "刘备倾国之兵东征，连营七百里。",
+      "eventType": "encounter",
+      "inScene": [
+        "scene_yiling"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_yiling"
+          ],
+          "requireCompletedEvents": [
+            "ev_yiling_main"
+          ],
+          "excludeCompletedEvents": [
+            "ev_yiling_legion_1"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 80,
+      "repeatable": false,
+      "tags": [
+        "legion",
+        "battle"
+      ],
+      "choices": [
+        {
+          "id": "engage",
+          "text": "挥军出战",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "start_legion_battle",
+                  "battle": {
+                    "battleType": "field",
+                    "units": [
+                      {
+                        "id": "p_yiling_1_1",
+                        "side": "player",
+                        "unitType": "infantry",
+                        "troops": 9000,
+                        "formation": "changshe",
+                        "generalId": "liubei"
+                      },
+                      {
+                        "id": "p_yiling_1_2",
+                        "side": "player",
+                        "unitType": "cavalry",
+                        "troops": 3000,
+                        "generalId": "zhaoyun"
+                      },
+                      {
+                        "id": "p_yiling_1_3",
+                        "side": "player",
+                        "unitType": "archer",
+                        "troops": 3000,
+                        "generalId": "liubei"
+                      },
+                      {
+                        "id": "e_yiling_1_1",
+                        "side": "enemy",
+                        "unitType": "navy",
+                        "troops": 4000,
+                        "generalId": "luxun"
+                      },
+                      {
+                        "id": "e_yiling_1_2",
+                        "side": "enemy",
+                        "unitType": "infantry",
+                        "troops": 7000,
+                        "formation": "fangyuan",
+                        "generalId": "luxun"
+                      },
+                      {
+                        "id": "e_yiling_1_3",
+                        "side": "enemy",
+                        "unitType": "archer",
+                        "troops": 3000,
+                        "generalId": "luxun"
+                      }
+                    ],
+                    "generals": {
+                      "liubei": {
+                        "name": "刘备",
+                        "warfare": {
+                          "command": 80,
+                          "might": 70,
+                          "intellect": 76,
+                          "tactics": 2,
+                          "abilities": [
+                            "rally",
+                            "charge"
+                          ]
+                        }
+                      },
+                      "zhaoyun": {
+                        "name": "赵云",
+                        "warfare": {
+                          "command": 86,
+                          "might": 95,
+                          "intellect": 76,
+                          "tactics": 2,
+                          "abilities": [
+                            "charge",
+                            "ambush"
+                          ]
+                        }
+                      },
+                      "luxun": {
+                        "name": "陆逊",
+                        "warfare": {
+                          "command": 90,
+                          "might": 60,
+                          "intellect": 95,
+                          "tactics": 3,
+                          "abilities": [
+                            "fire",
+                            "ambush",
+                            "rally"
+                          ]
+                        }
+                      }
+                    },
+                    "supply": {
+                      "player": 110,
+                      "enemy": 130
+                    },
+                    "objectiveName": "夷陵·火烧连营"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/cyber-rooftop-chase.png"
+    },
+    {
+      "id": "ev_nanman_main",
+      "type": "event",
+      "name": "深入不毛",
+      "description": "诸葛亮平定南中，七擒七纵。",
+      "eventType": "story",
+      "inScene": [
+        "scene_nanman"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_nanman"
+          ],
+          "excludeCompletedEvents": [
+            "ev_nanman_main"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "repeatable": false,
+      "tags": [
+        "main"
+      ],
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "以攻心之策七擒七纵",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "nanman_choice_1",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "雷霆扫穴速定南中",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "nanman_choice_2",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/state-cave-normal-day-clear.png"
+    },
+    {
+      "id": "ev_nanman_legion_1",
+      "type": "event",
+      "name": "南中之战",
+      "description": "诸葛亮平定南中，七擒七纵。",
+      "eventType": "encounter",
+      "inScene": [
+        "scene_nanman"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_nanman"
+          ],
+          "requireCompletedEvents": [
+            "ev_nanman_main"
+          ],
+          "excludeCompletedEvents": [
+            "ev_nanman_legion_1"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 80,
+      "repeatable": false,
+      "tags": [
+        "legion",
+        "battle"
+      ],
+      "choices": [
+        {
+          "id": "engage",
+          "text": "挥军出战",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "start_legion_battle",
+                  "battle": {
+                    "battleType": "field",
+                    "units": [
+                      {
+                        "id": "p_nanman_1_1",
+                        "side": "player",
+                        "unitType": "cavalry",
+                        "troops": 4000,
+                        "formation": "fengshi",
+                        "generalId": "zhaoyun"
+                      },
+                      {
+                        "id": "p_nanman_1_2",
+                        "side": "player",
+                        "unitType": "infantry",
+                        "troops": 6000,
+                        "generalId": "weiyan"
+                      },
+                      {
+                        "id": "p_nanman_1_3",
+                        "side": "player",
+                        "unitType": "archer",
+                        "troops": 3500,
+                        "formation": "yanxing",
+                        "generalId": "zhugeliang"
+                      },
+                      {
+                        "id": "e_nanman_1_1",
+                        "side": "enemy",
+                        "unitType": "infantry",
+                        "troops": 9000,
+                        "generalId": "menghuo"
+                      },
+                      {
+                        "id": "e_nanman_1_2",
+                        "side": "enemy",
+                        "unitType": "cavalry",
+                        "troops": 4500,
+                        "generalId": "menghuo"
+                      }
+                    ],
+                    "generals": {
+                      "zhaoyun": {
+                        "name": "赵云",
+                        "warfare": {
+                          "command": 86,
+                          "might": 95,
+                          "intellect": 76,
+                          "tactics": 2,
+                          "abilities": [
+                            "charge",
+                            "ambush"
+                          ]
+                        }
+                      },
+                      "weiyan": {
+                        "name": "魏延",
+                        "warfare": {
+                          "command": 80,
+                          "might": 88,
+                          "intellect": 62,
+                          "tactics": 2,
+                          "abilities": [
+                            "charge",
+                            "ambush"
+                          ]
+                        }
+                      },
+                      "zhugeliang": {
+                        "name": "诸葛亮",
+                        "warfare": {
+                          "command": 92,
+                          "might": 42,
+                          "intellect": 100,
+                          "tactics": 3,
+                          "abilities": [
+                            "fire",
+                            "ambush",
+                            "rally"
+                          ]
+                        }
+                      },
+                      "menghuo": {
+                        "name": "孟获",
+                        "warfare": {
+                          "command": 70,
+                          "might": 82,
+                          "intellect": 46,
+                          "tactics": 1,
+                          "abilities": [
+                            "charge"
+                          ]
+                        }
+                      }
+                    },
+                    "supply": {
+                      "player": 120,
+                      "enemy": 70
+                    },
+                    "objectiveName": "南中之战"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/cyber-rooftop-chase.png"
+    },
+    {
+      "id": "ev_jieting_main",
+      "type": "event",
+      "name": "北伐·街亭",
+      "description": "街亭乃汉中咽喉，魏军张郃疾进。",
+      "eventType": "story",
+      "inScene": [
+        "scene_jieting"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_jieting"
+          ],
+          "excludeCompletedEvents": [
+            "ev_jieting_main"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "repeatable": false,
+      "tags": [
+        "main"
+      ],
+      "choices": [
+        {
+          "id": "choice_1",
+          "text": "当道下寨据险死守",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "jieting_choice_1",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "choice_2",
+          "text": "依山屯兵居高临下",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "jieting_choice_2",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/state-gate-normal-day-clear.png"
+    },
+    {
+      "id": "ev_jieting_legion_1",
+      "type": "event",
+      "name": "死守街亭",
+      "description": "街亭乃汉中咽喉，魏军张郃疾进。",
+      "eventType": "encounter",
+      "inScene": [
+        "scene_jieting"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_jieting"
+          ],
+          "requireCompletedEvents": [
+            "ev_jieting_main"
+          ],
+          "excludeCompletedEvents": [
+            "ev_jieting_legion_1"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 80,
+      "repeatable": false,
+      "tags": [
+        "legion",
+        "battle"
+      ],
+      "choices": [
+        {
+          "id": "engage",
+          "text": "挥军出战",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "",
+              "effects": [
+                {
+                  "type": "start_legion_battle",
+                  "battle": {
+                    "battleType": "defense",
+                    "units": [
+                      {
+                        "id": "p_jieting_1_1",
+                        "side": "player",
+                        "unitType": "spearman",
+                        "troops": 5000,
+                        "formation": "fangyuan",
+                        "generalId": "masu"
+                      },
+                      {
+                        "id": "p_jieting_1_2",
+                        "side": "player",
+                        "unitType": "archer",
+                        "troops": 4000,
+                        "formation": "yanxing",
+                        "generalId": "masu"
+                      },
+                      {
+                        "id": "p_jieting_1_3",
+                        "side": "player",
+                        "unitType": "infantry",
+                        "troops": 4000,
+                        "generalId": "weiyan"
+                      },
+                      {
+                        "id": "e_jieting_1_1",
+                        "side": "enemy",
+                        "unitType": "cavalry",
+                        "troops": 5000,
+                        "generalId": "simayi"
+                      },
+                      {
+                        "id": "e_jieting_1_2",
+                        "side": "enemy",
+                        "unitType": "infantry",
+                        "troops": 7000,
+                        "generalId": "simayi"
+                      },
+                      {
+                        "id": "e_jieting_1_3",
+                        "side": "enemy",
+                        "unitType": "archer",
+                        "troops": 3000,
+                        "generalId": "simayi"
+                      }
+                    ],
+                    "generals": {
+                      "masu": {
+                        "name": "马谡",
+                        "warfare": {
+                          "command": 64,
+                          "might": 50,
+                          "intellect": 72,
+                          "tactics": 1,
+                          "abilities": [
+                            "rally"
+                          ]
+                        }
+                      },
+                      "weiyan": {
+                        "name": "魏延",
+                        "warfare": {
+                          "command": 80,
+                          "might": 88,
+                          "intellect": 62,
+                          "tactics": 2,
+                          "abilities": [
+                            "charge",
+                            "ambush"
+                          ]
+                        }
+                      },
+                      "simayi": {
+                        "name": "司马懿",
+                        "warfare": {
+                          "command": 92,
+                          "might": 65,
+                          "intellect": 98,
+                          "tactics": 3,
+                          "abilities": [
+                            "fire",
+                            "ambush",
+                            "rally"
+                          ]
+                        }
+                      }
+                    },
+                    "supply": {
+                      "player": 200,
+                      "enemy": 100
+                    },
+                    "objectiveName": "死守街亭"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/postapoc-radiation-field.png"
+    },
+    {
+      "id": "ev_finale",
+      "type": "event",
+      "name": "结局判定",
+      "description": "你的旅程在此抵达终点。",
+      "eventType": "story",
+      "inScene": [
+        "scene_finale"
+      ],
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_finale"
+          ],
+          "excludeCompletedEvents": [
+            "ev_finale"
+          ],
+          "probability": 1
+        }
+      },
+      "priority": 100,
+      "repeatable": false,
+      "tags": [
+        "ending",
+        "main"
+      ],
+      "choices": [
+        {
+          "id": "unify",
+          "text": "匡复汉室",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "汉室三兴，海内归一。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "game_complete",
+                  "value": true
+                },
+                {
+                  "type": "set_variable",
+                  "target": "ending_unify",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "three",
+          "text": "三分天下",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "天下三分，各据一方，征战不息。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "game_complete",
+                  "value": true
+                },
+                {
+                  "type": "set_variable",
+                  "target": "ending_three",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fall",
+          "text": "出师未捷",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "出师未捷身先死，长使英雄泪满襟。",
+              "effects": [
+                {
+                  "type": "set_variable",
+                  "target": "game_complete",
+                  "value": true
+                },
+                {
+                  "type": "set_variable",
+                  "target": "ending_fall",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "image": "/assets/library/scenes/dawn-altar-epilogue.png"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "scene_taoyuan",
+      "name": "桃园结义",
+      "type": "wilderness",
+      "icon": "🏛",
+      "coords": {
+        "x": 0,
+        "y": 0
+      },
+      "tags": [
+        "main",
+        "spawn"
+      ],
+      "description": "刘关张义结金兰，誓共匡扶汉室。",
+      "connections": [
+        {
+          "to": "scene_taoyuan_side1",
+          "label": "前往 招募乡勇"
+        },
+        {
+          "to": "scene_hulao",
+          "label": "前往 虎牢关·三英战吕布"
+        }
+      ],
+      "events": [
+        "ev_taoyuan_main"
+      ],
+      "vignettes": [],
+      "image": "/assets/library/scenes/sandstone-canyon.png"
+    },
+    {
+      "id": "scene_taoyuan_side1",
+      "name": "招募乡勇",
+      "type": "vignette",
+      "icon": "✦",
+      "coords": {
+        "x": 0,
+        "y": 1
+      },
+      "tags": [],
+      "description": "在涿县募集义军。",
+      "connections": [
+        {
+          "to": "scene_taoyuan",
+          "label": "返回 桃园结义"
+        }
+      ],
+      "events": [],
+      "vignettes": [
+        "在涿县募集义军。"
+      ]
+    },
+    {
+      "id": "scene_hulao",
+      "name": "虎牢关·三英战吕布",
+      "type": "wilderness",
+      "icon": "🏛",
+      "coords": {
+        "x": 3,
+        "y": 0
+      },
+      "tags": [
+        "main"
+      ],
+      "description": "诸侯结盟，进逼虎牢关。",
+      "connections": [
+        {
+          "to": "scene_taoyuan",
+          "label": "返回 桃园结义"
+        },
+        {
+          "to": "scene_hulao_side1",
+          "label": "前往 辕门射戟"
+        },
+        {
+          "to": "scene_xiapi",
+          "label": "前往 下邳·白门楼"
+        }
+      ],
+      "events": [
+        "ev_hulao_main",
+        "ev_hulao_combat_1"
+      ],
+      "vignettes": [],
+      "image": "/assets/library/scenes/sandstone-canyon.png"
+    },
+    {
+      "id": "scene_hulao_side1",
+      "name": "辕门射戟",
+      "type": "vignette",
+      "icon": "✦",
+      "coords": {
+        "x": 3,
+        "y": 1
+      },
+      "tags": [],
+      "description": "吕布辕门立戟，箭定纷争。",
+      "connections": [
+        {
+          "to": "scene_hulao",
+          "label": "返回 虎牢关·三英战吕布"
+        }
+      ],
+      "events": [],
+      "vignettes": [
+        "吕布辕门立戟，箭定纷争。"
+      ],
+      "image": "/assets/library/scenes/state-gate-construction-day-clear.png"
+    },
+    {
+      "id": "scene_xiapi",
+      "name": "下邳·白门楼",
+      "type": "wilderness",
+      "icon": "🏛",
+      "coords": {
+        "x": 6,
+        "y": 0
+      },
+      "tags": [
+        "main"
+      ],
+      "description": "决泗水灌城，困死吕布。",
+      "connections": [
+        {
+          "to": "scene_hulao",
+          "label": "返回 虎牢关·三英战吕布"
+        },
+        {
+          "to": "scene_guandu",
+          "label": "前往 官渡之战"
+        }
+      ],
+      "events": [
+        "ev_xiapi_main",
+        "ev_xiapi_combat_1",
+        "ev_xiapi_legion_1"
+      ],
+      "vignettes": [],
+      "image": "/assets/library/scenes/sandstone-canyon.png"
+    },
+    {
+      "id": "scene_guandu",
+      "name": "官渡之战",
+      "type": "wilderness",
+      "icon": "🏛",
+      "coords": {
+        "x": 9,
+        "y": 0
+      },
+      "tags": [
+        "main"
+      ],
+      "description": "两军隔河相持，粮草成胜负之机。",
+      "connections": [
+        {
+          "to": "scene_xiapi",
+          "label": "返回 下邳·白门楼"
+        },
+        {
+          "to": "scene_sangu",
+          "label": "前往 三顾茅庐"
+        }
+      ],
+      "events": [
+        "ev_guandu_main",
+        "ev_guandu_legion_1"
+      ],
+      "vignettes": [],
+      "image": "/assets/library/scenes/state-bridge-normal-night-rain.png"
+    },
+    {
+      "id": "scene_sangu",
+      "name": "三顾茅庐",
+      "type": "wilderness",
+      "icon": "🏛",
+      "coords": {
+        "x": 12,
+        "y": 0
+      },
+      "tags": [
+        "main"
+      ],
+      "description": "诸葛亮分析天下三分之势。",
+      "connections": [
+        {
+          "to": "scene_guandu",
+          "label": "返回 官渡之战"
+        },
+        {
+          "to": "scene_sangu_side1",
+          "label": "前往 隆中访贤"
+        },
+        {
+          "to": "scene_bowang",
+          "label": "前往 博望坡·新野"
+        }
+      ],
+      "events": [
+        "ev_sangu_main"
+      ],
+      "vignettes": [],
+      "image": "/assets/library/scenes/sandstone-canyon.png"
+    },
+    {
+      "id": "scene_sangu_side1",
+      "name": "隆中访贤",
+      "type": "vignette",
+      "icon": "✦",
+      "coords": {
+        "x": 12,
+        "y": 1
+      },
+      "tags": [],
+      "description": "冒雪三访草庐。",
+      "connections": [
+        {
+          "to": "scene_sangu",
+          "label": "返回 三顾茅庐"
+        }
+      ],
+      "events": [],
+      "vignettes": [
+        "冒雪三访草庐。"
+      ],
+      "image": "/assets/library/scenes/biome-swamp-frost-morning-snow.png"
+    },
+    {
+      "id": "scene_bowang",
+      "name": "博望坡·新野",
+      "type": "wilderness",
+      "icon": "🏛",
+      "coords": {
+        "x": 15,
+        "y": 0
+      },
+      "tags": [
+        "main"
+      ],
+      "description": "孔明设伏，诱敌深入。",
+      "connections": [
+        {
+          "to": "scene_sangu",
+          "label": "返回 三顾茅庐"
+        },
+        {
+          "to": "scene_changban",
+          "label": "前往 长坂坡"
+        }
+      ],
+      "events": [
+        "ev_bowang_main",
+        "ev_bowang_legion_1"
+      ],
+      "vignettes": [],
+      "image": "/assets/library/scenes/sandstone-canyon.png"
+    },
+    {
+      "id": "scene_changban",
+      "name": "长坂坡",
+      "type": "wilderness",
+      "icon": "🏛",
+      "coords": {
+        "x": 18,
+        "y": 0
+      },
+      "tags": [
+        "main"
+      ],
+      "description": "百姓相随，曹军铁骑掩至。",
+      "connections": [
+        {
+          "to": "scene_bowang",
+          "label": "返回 博望坡·新野"
+        },
+        {
+          "to": "scene_changban_side1",
+          "label": "前往 当阳桥头"
+        },
+        {
+          "to": "scene_chibi",
+          "label": "前往 赤壁之战"
+        }
+      ],
+      "events": [
+        "ev_changban_main",
+        "ev_changban_combat_1"
+      ],
+      "vignettes": [],
+      "image": "/assets/library/scenes/sandstone-canyon.png"
+    },
+    {
+      "id": "scene_changban_side1",
+      "name": "当阳桥头",
+      "type": "vignette",
+      "icon": "✦",
+      "coords": {
+        "x": 18,
+        "y": 1
+      },
+      "tags": [],
+      "description": "张飞一吼，水为之断流。",
+      "connections": [
+        {
+          "to": "scene_changban",
+          "label": "返回 长坂坡"
+        }
+      ],
+      "events": [],
+      "vignettes": [
+        "张飞一吼，水为之断流。"
+      ],
+      "image": "/assets/library/scenes/state-bridge-collapsed-day-clear.png"
+    },
+    {
+      "id": "scene_chibi",
+      "name": "赤壁之战",
+      "type": "wilderness",
+      "icon": "🏛",
+      "coords": {
+        "x": 21,
+        "y": 0
+      },
+      "tags": [
+        "main"
+      ],
+      "description": "诸葛亮舌战群儒，定下火攻之策。",
+      "connections": [
+        {
+          "to": "scene_changban",
+          "label": "返回 长坂坡"
+        },
+        {
+          "to": "scene_chibi_side1",
+          "label": "前往 草船借箭"
+        },
+        {
+          "to": "scene_nanjun",
+          "label": "前往 取南郡·借荆州"
+        }
+      ],
+      "events": [
+        "ev_chibi_main",
+        "ev_chibi_legion_1"
+      ],
+      "vignettes": [],
+      "image": "/assets/library/scenes/sandstone-canyon.png"
+    },
+    {
+      "id": "scene_chibi_side1",
+      "name": "草船借箭",
+      "type": "vignette",
+      "icon": "✦",
+      "coords": {
+        "x": 21,
+        "y": 1
+      },
+      "tags": [],
+      "description": "大雾漫江，借得十万雕翎。",
+      "connections": [
+        {
+          "to": "scene_chibi",
+          "label": "返回 赤壁之战"
+        }
+      ],
+      "events": [],
+      "vignettes": [
+        "大雾漫江，借得十万雕翎。"
+      ],
+      "image": "/assets/library/scenes/biome-ruined-street-abandoned-dusk-fog.png"
+    },
+    {
+      "id": "scene_nanjun",
+      "name": "取南郡·借荆州",
+      "type": "wilderness",
+      "icon": "🏛",
+      "coords": {
+        "x": 24,
+        "y": 0
+      },
+      "tags": [
+        "main"
+      ],
+      "description": "诸葛亮三气周瑜，坐收荆州。",
+      "connections": [
+        {
+          "to": "scene_chibi",
+          "label": "返回 赤壁之战"
+        },
+        {
+          "to": "scene_hanzhong",
+          "label": "前往 汉中之战·定军山"
+        }
+      ],
+      "events": [
+        "ev_nanjun_main",
+        "ev_nanjun_legion_1"
+      ],
+      "vignettes": [],
+      "image": "/assets/library/scenes/sandstone-canyon.png"
+    },
+    {
+      "id": "scene_hanzhong",
+      "name": "汉中之战·定军山",
+      "type": "wilderness",
+      "icon": "🏛",
+      "coords": {
+        "x": 27,
+        "y": 0
+      },
+      "tags": [
+        "main"
+      ],
+      "description": "法正献计，黄忠居高临下。",
+      "connections": [
+        {
+          "to": "scene_nanjun",
+          "label": "返回 取南郡·借荆州"
+        },
+        {
+          "to": "scene_fancheng",
+          "label": "前往 水淹七军·围樊城"
+        }
+      ],
+      "events": [
+        "ev_hanzhong_main",
+        "ev_hanzhong_legion_1"
+      ],
+      "vignettes": [],
+      "image": "/assets/library/scenes/sandstone-canyon.png"
+    },
+    {
+      "id": "scene_fancheng",
+      "name": "水淹七军·围樊城",
+      "type": "wilderness",
+      "icon": "🏛",
+      "coords": {
+        "x": 30,
+        "y": 0
+      },
+      "tags": [
+        "main"
+      ],
+      "description": "关羽决堤灌军，进围樊城。",
+      "connections": [
+        {
+          "to": "scene_hanzhong",
+          "label": "返回 汉中之战·定军山"
+        },
+        {
+          "to": "scene_maicheng",
+          "label": "前往 败走麦城"
+        }
+      ],
+      "events": [
+        "ev_fancheng_main",
+        "ev_fancheng_legion_1"
+      ],
+      "vignettes": [],
+      "image": "/assets/library/scenes/sandstone-canyon.png"
+    },
+    {
+      "id": "scene_maicheng",
+      "name": "败走麦城",
+      "type": "wilderness",
+      "icon": "🏛",
+      "coords": {
+        "x": 33,
+        "y": 0
+      },
+      "tags": [
+        "main"
+      ],
+      "description": "腹背受敌，关羽率残部突围。",
+      "connections": [
+        {
+          "to": "scene_fancheng",
+          "label": "返回 水淹七军·围樊城"
+        },
+        {
+          "to": "scene_yiling",
+          "label": "前往 夷陵之战"
+        }
+      ],
+      "events": [
+        "ev_maicheng_main",
+        "ev_maicheng_combat_1"
+      ],
+      "vignettes": [],
+      "image": "/assets/library/scenes/sandstone-canyon.png"
+    },
+    {
+      "id": "scene_yiling",
+      "name": "夷陵之战",
+      "type": "wilderness",
+      "icon": "🏛",
+      "coords": {
+        "x": 36,
+        "y": 0
+      },
+      "tags": [
+        "main"
+      ],
+      "description": "刘备倾国之兵东征，连营七百里。",
+      "connections": [
+        {
+          "to": "scene_maicheng",
+          "label": "返回 败走麦城"
+        },
+        {
+          "to": "scene_nanman",
+          "label": "前往 七擒孟获"
+        }
+      ],
+      "events": [
+        "ev_yiling_main",
+        "ev_yiling_legion_1"
+      ],
+      "vignettes": [],
+      "image": "/assets/library/scenes/sandstone-canyon.png"
+    },
+    {
+      "id": "scene_nanman",
+      "name": "七擒孟获",
+      "type": "wilderness",
+      "icon": "🏛",
+      "coords": {
+        "x": 39,
+        "y": 0
+      },
+      "tags": [
+        "main"
+      ],
+      "description": "诸葛亮平定南中，七擒七纵。",
+      "connections": [
+        {
+          "to": "scene_yiling",
+          "label": "返回 夷陵之战"
+        },
+        {
+          "to": "scene_jieting",
+          "label": "前往 街亭之战"
+        }
+      ],
+      "events": [
+        "ev_nanman_main",
+        "ev_nanman_legion_1"
+      ],
+      "vignettes": [],
+      "image": "/assets/library/scenes/sandstone-canyon.png"
+    },
+    {
+      "id": "scene_jieting",
+      "name": "街亭之战",
+      "type": "wilderness",
+      "icon": "🏛",
+      "coords": {
+        "x": 42,
+        "y": 0
+      },
+      "tags": [
+        "main"
+      ],
+      "description": "街亭乃汉中咽喉，魏军张郃疾进。",
+      "connections": [
+        {
+          "to": "scene_nanman",
+          "label": "返回 七擒孟获"
+        },
+        {
+          "to": "scene_jieting_side1",
+          "label": "前往 空城抚琴"
+        },
+        {
+          "to": "scene_finale",
+          "label": "走向终局"
+        }
+      ],
+      "events": [
+        "ev_jieting_main",
+        "ev_jieting_legion_1"
+      ],
+      "vignettes": [],
+      "image": "/assets/library/scenes/sandstone-canyon.png"
+    },
+    {
+      "id": "scene_jieting_side1",
+      "name": "空城抚琴",
+      "type": "vignette",
+      "icon": "✦",
+      "coords": {
+        "x": 42,
+        "y": 1
+      },
+      "tags": [],
+      "description": "孔明焚香操琴，退司马十五万兵。",
+      "connections": [
+        {
+          "to": "scene_jieting",
+          "label": "返回 街亭之战"
+        }
+      ],
+      "events": [],
+      "vignettes": [
+        "孔明焚香操琴，退司马十五万兵。"
+      ]
+    },
+    {
+      "id": "scene_finale",
+      "name": "终章",
+      "type": "ending",
+      "icon": "🌅",
+      "coords": {
+        "x": 45,
+        "y": 0
+      },
+      "tags": [
+        "main",
+        "ending_room"
+      ],
+      "description": "一切走向终局。",
+      "connections": [],
+      "events": [
+        "ev_finale"
+      ],
+      "vignettes": [],
+      "image": "/assets/library/scenes/dawn-altar-epilogue.png"
+    }
+  ],
+  "npcs": [],
+  "strategicLayer": null,
+  "startingOptions": null,
+  "startingSceneRules": [],
+  "combatMode": "party",
+  "aiHooks": {
+    "sceneArrival": "optional",
+    "eventResolve": "optional",
+    "npcDialogue": "optional",
+    "vignette": "never",
+    "worldRipple": "optional"
+  },
+  "startingSceneId": "scene_taoyuan",
+  "displayMode": "scene-graph",
+  "rules": {
+    "diceType": "d20",
+    "combatFormula": "(attack + dice) - defense",
+    "maxPartySize": 4,
+    "startingGold": 100
+  },
+  "aiConfig": {
+    "temperature": 0.7,
+    "maxResponseTokens": 1000,
+    "useStructuredOutput": true,
+    "language": "zh-CN"
+  },
+  "factions": [
+    {
+      "id": "shu",
+      "name": "蜀汉",
+      "description": "",
+      "reputationVar": "rep_shu",
+      "tags": [
+        "faction:shu"
+      ]
+    },
+    {
+      "id": "wei",
+      "name": "曹魏",
+      "description": "",
+      "reputationVar": "rep_wei",
+      "tags": [
+        "faction:wei"
+      ]
+    },
+    {
+      "id": "wu",
+      "name": "东吴",
+      "description": "",
+      "reputationVar": "rep_wu",
+      "tags": [
+        "faction:wu"
+      ]
+    },
+    {
+      "id": "qun",
+      "name": "群雄",
+      "description": "",
+      "reputationVar": "rep_qun",
+      "tags": [
+        "faction:qun"
+      ]
+    }
+  ]
+}

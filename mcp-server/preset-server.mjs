@@ -771,7 +771,8 @@ function buildBlueprintPrompt(digest, { sizeClass = 'medium', arc = '' } = {}) {
             id: 'ascii_id', title: 'string', fromBeatIds: ['beat id'],
             hubScene: { name: 'string', type: 'settlement|wilderness|dungeon' },
             mainEvent: { title: 'string', summary: 'string' },
-            combatPlan: [{ enemyConcept: 'string', ecology: { biome: 'string', creatureType: 'string', tier: 'trivial|common|elite|boss' }, count: 'number' }],
+            combatPlan: [{ enemyConcept: 'string（个人战：单挑/暗杀/小队遭遇）', ecology: { biome: 'string', creatureType: 'string', tier: 'trivial|common|elite|boss' }, count: 'number' }],
+            legionBattlePlan: [{ name: '战役名（如官渡之战）', battleType: 'field 野战|siege 攻城|defense 守城|naval 水战', summary: 'string', supply: { player: 'number', enemy: 'number' }, ourForces: [{ unitType: 'infantry|cavalry|archer|spearman|navy|siege', troops: 'number', generalRef: 'digest 角色 id（主将）', formation: 'fangyuan|yulin|fengshi|...（可选）', machines: ['catapult|ram|ballista|towerShip|mengchong（按战型限带）'] }], enemyForces: [{ unitType: '...', troops: 'number', generalRef: 'digest 角色 id' }] }],
             branchPoints: [{ prompt: 'string', options: [{ label: 'string', effectHint: 'string' }] }],
             sideContent: [{ type: 'shop|inn|sidequest|vignette', name: 'string', summary: 'string' }],
           }],
@@ -804,6 +805,7 @@ function normalizeBlueprint(raw = {}, digest = {}, { sizeClass = 'medium' } = {}
     hubScene: c.hubScene || null,
     mainEvent: c.mainEvent || { title: c.title || `第${i + 1}章`, summary: '' },
     combatPlan: Array.isArray(c.combatPlan) ? c.combatPlan : [],
+    legionBattlePlan: Array.isArray(c.legionBattlePlan) ? c.legionBattlePlan : [],
     branchPoints: Array.isArray(c.branchPoints) ? c.branchPoints : [],
     sideContent: Array.isArray(c.sideContent) ? c.sideContent : [],
   }));
@@ -862,6 +864,7 @@ const TIER_STATS = {
 
 async function buildPresetFromBlueprint(blueprint, digest) {
   const { resolveLootTable } = await import('../src/data/ecology.js');
+  const { validateLegionBattle, DEFAULT_GENERAL_WARFARE, BATTLE_TYPES } = await import('../src/data/warfare.js');
   const p = createEmptyPreset();
   p.name = blueprint.title || digest.title || '未命名';
   p.lore = { worldName: digest.world?.name || '', era: '', background: digest.world?.setting || '', rules: '', gmStyle: blueprint.tone || digest.tone || '' };
@@ -876,6 +879,7 @@ async function buildPresetFromBlueprint(blueprint, digest) {
     stats: { hp: 120, hpCurrent: 120, mp: 30, mpCurrent: 30, attack: 12, defense: 6, speed: 10, luck: 1 },
     abilities: [{ id: 'ability_strike', name: '强袭', type: 'active', cost: { mp: 0 }, effect: { damage: { formula: 'attack+1d8' } }, cooldown: 0 }],
     inventory: [],
+    ...(protag.warfare ? { warfare: protag.warfare } : {}),
   });
   for (const c of dchars) {
     if (roleOf.get(c.id) === 'companion') {
@@ -884,6 +888,7 @@ async function buildPresetFromBlueprint(blueprint, digest) {
         stats: { hp: 80, hpCurrent: 80, mp: 20, mpCurrent: 20, attack: 9, defense: 5, speed: 11, luck: 1 },
         abilities: [{ id: `ab_${c.id}_slash`, name: '斩击', type: 'active', cost: { mp: 0 }, effect: { damage: { formula: 'attack+1d6' } }, cooldown: 0 }],
         _isCompanion: true,
+        ...(c.warfare ? { warfare: c.warfare } : {}),
       });
     }
   }
@@ -950,6 +955,50 @@ async function buildPresetFromBlueprint(blueprint, digest) {
         choices: [{ id: 'fight', text: '应战', outcomes: [{ probability: 1.0, text: '', effects: [{ type: 'start_combat', enemyIds: ids }] }] }],
       });
       hub.events.push(combatEvId);
+    });
+
+    // 军团战计划 → start_legion_battle 事件（与个人战 combatPlan 并列；单位栈战术制）
+    //   每个 plan 编译为一条 hub 事件，effect 内联整场战斗编制（双方单位栈 + 主将武备 + 粮草）。
+    (ch.legionBattlePlan || []).forEach((plan, li) => {
+      const battleType = BATTLE_TYPES[plan.battleType] ? plan.battleType : 'field';
+      const generals = {};
+      const mkUnits = (forces, side) => (forces || []).map((f, i) => {
+        const u = {
+          id: `${side === 'player' ? 'p' : 'e'}_${ch.id}_${li + 1}_${i + 1}`,
+          side, unitType: f.unitType, troops: Math.max(1, Number(f.troops) || 500),
+          ...(f.formation ? { formation: f.formation } : {}),
+          ...(Array.isArray(f.machines) && f.machines.length ? { machines: f.machines.slice() } : {}),
+        };
+        if (f.generalRef) {
+          u.generalId = f.generalRef;
+          if (!generals[f.generalRef]) {
+            const dc = (digest.characters || []).find(c => c.id === f.generalRef);
+            generals[f.generalRef] = { name: dc?.name || f.generalRef, warfare: dc?.warfare || DEFAULT_GENERAL_WARFARE };
+          }
+        }
+        return u;
+      });
+      const units = [...mkUnits(plan.ourForces, 'player'), ...mkUnits(plan.enemyForces, 'enemy')];
+      if (units.length === 0) return;
+      const battle = {
+        battleType, units, generals,
+        supply: plan.supply || { player: 9999, enemy: 9999 },
+        objectiveName: plan.name || BATTLE_TYPES[battleType].name,
+      };
+      // 校验编制（器械携带上限/兵种/阵型/主将引用）；不合法则跳过并告警，避免产出坏战斗
+      const errs = validateLegionBattle(battle, Object.keys(generals));
+      if (errs.length) { console.error(`[build] 跳过非法军团战 ${ch.id}#${li + 1}: ${errs.join('; ')}`); return; }
+
+      const legionEvId = `ev_${ch.id}_legion_${li + 1}`;
+      const btName = BATTLE_TYPES[battleType].name;
+      p.events.push({
+        id: legionEvId, type: 'event', name: `${plan.name || btName}`,
+        description: plan.summary || `${plan.name || btName}一触即发。`, eventType: 'encounter', inScene: [hubId],
+        trigger: { type: 'composite', condition: { inScene: [hubId], requireCompletedEvents: [mainEvId], excludeCompletedEvents: [legionEvId], probability: 1.0 } },
+        priority: 80 - li, repeatable: false, tags: ['legion', 'battle'],
+        choices: [{ id: 'engage', text: '挥军出战', outcomes: [{ probability: 1.0, text: '', effects: [{ type: 'start_legion_battle', battle }] }] }],
+      });
+      hub.events.push(legionEvId);
     });
 
     // 支线内容 → 支线场景（从 hub 双向分叉）
@@ -4219,6 +4268,36 @@ tools.combat_simulate = {
       lines.push(`  敌人: ${enemiesTpl.map(e => `${e.name}(hp${e.stats.hp} atk${e.stats.attack})`).join(' + ')}`);
       lines.push(`  胜率: ${(winRate * 100).toFixed(1)}%  ${band}`);
       if (wins > 0) lines.push(`  胜场: 平均 ${(winRounds / wins).toFixed(1)} 回合，剩余 HP ${(winHp / wins * 100).toFixed(0)}%`);
+      lines.push('');
+    }
+    return ok(lines.join('\n'));
+  },
+};
+
+// ============================================================
+tools.legion_simulate = {
+  title: '军团战平衡数值模拟（无 AI 调用，纯数学）',
+  description: `给当前预设里所有 start_legion_battle 军团战做 Monte Carlo 模拟，输出我方胜率/平均回合/双方兵力损耗。
+双方都走 LegionWarfareSystem 的 decideLegion 启发式，注入种子 rng，确定性、毫秒级。
+
+平衡标志：😴 白给(≥92%) / ✓ 适中(55-92%) / ⚠ 偏难(35-55%) / ❌ 过难(12-35%) / ☠ 不可胜(<12%)`,
+  schema: {
+    eventId: z.string().optional().describe('只模拟某个军团战事件；省略 = 全部'),
+    runs: z.number().min(100).max(10000).default(1000),
+    seed: z.number().default(12345),
+  },
+  handler: async (args) => {
+    const { simulateLegionBattle, collectLegionBattles } = await import('../src/systems/legionSimulator.js');
+    let battles = collectLegionBattles(preset);
+    if (args.eventId) battles = battles.filter(b => b.eventId === args.eventId);
+    if (battles.length === 0) return err('当前预设没有 start_legion_battle 军团战');
+    const btName = { field: '野战', siege: '攻城', defense: '守城', naval: '水战' };
+    const lines = [`军团战平衡模拟（每场 ${args.runs} 次）`, ''];
+    for (const b of battles) {
+      const r = simulateLegionBattle(b.battle, { runs: args.runs, seed: args.seed });
+      lines.push(`【${b.eventName}】(${btName[b.battleType] || b.battleType})`);
+      lines.push(`  我方胜率 ${(r.winRate * 100).toFixed(1)}%  ${r.flag}`);
+      lines.push(`  平均回合 ${r.avgRounds}  我军损耗 ${(r.avgPlayerLoss * 100).toFixed(0)}%  敌军损耗 ${(r.avgEnemyLoss * 100).toFixed(0)}%${r.timeouts ? `  (超时 ${r.timeouts})` : ''}`);
       lines.push('');
     }
     return ok(lines.join('\n'));
