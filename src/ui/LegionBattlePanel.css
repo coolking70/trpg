@@ -1,0 +1,68 @@
+/* 军团战面板样式 — 军团战期间替代 RightPanel 显示（混合：简洁战况 + 高阶令） */
+
+.legion-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.legion-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.legion-panel__title { font-size: 16px; font-weight: bold; color: #f59e0b; letter-spacing: 1px; }
+.legion-panel__round { color: #a0a0b8; font-size: 13px; }
+
+.legion-panel__objective { font-size: 13px; color: #d8d8e8; }
+.legion-panel__status {
+  font-size: 12px; color: #9aa0b5;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px; padding: 6px 8px;
+}
+
+/* 一方单位栈 */
+.legion-panel__side { display: flex; flex-direction: column; gap: 6px; }
+.legion-panel__side-head { font-size: 13px; font-weight: bold; }
+.legion-panel__side--player .legion-panel__side-head { color: #4ade80; }
+.legion-panel__side--enemy .legion-panel__side-head { color: #ef4444; }
+
+.legion-panel__stack {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px; padding: 6px 8px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.legion-panel__stack--empty { color: #777; font-style: italic; text-align: center; }
+.legion-panel__stack-name { font-size: 13px; display: flex; justify-content: space-between; align-items: baseline; }
+.legion-panel__stack-tag { font-size: 11px; color: #8a90a6; margin-left: 8px; }
+
+.legion-panel__bar {
+  position: relative; height: 14px; border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35); overflow: hidden;
+}
+.legion-panel__bar > div { height: 100%; transition: width 0.3s; }
+.legion-panel__bar > span {
+  position: absolute; left: 6px; top: 0; line-height: 14px;
+  font-size: 10px; color: #fff; text-shadow: 0 0 2px #000;
+}
+.legion-panel__bar--troops > div { background: linear-gradient(90deg, #2563eb, #60a5fa); }
+.legion-panel__bar--morale > div { background: linear-gradient(90deg, #d97706, #fbbf24); }
+
+/* 高阶令 */
+.legion-panel__postures {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.legion-panel__btn {
+  flex: 1 0 auto; min-width: 72px; font-size: 13px;
+  padding: 8px 10px; cursor: pointer;
+}
+.legion-panel__btn:disabled { opacity: 0.45; cursor: default; }
+
+.legion-panel__hint { font-size: 11px; color: #777; text-align: center; }

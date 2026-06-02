@@ -1,5 +1,16 @@
 [
   {
+    "key": "external:sanguo-legion",
+    "path": "/generated/sanguo-legion-preset.json",
+    "presetId": "preset_mpw31r8t",
+    "name": "三国演义·群雄逐鹿",
+    "description": "三国题材：军团战（野战/攻城/守城/水战）+ 内政外交战略层（理政朝堂 + 自由进谏）。蜀汉视角。",
+    "icon": "🀄",
+    "sceneCount": 23,
+    "eventCount": 30,
+    "npcCount": 7
+  },
+  {
     "key": "external:mimo-full-api-only",
     "path": "/generated/mimo-full-api-only-preset.json",
     "presetId": "preset_mpoghd3i",

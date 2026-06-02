@@ -216,3 +216,28 @@
 .shop-view__leave {
   margin-top: 8px;
 }
+
+/* ===== 战略国势条（Phase 36，极简呈现）===== */
+.right-panel__strategy {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 8px 10px; margin-bottom: 6px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: 8px;
+}
+.right-panel__strategy-res {
+  display: flex; gap: 12px; align-items: center;
+  font-size: 13px; color: #e6e6f0; flex-wrap: wrap;
+}
+.right-panel__strategy-season { margin-left: auto; font-size: 11px; color: #9aa0b5; }
+.right-panel__strategy-dip { display: flex; gap: 5px; flex-wrap: wrap; }
+.right-panel__dip-chip {
+  font-size: 11px; padding: 1px 7px; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08); color: #cfd2e0;
+}
+.right-panel__dip-chip.dip--war { background: rgba(239, 68, 68, 0.25); color: #fca5a5; }
+.right-panel__dip-chip.dip--ally { background: rgba(74, 222, 128, 0.22); color: #86efac; }
+.right-panel__dip-chip.dip--rival { background: rgba(249, 115, 22, 0.20); color: #fdba74; }
+.right-panel__strategy-acts { display: flex; flex-wrap: wrap; gap: 5px; }
+.right-panel__strategy-btn { font-size: 12px; padding: 5px 9px; cursor: pointer; }
+.right-panel__strategy-hint { font-size: 11px; color: #c0985a; }

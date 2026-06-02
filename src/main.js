@@ -19,6 +19,8 @@ import { CardManager } from './systems/CardManager.js';
 import { DiceSystem } from './systems/DiceSystem.js';
 import { MapSystem } from './systems/MapSystem.js';
 import { CombatSystem } from './systems/CombatSystem.js';
+import { LegionWarfareSystem } from './systems/LegionWarfareSystem.js';
+import { StrategicSystem } from './systems/StrategicSystem.js';
 import { TurnManager } from './systems/TurnManager.js';
 import { AIGMEngine } from './systems/AIGMEngine.js';
 import { ImportExportSystem } from './systems/ImportExportSystem.js';
@@ -146,6 +148,8 @@ class TRPGApp {
     this.engine.registerSystem(new DiceSystem(), 70);
     this.engine.registerSystem(new MapSystem(), 60);
     this.engine.registerSystem(new CombatSystem(), 50);
+    this.engine.registerSystem(new LegionWarfareSystem(), 49);
+    this.engine.registerSystem(new StrategicSystem(), 48);
     this.engine.registerSystem(new TurnManager(), 40);
     this.engine.registerSystem(new AIGMEngine(), 30);
     this.engine.registerSystem(new ImportExportSystem(), 20);
@@ -331,6 +335,19 @@ class TRPGApp {
     // ---- 战斗中玩家操作（来自 CombatPanel） ----
     es.subscribe('combat:playerAction', (evt) => {
       this._handleCombatPlayerAction(evt.data);
+    });
+
+    // ---- 军团战（来自 LegionBattlePanel 的高阶令） ----
+    es.subscribe('legion:startRequest', (evt) => {
+      this._startLegionBattle(evt.data?.battle || evt.data);
+    });
+    es.subscribe('legion:playerAction', (evt) => {
+      this._handleLegionOrder(evt.data || {});
+    });
+
+    // ---- 理政朝堂情境选项（来自 RightPanel 国势条） ----
+    es.subscribe('strategy:uiAction', (evt) => {
+      this._handleStrategyUiAction(evt.data || {});
     });
 
     // ---- 工具栏操作 ----
@@ -893,6 +910,10 @@ class TRPGApp {
       npcSystem.refreshNPCLocations(this.gameState);
     }
 
+    // Phase 33 — 初始化战略层（无 strategicSetup/strategicLayer 则为 null，向后兼容）
+    const strategicSystem = this.engine.getSystem('StrategicSystem');
+    if (strategicSystem) strategicSystem.initFromPreset(this.gameState, this.preset);
+
     // 初始化 AI 长期记忆（从预设 lore 导入 World Facts）
     const memorySystem = this.engine.getSystem('MemorySystem');
     if (memorySystem) {
@@ -1224,6 +1245,33 @@ class TRPGApp {
         this._startCombat(effect.enemyIds || []);
         return { ok: true, type: effect.type, message: `进入战斗` };
       }
+      case 'start_legion_battle': {
+        this._startLegionBattle(effect.battle || effect.battleDef || effect);
+        return { ok: true, type: effect.type, message: `进入军团战` };
+      }
+      case 'set_diplomacy': {
+        const ss = this.engine.getSystem('StrategicSystem');
+        const st = this.gameState.strategicState;
+        if (ss && st && effect.factionId && effect.targetId && st.factions[effect.factionId] && st.factions[effect.targetId]) {
+          const cur = ss.relationOf(this.gameState, effect.factionId, effect.targetId);
+          const relation = effect.relation != null ? effect.relation : (cur.relation || 0) + (effect.relationDelta || 0);
+          ss._setRelationSym(st.factions, effect.factionId, effect.targetId, relation, effect.stance || null);
+        }
+        return { ok: true, type: effect.type, message: `外交立场变化` };
+      }
+      case 'adjust_resource': {
+        const ss = this.engine.getSystem('StrategicSystem');
+        const fid = effect.factionId || this.gameState.strategicState?.playerFactionId;
+        const f = ss ? ss.getFactionState(this.gameState, fid) : null;
+        if (f) ss._applyDeltas(f, { gold: effect.gold || 0, food: effect.food || 0, troops: effect.troops || 0, order: effect.order || 0 });
+        return { ok: true, type: effect.type, message: `国库变化` };
+      }
+      case 'mobilize': {
+        const ss = this.engine.getSystem('StrategicSystem');
+        const fid = effect.factionId || this.gameState.strategicState?.playerFactionId;
+        if (ss && fid) ss.mobilize(this.gameState, fid, effect.value || effect.amount || 0);
+        return { ok: true, type: effect.type, message: `征调兵力` };
+      }
       case 'set_variable': {
         // 用于事件分支写状态机
         if (!this.gameState.variables) this.gameState.variables = {};
@@ -1445,6 +1493,172 @@ class TRPGApp {
     }).catch(() => {
       this._driveCurrentActor();
     });
+  }
+
+  // ==================== 军团战（Phase 31，浏览器·混合高阶令） ====================
+
+  /** 装配并开始一场军团战（含 drawFromStrategy 扣国库；逻辑与 GameSession 对齐） */
+  _startLegionBattle(battleDef) {
+    if (!this.gameState || !battleDef || !Array.isArray(battleDef.units) || battleDef.units.length === 0) return;
+    const lw = this.engine.getSystem('LegionWarfareSystem');
+    const cm = this.engine.getSystem('CardManager');
+    const ss = this.engine.getSystem('StrategicSystem');
+    let def = { ...battleDef, units: battleDef.units.map(u => ({ ...u })) };
+    this._legionStrategyCtx = null;
+
+    const st = this.gameState.strategicState;
+    if (battleDef.drawFromStrategy && st && ss) {
+      const fid = battleDef.playerFactionId || st.playerFactionId;
+      const playerUnits = def.units.filter(u => u.side !== 'enemy');
+      const requested = playerUnits.reduce((s, u) => s + (Number(u.troops) || 0), 0) || (ss.getFactionState(this.gameState, fid)?.troops || 0);
+      const mobilized = ss.mobilize(this.gameState, fid, requested);
+      const scale = requested > 0 ? mobilized / requested : 1;
+      for (const u of playerUnits) u.troops = Math.max(1, Math.round((Number(u.troops) || 0) * scale));
+      const f = ss.getFactionState(this.gameState, fid);
+      def.supply = def.supply || {};
+      if (def.supply.player == null && f) { const carried = Math.floor((f.food || 0) * 0.5); def.supply.player = carried; f.food = Math.max(0, (f.food || 0) - carried); }
+      if (battleDef.allyFactionId) {
+        const ally = ss.getFactionState(this.gameState, battleDef.allyFactionId);
+        const rel = ss.relationOf(this.gameState, fid, battleDef.allyFactionId);
+        if (ally && rel.stance === 'ally') {
+          const aid = ss.mobilize(this.gameState, battleDef.allyFactionId, Math.round((ally.troops || 0) * 0.4));
+          if (aid > 0) def.units.push({ id: `ally_${battleDef.allyFactionId}`, side: 'player', unitType: 'infantry', troops: aid, name: `${ally.name}援军` });
+        }
+      }
+      this._legionStrategyCtx = { fid, mobilized, enemyFid: battleDef.enemyFactionId || null };
+    }
+
+    const generals = { ...(def.generals || {}) };
+    for (const u of def.units) {
+      if (u.generalId && !generals[u.generalId]) {
+        const card = cm ? cm.getCard(u.generalId) : null;
+        if (card) generals[u.generalId] = { name: card.name, warfare: card.warfare || null };
+      }
+    }
+    lw.startBattle(this.gameState, { ...def, generals });
+    this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+
+    const aiEngine = this.engine.getSystem('AIGMEngine');
+    const b = this.gameState.activeLegionBattle;
+    aiEngine.processGameAction('narrate_legion_start', {
+      battleType: b.battleType,
+      battleTypeName: ({ field: '野战', siege: '攻城', defense: '守城', naval: '水战' })[b.battleType] || '大战',
+      objectiveName: b.objectiveName,
+      player: lw._sideSummary(this.gameState, 'player'), enemy: lw._sideSummary(this.gameState, 'enemy'),
+    }, this.gameState).catch(() => {}).then(() => {
+      this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+    });
+  }
+
+  /** 高阶令 → 单个我方栈的指令 */
+  _postureOrder(posture, actor) {
+    switch (posture) {
+      case 'hold': return actor.formation === 'fangyuan' ? { type: 'hold' } : { type: 'set_formation', formation: 'fangyuan' };
+      case 'fire': return { type: 'tactic', tacticKey: 'fire' };
+      case 'charge': return { type: 'tactic', tacticKey: 'charge' };
+      case 'bombard': return { type: 'bombard' };
+      case 'retreat': return { type: 'retreat' };
+      case 'auto': return null; // 由 decideLegion 决定
+      case 'assault':
+      default: return { type: 'attack' };
+    }
+  }
+
+  /** 高阶令推进一回合：我方按 posture、敌方自动，跑到本轮结束或战斗结束 */
+  async _legionOrderRound(posture) {
+    const lw = this.engine.getSystem('LegionWarfareSystem');
+    const gs = this.gameState;
+    if (!gs.activeLegionBattle) return;
+    let safety = 0;
+    while (gs.activeLegionBattle && safety++ < 200) {
+      const actor = lw.getCurrentActor(gs);
+      if (!actor || actor.troops <= 0) {
+        const r = lw.nextTurn(gs);
+        if (r.battleEnd) { await this._endLegionBattle(r); return; }
+        if (r.newRound) break;
+        continue;
+      }
+      let res;
+      if (actor.side === 'player') {
+        const order = this._postureOrder(posture, actor) || lw.decideLegion(gs, actor);
+        res = lw.executeOrder(gs, actor.id, order);
+        if (res && !res.ok && order && order.type !== 'attack') res = lw.executeOrder(gs, actor.id, { type: 'attack' });
+      } else {
+        res = lw.executeOrder(gs, actor.id, lw.decideLegion(gs, actor));
+      }
+      if (res && res.narrative) gs.addNarrative('system', res.narrative);
+      const r = lw.nextTurn(gs);
+      if (r.battleEnd) { await this._endLegionBattle(r); return; }
+      if (r.newRound) break;
+    }
+    this.eventSystem.publish('game:stateChanged', { gameState: gs });
+  }
+
+  /** 来自 LegionBattlePanel 的高阶令 */
+  _handleLegionOrder(data) {
+    if (!this.gameState?.activeLegionBattle) return;
+    this._legionOrderRound(data.posture || 'assault');
+  }
+
+  /** 理政朝堂情境选项（政令/外交/处理政务）→ 调 StrategicSystem，与 GameSession 对齐 */
+  async _handleStrategyUiAction(data) {
+    const ss = this.engine.getSystem('StrategicSystem');
+    const st = this.gameState?.strategicState;
+    if (!ss || !st) return;
+    const ai = this.engine.getSystem('AIGMEngine');
+    if (data.kind === 'govern') {
+      const r = ss.applyPolicy(this.gameState, st.playerFactionId, data.policyId);
+      this.gameState.addNarrative('system', r.ok ? `📜 ${r.narrative}` : `（${r.reason}）`);
+      if (r.ok) { try { await ai.processGameAction('narrate_governance', { kind: 'policy', policyId: data.policyId, player: ss.getPlayerState(this.gameState) }, this.gameState); } catch { /* */ } }
+    } else if (data.kind === 'diplomacy') {
+      const before = ss.relationOf(this.gameState, st.playerFactionId, data.targetId).stance;
+      const r = ss.applyDiplomacy(this.gameState, st.playerFactionId, data.action, data.targetId);
+      this.gameState.addNarrative('system', r.ok ? `🤝 ${r.narrative}` : `（${r.reason}）`);
+      if (r.ok && data.action === 'declare_war' && before !== 'war') { (this.gameState.worldFlags ||= {})[`war_with_${data.targetId}`] = true; }
+      if (r.ok) { try { await ai.processGameAction('narrate_diplomacy', { action: data.action, targetId: data.targetId, result: r }, this.gameState); } catch { /* */ } }
+    } else if (data.kind === 'season') {
+      const { events, season } = ss.advanceSeason(this.gameState);
+      this.gameState.addNarrative('system', `🗓 政务推进，时序入第 ${season} 季。`);
+      this.gameState.worldFlags ||= {};
+      for (const ev of (events || [])) {
+        if (ev.against === st.playerFactionId && ev.type === 'war_declared') { this.gameState.worldFlags[`war_with_${ev.by}`] = true; this.gameState.addNarrative('system', `⚠ ${st.factions[ev.by]?.name || ev.by} 向我方宣战！`); }
+        else if (ev.against === st.playerFactionId && ev.type === 'attack_intent') { this.gameState.worldFlags[`invasion_from_${ev.by}`] = true; this.gameState.addNarrative('system', `⚠ ${st.factions[ev.by]?.name || ev.by} 大军压境，意图来犯！`); }
+      }
+      try { await ai.processGameAction('narrate_governance', { kind: 'season', season, events, player: ss.getPlayerState(this.gameState) }, this.gameState); } catch { /* */ }
+    }
+    this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+  }
+
+  /** 军团战结束：叙述 + drawFromStrategy 结算（与 GameSession 对齐） */
+  async _endLegionBattle(turnResult) {
+    const won = (turnResult.result || 'victory') === 'victory';
+    const s = turnResult.summary || {};
+    this.gameState.addNarrative('system', won
+      ? `⚔ 此役我军获胜！（歼敌约 ${s.enemyLosses ?? '?'}，我军折损约 ${s.playerLosses ?? '?'}）`
+      : `⚔ 此役我军败退。（我军折损约 ${s.playerLosses ?? '?'}）`);
+    const ctx = this._legionStrategyCtx; this._legionStrategyCtx = null;
+    if (ctx && this.gameState.strategicState) {
+      const ss = this.engine.getSystem('StrategicSystem');
+      ss.returnTroops(this.gameState, ctx.fid, Math.max(0, s.playerTroops || 0));
+      const me = ss.getFactionState(this.gameState, ctx.fid);
+      if (me) { if (won) { me.gold += 50; me.order = Math.min(100, me.order + 6); } else { me.order = Math.max(0, me.order - 10); } }
+      if (ctx.enemyFid && this.gameState.strategicState.factions[ctx.enemyFid]) {
+        const cur = ss.relationOf(this.gameState, ctx.fid, ctx.enemyFid);
+        ss._setRelationSym(this.gameState.strategicState.factions, ctx.fid, ctx.enemyFid, cur.relation + (won ? -10 : 6));
+      }
+    }
+    this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+    const aiEngine = this.engine.getSystem('AIGMEngine');
+    try { await aiEngine.processGameAction('narrate_legion_result', { won, summary: s }, this.gameState); } catch { /* */ }
+    this.eventSystem.publish('legion:end', { result: turnResult.result });
+    this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+    // 战后扫描后续触发器（与普通战斗收尾一致）
+    try {
+      this._scanEventTriggers(TRIGGER_MOMENTS.COMBAT_END);
+      if (!this.gameState.activeCombat && !this.gameState.activeLegionBattle && !this.gameState.activeEvent) {
+        this._scanEventTriggers(TRIGGER_MOMENTS.SCENE_ENTER);
+      }
+    } catch { /* */ }
   }
 
   // ==================== 战斗循环 ====================

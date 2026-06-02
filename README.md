@@ -3,7 +3,7 @@
 > 基于 AI 的 TRPG 浏览器跑团游戏。AI 担任 Game Master，玩家通过卡牌、地图和文本交互推进冒险。
 
 [![CI](https://github.com/USERNAME/REPONAME/actions/workflows/ci.yml/badge.svg)](https://github.com/USERNAME/REPONAME/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-642%2F642-brightgreen)](./__tests__)
+[![Tests](https://img.shields.io/badge/tests-653%2F653-brightgreen)](./__tests__)
 [![MCP](https://img.shields.io/badge/mcp_tests-45%2F45-brightgreen)](./mcp-server)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
@@ -156,7 +156,7 @@ docs/                 # 创作者手册 + AI 集成手册 + 接手指南
 
 ```bash
 npm test
-# 642 tests across 42 suites
+# 653 tests across 44 suites
 
 # MCP 工具端到端烟雾测试
 npm run test:mcp
@@ -188,11 +188,13 @@ npm run test:mcp
 ✅ **Phase 32**：三国题材剧本（手写 digest/blueprint，10 场军团战覆盖四种战型 + 4 场个人战，真 GM 玩测通过）
 ✅ **Phase 33**：内政外交系统（势力级国库 + 理政朝堂 + 敌国活跃 AI），与军团战深耦合，`strategy_simulate` 平衡模拟器
 ✅ **Phase 34**：三国战略内容（蜀汉视角内政外交，与魏吴群势力争霸；理政攒军→联吴→军团战闭环）
+✅ **Phase 35**：战略交互 AI 化（角色本位自由进谏，战略动作接入 L0–L4 权限阶梯）
+✅ **Phase 36**：前端——军团战面板（混合·高阶令）+ 极简国势条/情境选项/进谏提示（接进浏览器 main.js）
 
 🔮 后续可能方向：
-- 军团战 + 理政朝堂的浏览器 UI（`LegionBattlePanel` / `GovernanceModal`）
 - 逐城经营（多 holding 独立 develop/委任太守）
 - 战役级大地图 / 连战元层（multi-battle campaign）
+- 把 `main.js` 重构为复用 `GameSession`（统一浏览器与 headless 编排）
 - 继续扩展像素素材库：更多地区、建筑状态、职业年龄变体、同类 NPC 多变体
 - 云存档同步（社区预设库）
 - 多语言（英文版预设）

@@ -4,6 +4,24 @@
 
 ## [Unreleased]
 
+### Phase 36 — 前端：军团战面板 + 极简战略呈现 🖥️
+
+把军团战（Phase 31/32）与内政外交（Phase 33/34/35）接进**浏览器编排**（`src/main.js` 此前不走 GameSession、未注册这两套系统），并按"角色本位、不切战略 UI"原则补 UI。
+
+**Added — 浏览器接线（main.js）**
+- `_registerSystems` 注册 `LegionWarfareSystem`/`StrategicSystem`；`loadPreset` 初始化战略层。
+- `_applyEventEffect` 加 `start_legion_battle`/`set_diplomacy`/`adjust_resource`/`mobilize`（与 GameSession 对齐）。
+- 军团战编排：`_startLegionBattle`（含 drawFromStrategy 扣国库 + 开场叙述）、`_legionOrderRound(posture)`（**高阶令**一回合：我方按令、敌方 decideLegion 自动、推进到本轮末）、`_endLegionBattle`（结算 + 残部归队/民心/资源/关系）。
+- `_handleStrategyUiAction`（理政情境选项 govern/diplomacy/season → StrategicSystem）。注：自由进谏在浏览器经已有的 `player_action` 通路 + Phase 35 桥接自动生效。
+
+**Added — UI**
+- `src/ui/LegionBattlePanel.js`(+css)：军团战期间替代 RightPanel——简洁双军战况（兵力/士气/兵种/阵型条 + 城门/渡口/粮草）+ 一排高阶令（总攻/固守/火攻/突击/器械/撤退/自动一回合），发 `legion:playerAction {posture}`。`GameUI` 挂载 + `legion:start/end` 切换面板。
+- `RightPanel` 国势条（极简）：金/粮/兵/民心 + 外交立场 chips；位于 `governance` 场景时给少量情境选项（劝农/征税/征兵/赈灾/厚结/讨伐/处理政务）；≥L3 显示"可直接进言"提示。`GamePreset`/无战略层剧本零影响。
+
+**验证**
+- jest 653/653（含 `LegionBattlePanel` jsdom 渲染测试）+ `npm run build` 通过。
+- 浏览器（三国剧本，Claude Preview 实测）：国势条显示 `💰200🌾400🪖8000❤62` + 外交 chips；点"劝农"粮 400→560；触发军团战 → LegionBattlePanel 出现，drawFromStrategy 扣兵 8000→2000，连点"总攻"8 回合获胜（歼敌4000）→ 残部归队、民心 +6、面板自动隐藏。
+
 ### Phase 35 — 战略交互 AI 化（自由进谏，角色本位）🗣️
 
 确立设计原则：这是 **AI 驱动的 TRPG**，战略层是**底层数据支持**而非主玩法；玩家始终以所扮角色"下令/进谏/决策"，**不切换成战略游戏 UI**。据此把内政外交的主交互从"操作面板"改为"角色本位 + 自由进谏"。

@@ -4,6 +4,9 @@
  */
 
 import { CardRenderer } from '../rendering/CardRenderer.js';
+import { POLICIES, DIPLOMACY_ACTIONS } from '../data/governance.js';
+
+const STANCE_LABEL = { ally: '盟', trade: '睦', neutral: '中', rival: '隙', war: '战', vassal: '附' };
 
 export class RightPanel {
   constructor(containerElement, eventSystem, engine) {
@@ -26,6 +29,11 @@ export class RightPanel {
   render() {
     this.container.innerHTML = '';
 
+    // 战略国势条（极简，仅在剧本含战略层时显示）—— 置于事件之上
+    this._strategyEl = document.createElement('div');
+    this._strategyEl.className = 'right-panel__strategy';
+    this.container.appendChild(this._strategyEl);
+
     const header = document.createElement('div');
     header.className = 'right-panel__header';
     header.textContent = '当前事件';
@@ -35,6 +43,7 @@ export class RightPanel {
     this._contentArea.className = 'right-panel__content';
     this.container.appendChild(this._contentArea);
 
+    this._renderStrategyStrip();
     this._renderEvent();
   }
 
@@ -45,7 +54,83 @@ export class RightPanel {
       this._isTerrainCard = false;
       this._customChoiceCallback = null;
     }
+    this._renderStrategyStrip();
     this._renderEvent();
+  }
+
+  /** 极简战略呈现：国势条（必要数值 + 外交立场）+ 理政场景的少量情境选项 + 高权限进谏提示 */
+  _renderStrategyStrip() {
+    if (!this._strategyEl) return;
+    const st = this.gameState?.strategicState;
+    if (!st) { this._strategyEl.style.display = 'none'; this._strategyEl.innerHTML = ''; return; }
+    this._strategyEl.style.display = '';
+    this._strategyEl.innerHTML = '';
+
+    const me = st.factions?.[st.playerFactionId];
+    if (!me) return;
+
+    // 国势条：金/粮/兵/民心
+    const res = document.createElement('div');
+    res.className = 'right-panel__strategy-res';
+    res.innerHTML = `<span title="金">💰${me.gold}</span><span title="粮">🌾${me.food}</span>`
+      + `<span title="兵力">🪖${me.troops}</span><span title="民心">❤${me.order}</span>`
+      + `<span class="right-panel__strategy-season">第${st.season}季</span>`;
+    this._strategyEl.appendChild(res);
+
+    // 外交立场小标
+    const dip = Object.entries(me.diplomacy || {});
+    if (dip.length) {
+      const drow = document.createElement('div');
+      drow.className = 'right-panel__strategy-dip';
+      for (const [fid, rel] of dip) {
+        const name = st.factions[fid]?.name || fid;
+        const chip = document.createElement('span');
+        chip.className = `right-panel__dip-chip dip--${rel.stance}`;
+        chip.textContent = `${name}·${STANCE_LABEL[rel.stance] || rel.stance}`;
+        drow.appendChild(chip);
+      }
+      this._strategyEl.appendChild(drow);
+    }
+
+    // 情境选项：仅当处于「理政」场景（scene.tags 含 governance）
+    const scene = this._currentScene();
+    const atCourt = scene && (scene.tags || []).includes('governance');
+    if (atCourt) {
+      const acts = document.createElement('div');
+      acts.className = 'right-panel__strategy-acts';
+      const mkBtn = (label, payload, title) => {
+        const b = document.createElement('button');
+        b.className = 'btn right-panel__strategy-btn';
+        b.textContent = label; if (title) b.title = title;
+        b.addEventListener('click', () => this.eventSystem.publish('strategy:uiAction', payload));
+        return b;
+      };
+      for (const pid of ['farming', 'tax', 'conscript', 'relief']) {
+        acts.appendChild(mkBtn(POLICIES[pid].name, { kind: 'govern', policyId: pid }, POLICIES[pid].note));
+      }
+      // 外交：对每个其它势力一个"睦邻/绝交"快捷（朝贡 / 宣战），细节交自由进谏
+      for (const [fid, rel] of dip) {
+        const name = st.factions[fid]?.name || fid;
+        if (rel.stance !== 'ally' && rel.relation < 40) acts.appendChild(mkBtn(`厚结${name}`, { kind: 'diplomacy', action: 'tribute', targetId: fid }, DIPLOMACY_ACTIONS.tribute.note));
+        if (rel.stance !== 'war') acts.appendChild(mkBtn(`讨${name}`, { kind: 'diplomacy', action: 'declare_war', targetId: fid }, DIPLOMACY_ACTIONS.declare_war.note));
+      }
+      acts.appendChild(mkBtn('处理政务', { kind: 'season' }, '推进一季，敌国亦各有动作'));
+      this._strategyEl.appendChild(acts);
+    }
+
+    // 进谏提示（高参与度 ≥ L3）
+    if ((this.gameState.aiAuthority ?? 2) >= 3) {
+      const hint = document.createElement('div');
+      hint.className = 'right-panel__strategy-hint';
+      hint.textContent = '💬 可直接进言：在下方说出你的方略，自有人去办';
+      this._strategyEl.appendChild(hint);
+    }
+  }
+
+  _currentScene() {
+    const ss = this.engine?.getSystem?.('SceneSystem');
+    if (ss && this.gameState) { try { return ss.getCurrentScene(this.gameState); } catch { /* */ } }
+    return null;
   }
 
   /**

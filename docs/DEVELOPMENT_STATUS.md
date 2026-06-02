@@ -11,7 +11,7 @@
 - **是什么**：浏览器端 AI GM TRPG，AI 担任游戏主持人，玩家通过卡牌/**场景节点图**/文本推进冒险
 - **技术**：原生 ES Modules + Vite + Three.js (3D 骰子) + Canvas2D，无前端框架
 - **AI 接口**：OpenAI 兼容 `/chat/completions` **及 `/responses`**（hy3 等），默认本地 `qwen/qwen3.6-35b-a3b @ http://127.0.0.1:1234/v1`
-- **当前状态**：Phase 16-35 完成、**Jest 650 / MCP 45 全过**、场景图作为主架构、生产就绪
+- **当前状态**：Phase 16-36 完成、**Jest 653 / MCP 45 全过**、场景图作为主架构、生产就绪
 - **已验证规模**：bundled 最大 **101 节点 / 87 事件 / 22 NPC**；三国剧本 **23 场景 / 30 事件 / 10 场军团战 + 4 场个人战 + 内政外交战略层**（0 必修、全可达，军团战经真 GM 玩测、内政外交链路 headless 验证）
 - **核心能力栈**：场景图 + 快速旅行 + 角色创建 4 轴 + NPC schedule/关系图 + 故事时间 + 营地交互 + worldFlags + 隐藏路径 + IndexedDB + 跨周目元进度 + AI 本地权威状态/相关性检索 + AI Hooks gate(4 tier) + AI 参与度阶梯(L0–L4) + 个人战 buff/AOE/phases/escape + **军团战争系统(单位栈战术制·四战型)** + **内政外交系统(势力级国库 + 理政朝堂 + 敌国活跃 AI，与军团战深耦合)** + 生态位动态掉落 + Monte Carlo 模拟器(个人战/军团战/战略) + 小说→预设三段确定性管线
 - **MCP 服务器**：69 个工具（小说→预设三段管线，蓝图可编排 `combatPlan` 个人战 / `legionBattlePlan` 军团战 / `strategicSetup` 内政外交；`combat_simulate`/`legion_simulate`/`strategy_simulate` 平衡模拟、战略层生成/审稿、enemy_assign_ecology 等）
@@ -23,7 +23,7 @@
 
 ```bash
 npm install
-npm test          # 650 tests in 43 suites
+npm test          # 653 tests in 44 suites
 npm run dev       # localhost:3000
 npm run build     # 生产构建到 dist/
 npm run test:mcp  # 45 MCP smoke tests
@@ -91,6 +91,7 @@ git show <commit> --stat
 | _(unreleased)_ | **Phase 33 内政外交系统 🏛️** | `src/data/governance.js`（资源/政令/外交/敌国 AI + 纯函数）+ `StrategicSystem.js`（势力活状态、政令、外交、季度推进）；GameSession `situation:'governance'` + `govern`/`diplomacy`/`advance_season` + `strategy` 快照；深耦合军团战 `drawFromStrategy`/`allyFactionId`；`strategySimulator.js` + `strategy_simulate`；`GamePreset` 保留 factions/strategicLayer/strategicSetup |
 | _(unreleased)_ | **Phase 34 三国战略内容 🀄** | 三国生成器加 `strategicSetup`（蜀视角内政外交）+ 理政朝堂 hub；夷陵/街亭 `drawFromStrategy`；strategy_simulate 蜀第 3/4 贴史实；内政外交链路 headless 验证 |
 | _(unreleased)_ | **Phase 35 战略交互 AI 化 🗣️** | 设计原则：战略=底层数据，玩家角色本位、不切战略 UI。`govern`/`diplomacy`/`mobilize` 入 `ACTION_AUTHORITY`(L3)；`AIGMEngine._applyEngineActions` 落实；`say` 路由 `player_action`（自由进谏）；digest 注入国势/可用动作；`strategy.hint` 极简提示。deepseek-v4-flash 真 GM 验证自然语言进谏→落为内政动作 |
+| _(unreleased)_ | **Phase 36 前端 🖥️** | 把军团战/内政外交接进浏览器 `main.js`（注册系统 + 事件效果 + 军团战高阶令编排 + 理政情境选项）；`LegionBattlePanel`（混合·简洁面板+高阶令）+ `RightPanel` 国势条（极简数值/外交 chips/情境选项/进谏提示）；GameUI 面板切换。Claude Preview 浏览器实测三国剧本 |
 
 详细 bug 见第 5 章。
 

@@ -16,6 +16,7 @@ import { ToolbarPanel } from './ToolbarPanel.js';
 import { LeftPanel } from './LeftPanel.js';
 import { RightPanel } from './RightPanel.js';
 import { CombatPanel } from './CombatPanel.js';
+import { LegionBattlePanel } from './LegionBattlePanel.js';
 import { CombatResultModal } from './CombatResultModal.js';
 import { EndgameModal } from './EndgameModal.js';
 import { CharacterCreationModal } from './CharacterCreationModal.js';
@@ -86,6 +87,7 @@ export class GameUI {
     this.leftPanel = new LeftPanel(this.leftPanelEl, this.eventSystem, this.engine);
     this.rightPanel = new RightPanel(this.rightPanelEl, this.eventSystem, this.engine);
     this.combatPanel = new CombatPanel(this.rightPanelEl, this.eventSystem, this.engine);
+    this.legionPanel = new LegionBattlePanel(this.rightPanelEl, this.eventSystem, this.engine);
     this.combatResultModal = new CombatResultModal(this.modalContainerEl, this.eventSystem);
     this.endgameModal = new EndgameModal(this.modalContainerEl, this.eventSystem);
     this.characterCreationModal = new CharacterCreationModal(this.modalContainerEl, this.eventSystem);
@@ -109,6 +111,13 @@ export class GameUI {
 
     this._subscribe('combat:start', (evt) => {
       this._onCombatStart(evt.data);
+    });
+
+    this._subscribe('legion:start', (evt) => {
+      this._onLegionStart(evt.data);
+    });
+    this._subscribe('legion:end', (evt) => {
+      this._onLegionEnd(evt.data);
     });
 
     this._subscribe('combat:end', (evt) => {
@@ -186,7 +195,9 @@ export class GameUI {
     this.toolbar.update(gameState);
     this.leftPanel.update(gameState);
 
-    if (gameState && gameState.activeCombat) {
+    if (gameState && gameState.activeLegionBattle) {
+      this.legionPanel.update(gameState);
+    } else if (gameState && gameState.activeCombat) {
       this.combatPanel.update(gameState);
     } else {
       this.rightPanel.update(gameState);
@@ -209,6 +220,7 @@ export class GameUI {
     this.leftPanel.destroy();
     this.rightPanel.destroy();
     this.combatPanel.destroy();
+    this.legionPanel.destroy();
     this.combatResultModal.destroy();
     if (this.endgameModal) this.endgameModal.destroy();
     if (this.characterCreationModal) this.characterCreationModal.destroy();
@@ -254,6 +266,23 @@ export class GameUI {
     if (this.lastGameState) {
       this.update(this.lastGameState);
     }
+  }
+
+  /** 军团战开始：RightPanel/CombatPanel 让位给 LegionBattlePanel */
+  _onLegionStart(data) {
+    this.container.classList.add('combat-mode');
+    this.combatPanel.hide();
+    this.legionPanel.show();
+    if (this.lastGameState) this.update(this.lastGameState);
+  }
+
+  /** 军团战结束：恢复 RightPanel */
+  _onLegionEnd(data) {
+    this.container.classList.remove('combat-mode');
+    this.legionPanel.hide();
+    this.rightPanel.render();
+    this.narrativePanel.setDisabled(false);
+    if (this.lastGameState) this.update(this.lastGameState);
   }
 
   /** 事件触发时更新右面板 */
