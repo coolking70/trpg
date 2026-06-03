@@ -24,6 +24,7 @@ import { MapSystem } from '../systems/MapSystem.js';
 import { CombatSystem } from '../systems/CombatSystem.js';
 import { LegionWarfareSystem } from '../systems/LegionWarfareSystem.js';
 import { StrategicSystem } from '../systems/StrategicSystem.js';
+import { SkirmishSystem } from '../systems/SkirmishSystem.js';
 import { TurnManager } from '../systems/TurnManager.js';
 import { AIGMEngine } from '../systems/AIGMEngine.js';
 import { EventTriggerEngine, TRIGGER_MOMENTS } from '../systems/EventTriggerEngine.js';
@@ -82,6 +83,7 @@ export class GameSession {
     this.engine.registerSystem(new CombatSystem(), 50);
     this.engine.registerSystem(new LegionWarfareSystem(), 49);
     this.engine.registerSystem(new StrategicSystem(), 48);
+    this.engine.registerSystem(new SkirmishSystem(), 47);
     this.engine.registerSystem(new TurnManager(), 40);
     this.engine.registerSystem(new AIGMEngine(), 30);
     this.engine.registerSystem(new EventTriggerEngine(), 35);
@@ -875,6 +877,129 @@ export class GameSession {
     }
   }
 
+  // ============================================================
+  // 小兵实战参战（Phase 44）—— 局部战斗 + 局部时间放缓
+  //   底层视角(soldier/officer)下，玩家可"请缨参战"投身当前战线的一小片厮杀。
+  //   这是被放大的瞬间：不推进战略时钟（季/旬）；个人英勇几乎不改全局，唯阵斩敌将成重大事件。
+  // ============================================================
+
+  /** 当前可参战的战线上下文（活跃围城 / 在途行军涉及玩家势力时）。无则 null。 */
+  _skirmishContext(gs) {
+    const st = gs.strategicState; if (!st) return null;
+    const pid = st.playerFactionId;
+    const tideFrom = (mine, foe) => Math.max(-1, Math.min(1, Math.log2(((mine || 1)) / ((foe || 1))) / 2));
+    const siege = (st.sieges || []).find(s => !s._resolved && (s.attacker === pid || s.defender === pid));
+    if (siege) {
+      const asAtk = siege.attacker === pid;
+      const my = asAtk ? siege.atk : siege.def, foe = asAtk ? siege.def : siege.atk;
+      const enemyFid = asAtk ? siege.defender : siege.attacker;
+      return {
+        kind: 'siege', side: asAtk ? 'attacker' : 'defender', enemyFactionId: enemyFid,
+        holdingId: siege.holdingId, tide: tideFrom(my.troops, foe.troops),
+        desc: `${this._holdingName(siege.holdingId)} ${asAtk ? '城下（我军攻城）' : '城头（我军守城）'}`,
+        myMorale: my.morale ?? 70, foeMorale: foe.morale ?? 70,
+      };
+    }
+    const march = (st.marches || []).find(m => !m._done && (m.defender === pid || m.attacker === pid));
+    if (march) {
+      const asAtk = march.attacker === pid;
+      const enemyFid = asAtk ? march.defender : march.attacker;
+      const myT = this.sys('StrategicSystem').getFactionState(gs, pid)?.troops || 1;
+      const foeT = this.sys('StrategicSystem').getFactionState(gs, enemyFid)?.troops || 1;
+      return {
+        kind: 'field', side: asAtk ? 'attacker' : 'defender', enemyFactionId: enemyFid,
+        holdingId: march.targetHoldingId, tide: tideFrom(myT, foeT),
+        desc: asAtk ? '随军行进、前锋遭遇战' : '边境遭遇、阻击来犯前锋',
+        myMorale: 70, foeMorale: 70,
+      };
+    }
+    return null;
+  }
+
+  /** 据战线上下文构建并开始一场局部战斗 */
+  async _startSkirmish(gs) {
+    const ctx = this._skirmishContext(gs);
+    if (!ctx) { gs.addNarrative('system', '（当前并无可投身的战事。）'); return; }
+    const sk = this.sys('SkirmishSystem');
+    const enemyName = this._factionName(ctx.enemyFactionId);
+    const tide = ctx.tide;
+    // 小队规模 + 援兵（战线越有利我方援兵越足、敌方越少）；据 tide 微调
+    const allyReserves = Math.max(1, Math.round(3 + tide * 2));
+    const enemyReserves = Math.max(1, Math.round(3 - tide * 2));
+    const ek = (n, atk, def, hp, over = {}) => ({ name: n, atk, def, hp, hpMax: hp, ...over });
+    const enemies = [
+      ek(`${enemyName}兵`, 7, 4, 32), ek(`${enemyName}兵`, 7, 4, 30), ek(`${enemyName}什长`, 8, 5, 38),
+    ];
+    // 偶遇敌方关键将领（小概率，且战线不至于太劣）：阵斩/生擒→战略重大事件
+    const rng = sk.rng || Math.random;
+    let bossName = null;
+    if (rng() < 0.12 + Math.max(0, tide) * 0.06) {
+      bossName = `${enemyName}骁将·${['关靖', '夏侯尚', '牛金', '王双', '张虎'][Math.floor(rng() * 5)]}`;
+      enemies.push(ek(bossName, 11, 7, 90, { isCommander: true }));
+    }
+    sk.startSkirmish(gs, {
+      playerChar: gs.activeCharacters[0],
+      allies: [ek('袍泽', 7, 4, 34), ek('什伍同袍', 6, 4, 30)],
+      enemies,
+      reserves: { ally: allyReserves, enemy: enemyReserves },
+      tide,
+      parent: { kind: ctx.kind, side: ctx.side, factionId: gs.strategicState.playerFactionId, enemyFactionId: ctx.enemyFactionId, holdingId: ctx.holdingId, commanderName: bossName },
+    });
+    gs.addNarrative('system', `⚔ 你随队投身 ${ctx.desc}，刀光血影间，这只是万千战线中的一小片。`);
+    if (bossName) gs.addNarrative('system', `（乱军之中，敌阵里那员被簇拥的骁将格外显眼……）`);
+    // auto 模式：直接打完
+    if (this.combatMode !== 'interactive') {
+      sk.autoResolve(gs);
+      await this._endSkirmish();
+    }
+  }
+
+  _buildSkirmishSnapshot(gs) {
+    const sk = this.sys('SkirmishSystem');
+    const s = gs.activeSkirmish; if (!s) return null;
+    const map = (u) => ({ id: u.id, name: u.name, hp: u.hp, hpMax: u.hpMax, isCommander: u.isCommander, isPlayer: u.isPlayer });
+    return {
+      round: s.round, tide: s.tide, parent: s.parent,
+      allies: s.allies.filter(u => u.hp > 0).map(map),
+      enemies: s.enemies.filter(u => u.hp > 0).map(map),
+      reserves: { ...s.reserves }, kills: s.kills,
+    };
+  }
+
+  _appendSkirmishOptions(gs, options) {
+    const sk = this.sys('SkirmishSystem');
+    let n = 0;
+    for (const t of sk.enemyTargets(gs)) {
+      const canCap = t.hp <= Math.max(6, t.hpMax * 0.25);
+      options.push({ n: ++n, type: 'skirmish', skAction: canCap && t.isCommander ? 'capture' : 'attack', targetId: t.id, text: `${canCap && t.isCommander ? '生擒' : '斩击'} ${t.name}（${t.hp}）` });
+    }
+    options.push({ n: ++n, type: 'skirmish', skAction: 'defend', text: '据守格挡（减伤）' });
+    options.push({ n: ++n, type: 'skirmish', skAction: 'rally', text: '鼓舞袍泽（提士气）' });
+    options.push({ n: ++n, type: 'skirmish', skAction: 'flee', text: '且战且退（脱离战线）' });
+  }
+
+  async _submitSkirmish(action) {
+    const sk = this.sys('SkirmishSystem');
+    const r = sk.submitPlayerAction(this.gameState, { type: action.skAction || 'attack', targetId: action.targetId });
+    for (const line of (r.log || [])) this.gameState.addNarrative('system', line);
+    if (r.outcome) await this._endSkirmish();
+  }
+
+  async _endSkirmish() {
+    const s = this.gameState.activeSkirmish; if (!s) return;
+    const oc = s.outcome;
+    this.gameState.activeSkirmish = null;
+    this.gameState.addNarrative('system', `🛡 ${oc.label}（斩获约 ${oc.kills}）。`);
+    await this._applySkirmishOutcome(oc); // 战功/晋升/敌将重大事件（P44c）
+    await this._scanAfter(TRIGGER_MOMENTS.SCENE_ENTER);
+  }
+
+  /** P44b 占位：战功结算与重大事件在 P44c 实装（此处仅记录基本战功） */
+  async _applySkirmishOutcome(oc) {
+    const c = (this.gameState.soldierCareer ||= { rank: '士卒', rankTier: 0, merit: 0, kills: 0, battles: 0 });
+    c.merit += oc.merit || 0; c.kills += oc.kills || 0; c.battles += 1;
+  }
+
   /** 接敌抉择（Phase 41 W3）：sally 出城迎击→野战；hold 闭城固守→围城 */
   async _resolveEngagement(choice) {
     const m = this.gameState._pendingEngagement;
@@ -998,6 +1123,13 @@ export class GameSession {
       case 'siege_order':
         await this._siegeOrder(action);
         break;
+      case 'skirmish_join':
+        // 局部时间放缓：参战是被放大的瞬间，不推进战略时钟（季/旬）
+        await this._startSkirmish(this.gameState);
+        break;
+      case 'skirmish':
+        await this._submitSkirmish(action);
+        break;
       default:
         this.gameState.addNarrative('system', `（未知动作类型：${action.type}）`);
     }
@@ -1040,7 +1172,13 @@ export class GameSession {
     let combat = null;
     let legion = null;
     let strategy = null;
-    if (gs._pendingEngagement) {
+    let skirmish = null;
+    if (gs.activeSkirmish) {
+      // 局部战斗（Phase 44）：小兵在战线上的一片厮杀
+      situation = 'skirmish';
+      skirmish = this._buildSkirmishSnapshot(gs);
+      if (this.combatMode === 'interactive') this._appendSkirmishOptions(gs, options);
+    } else if (gs._pendingEngagement) {
       // 接敌抉择（Phase 41 W3）：敌军兵临城下，出城迎击 or 闭城固守
       situation = 'engagement';
       const m = gs._pendingEngagement;
@@ -1115,7 +1253,11 @@ export class GameSession {
         situation = 'governance';
         this._appendGovernanceOptions(gs, options);
       } else if (!commands && situation === 'travel' && gs.strategicState.regions) {
-        // 底层视角：给一个"静观时局"入口，让幕后世界继续运转（势力/战争自行推进一季）
+        // 底层视角：所属势力正卷入战事 → 可"请缨参战"（局部战斗，时间放缓、不推进战略时钟）；
+        //   否则给"静观时局"入口让幕后世界继续运转。
+        if (this._skirmishContext(gs)) {
+          options.push({ n: options.length + 1, type: 'skirmish_join', text: '请缨参战（投身当前战线厮杀）' });
+        }
         options.push({ n: options.length + 1, type: 'advance_season', text: '静观时局变化（一季流转）' });
       }
     }
@@ -1133,7 +1275,8 @@ export class GameSession {
       legion,
       strategy,
       siege,
-      options: (situation === 'combat' || situation === 'legion') ? options : options.filter(o => o.type !== 'travel' || o.reachable),
+      skirmish,
+      options: (situation === 'combat' || situation === 'legion' || situation === 'skirmish') ? options : options.filter(o => o.type !== 'travel' || o.reachable),
       party,
       usableItems,
       narrative,

@@ -32,6 +32,9 @@ export class GameState {
     this.strategicState = data.strategicState || null;
     // 战略主题 Schema（Phase 42 T3，题材换皮数据；缺省由 schemaOf 回退三国默认）
     this.strategySchema = data.strategySchema || null;
+    // 局部战斗（Phase 44，小兵实战参战；无则 null）+ 行伍生涯（战功/军衔）
+    this.activeSkirmish = data.activeSkirmish || null;
+    this.soldierCareer = data.soldierCareer || null;
 
     // 当前活跃事件
     this.activeEvent = data.activeEvent || null;
@@ -258,6 +261,8 @@ export class GameState {
       activeLegionBattle: this.activeLegionBattle,
       strategicState: this.strategicState,
       strategySchema: this.strategySchema,
+      activeSkirmish: this.activeSkirmish,
+      soldierCareer: this.soldierCareer,
       activeEvent: this.activeEvent,
       mapState: this.mapState,
       completedEventIds: this.completedEventIds,

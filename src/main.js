@@ -21,6 +21,7 @@ import { MapSystem } from './systems/MapSystem.js';
 import { CombatSystem } from './systems/CombatSystem.js';
 import { LegionWarfareSystem } from './systems/LegionWarfareSystem.js';
 import { StrategicSystem } from './systems/StrategicSystem.js';
+import { SkirmishSystem } from './systems/SkirmishSystem.js';
 import { assembleLegionBattle, settleLegionBattle } from './systems/legionOrchestration.js';
 import { applyStrategyEffect, applySeasonEvents } from './systems/strategyOrchestration.js';
 import { TurnManager } from './systems/TurnManager.js';
@@ -153,6 +154,7 @@ class TRPGApp {
     this.engine.registerSystem(new CombatSystem(), 50);
     this.engine.registerSystem(new LegionWarfareSystem(), 49);
     this.engine.registerSystem(new StrategicSystem(), 48);
+    this.engine.registerSystem(new SkirmishSystem(), 47);
     this.engine.registerSystem(new TurnManager(), 40);
     this.engine.registerSystem(new AIGMEngine(), 30);
     this.engine.registerSystem(new ImportExportSystem(), 20);

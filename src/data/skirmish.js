@@ -111,6 +111,25 @@ export function outcomeMeritBonus(type) {
   }
 }
 
+/**
+ * 行伍晋升阶梯（按累计战功）。达 commander 级 → 转为战略参与（指挥官身份）。
+ * minMerit 为升至该级所需累计战功。
+ */
+export const SOLDIER_RANKS = [
+  { tier: 0, name: '士卒', minMerit: 0 },
+  { tier: 1, name: '什长', minMerit: 70 },
+  { tier: 2, name: '队率', minMerit: 180 },
+  { tier: 3, name: '屯长', minMerit: 360 },
+  { tier: 4, name: '军候', minMerit: 620, commander: true }, // 升至军候即获号令一军之权 → 战略模式
+];
+
+/** 据累计战功返回当前军衔（取满足 minMerit 的最高一档） */
+export function rankForMerit(merit) {
+  let r = SOLDIER_RANKS[0];
+  for (const x of SOLDIER_RANKS) { if ((merit || 0) >= x.minMerit) r = x; }
+  return r;
+}
+
 export const OUTCOME_LABEL = {
   victory: '全歼当面之敌',
   rout_enemy: '当面之敌溃散奔逃',
