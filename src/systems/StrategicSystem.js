@@ -17,7 +17,7 @@ import {
 } from '../data/governance.js';
 import { battleTerritoryOutcome } from '../data/campaign.js';
 import { XUN_PER_SEASON, MARCH_BASE_ETA, MARCH_POSTURES, regionDistance, marchEta, marchDetectChance, siegeTick, siegeOutcome, postureMoraleMod } from '../data/war.js';
-import { resolveSchema, schemaOf } from '../data/strategySchema.js';
+import { resolveSchema, schemaOf, battleUnitKey } from '../data/strategySchema.js';
 
 const clamp200 = (v) => Math.max(0, Math.min(200, Math.round(v)));
 
@@ -138,6 +138,9 @@ export class StrategicSystem extends GameSystem {
     const s = schemaOf(gameState);
     return { policies: s.policies, holdingTypes: s.holdingTypes, diplomacyActions: s.diplomacyActions, marchPostures: s.marchPostures };
   }
+
+  /** 战略抽象兵力 → 题材军团战兵种 KEY（role: defender|defenderSupport|attacker|attackerShock） */
+  _bu(gameState, role) { return battleUnitKey(schemaOf(gameState), role); }
 
   /** 委任太守（Phase 37）：char = { id, name, warfare } 由调用方从卡牌解析 */
   appointGovernor(gameState, factionId, holdingId, char) {
@@ -330,10 +333,10 @@ export class StrategicSystem extends GameSystem {
       objectiveHoldingId: target?.id || null,
       supply: { player: 9999, enemy: Math.max(40, Math.round((atk.food || 0) * 0.4)) },
       units: [
-        { id: 'def_main', side: 'player', unitType: 'spearman', troops: Math.max(1, def.troops || 1) },
-        { id: 'def_arch', side: 'player', unitType: 'archer', troops: Math.round((def.troops || 0) * 0.4) || 1 },
-        { id: 'inv_main', side: 'enemy', unitType: 'infantry', troops: atkTroops },
-        { id: 'inv_cav', side: 'enemy', unitType: 'cavalry', troops: Math.round(atkTroops * 0.4) || 1 },
+        { id: 'def_main', side: 'player', unitType: this._bu(gameState, 'defender'), troops: Math.max(1, def.troops || 1) },
+        { id: 'def_arch', side: 'player', unitType: this._bu(gameState, 'defenderSupport'), troops: Math.round((def.troops || 0) * 0.4) || 1 },
+        { id: 'inv_main', side: 'enemy', unitType: this._bu(gameState, 'attacker'), troops: atkTroops },
+        { id: 'inv_cav', side: 'enemy', unitType: this._bu(gameState, 'attackerShock'), troops: Math.round(atkTroops * 0.4) || 1 },
       ],
     };
   }
@@ -472,9 +475,9 @@ export class StrategicSystem extends GameSystem {
         objectiveName: `${this._factionName(gameState, attacker)}犯境·野战`, campaignKey: `sally_${holdingId}`,
         supply: { player: 9999, enemy: march.army.supply },
         units: [
-          { id: 'def_main', side: 'player', unitType: 'spearman', troops: garrison, generalId: march.defenderGeneralId },
-          { id: 'atk_main', side: 'enemy', unitType: 'infantry', troops: atkT },
-          { id: 'atk_cav', side: 'enemy', unitType: 'cavalry', troops: Math.max(1, Math.round(atkT * 0.3)) },
+          { id: 'def_main', side: 'player', unitType: this._bu(gameState, 'defender'), troops: garrison, generalId: march.defenderGeneralId },
+          { id: 'atk_main', side: 'enemy', unitType: this._bu(gameState, 'attacker'), troops: atkT },
+          { id: 'atk_cav', side: 'enemy', unitType: this._bu(gameState, 'attackerShock'), troops: Math.max(1, Math.round(atkT * 0.3)) },
         ],
       };
       return { kind: 'battle', battleDef };

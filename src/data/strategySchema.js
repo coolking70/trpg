@@ -52,11 +52,14 @@ export const DEFAULT_SCHEMA = Object.freeze({
   holdingTypes: HOLDING_TYPES,
   policies: POLICIES,
   diplomacyActions: DIPLOMACY_ACTIONS,
+  // 战略层抽象兵力下沉到军团战时的默认兵种角色（题材可改）：
+  //   defender 守军主力 / attacker 攻军主力 / attackerShock 攻军突击（骑/装甲）
+  defaultBattleUnits: { defender: 'spearman', defenderSupport: 'archer', attacker: 'infantry', attackerShock: 'cavalry' },
   narration: DEFAULT_NARRATION,
 });
 
 /** 顶层字段：题材给则整张替换 */
-const TABLE_FIELDS = ['unitTypes', 'counterMatrix', 'formations', 'machines', 'battleTypes', 'tactics', 'marchPostures', 'holdingTypes', 'policies', 'diplomacyActions'];
+const TABLE_FIELDS = ['unitTypes', 'counterMatrix', 'formations', 'machines', 'battleTypes', 'tactics', 'marchPostures', 'holdingTypes', 'policies', 'diplomacyActions', 'defaultBattleUnits'];
 /** 标签型字段：一层深合并（可只改个别项） */
 const LABEL_FIELDS = ['resources', 'narration'];
 
@@ -99,4 +102,15 @@ function mergeLabels(base, over) {
 /** 从 gameState 取 Schema（缺省回退 DEFAULT_SCHEMA，保证纯函数/系统任何时刻可读） */
 export function schemaOf(gameState) {
   return (gameState && gameState.strategySchema) || DEFAULT_SCHEMA;
+}
+
+/**
+ * 战略抽象兵力 → 军团战兵种 KEY。role: 'defender'|'attacker'|'attackerShock'。
+ * 题材配置缺失或键无效时，回退到 unitTypes 的首个键，确保任意题材都能起战。
+ */
+export function battleUnitKey(schema, role) {
+  const s = schema || DEFAULT_SCHEMA;
+  const want = s.defaultBattleUnits?.[role];
+  if (want && s.unitTypes?.[want]) return want;
+  return Object.keys(s.unitTypes || {})[0] || 'infantry';
 }

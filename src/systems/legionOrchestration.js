@@ -6,6 +6,8 @@
  * 不碰具体的回合循环/UI——那部分两端形态不同，各自保留。
  */
 
+import { schemaOf, battleUnitKey } from '../data/strategySchema.js';
+
 /**
  * 出征装配：处理 drawFromStrategy（从国库扣兵粮 + 缩放我方栈 + 外交援军）+ 主将武备补全。
  * @param {object} battleDef
@@ -39,7 +41,7 @@ export function assembleLegionBattle(battleDef, { gameState, strategicSystem, ca
       const rel = ss.relationOf(gameState, fid, battleDef.allyFactionId);
       if (ally && rel.stance === 'ally') {
         const aid = ss.mobilize(gameState, battleDef.allyFactionId, Math.round((ally.troops || 0) * 0.4));
-        if (aid > 0) def.units.push({ id: `ally_${battleDef.allyFactionId}`, side: 'player', unitType: 'infantry', troops: aid, name: `${ally.name}援军` });
+        if (aid > 0) def.units.push({ id: `ally_${battleDef.allyFactionId}`, side: 'player', unitType: battleUnitKey(schemaOf(gameState), 'attacker'), troops: aid, name: `${ally.name}援军` });
       }
     }
     strategyCtx = { fid, mobilized, enemyFid: battleDef.enemyFactionId || null };

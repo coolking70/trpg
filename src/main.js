@@ -51,7 +51,7 @@ import { GameUI } from './ui/GameUI.js';
 
 // 数据
 import { DEFAULT_PRESET } from './data/defaultPreset.js';
-import { schemaOf } from './data/strategySchema.js';
+import { schemaOf, battleUnitKey } from './data/strategySchema.js';
 import { assignPresetImages } from './data/assetLibrary.js';
 
 // Phase 26E — 项目自带预设清单（Vite 在构建时把 presets/*.json 都打入 bundle）
@@ -1612,7 +1612,7 @@ class TRPGApp {
       const sg = ss.playerSiege(this.gameState); if (!sg) return;
       if (data.order === 'breakout') {
         this._breakoutSiege = sg;
-        this._startLegionBattle({ battleType: 'field', enemyFactionId: sg.attacker, objectiveName: `${this._stratHolding(sg.holdingId)}·突围决战`, supply: { player: 9999, enemy: sg.atk.supply }, units: [{ id: 'def_main', side: 'player', unitType: 'spearman', troops: Math.max(1, sg.def.troops) }, { id: 'atk_main', side: 'enemy', unitType: 'infantry', troops: Math.max(1, sg.atk.troops) }] });
+        this._startLegionBattle({ battleType: 'field', enemyFactionId: sg.attacker, objectiveName: `${this._stratHolding(sg.holdingId)}·突围决战`, supply: { player: 9999, enemy: sg.atk.supply }, units: [{ id: 'def_main', side: 'player', unitType: battleUnitKey(schemaOf(this.gameState), 'defender'), troops: Math.max(1, sg.def.troops) }, { id: 'atk_main', side: 'enemy', unitType: battleUnitKey(schemaOf(this.gameState), 'attacker'), troops: Math.max(1, sg.atk.troops) }] });
         this.gameState.addNarrative('system', `🐎 ${this._stratHolding(sg.holdingId)} 守军大开城门，倾力突围！`); return;
       }
       if (data.order === 'lift') { ss.resolveSiege(this.gameState, sg, 'retreat'); this.gameState.addNarrative('system', `🏳 我军解围撤还，${this._stratHolding(sg.holdingId)} 之围遂解。`); }

@@ -19,11 +19,11 @@ function cloneBattle(b) {
 }
 
 /** 用 LegionWarfareSystem 跑完一整场（双方启发式自动结算），返回结果摘要 */
-export function simulateOnce(battleDef, rng) {
+export function simulateOnce(battleDef, rng, strategySchema = null) {
   const sys = new LegionWarfareSystem();
   sys.rng = rng;
   sys.eventSystem = null;
-  const gs = {};
+  const gs = strategySchema ? { strategySchema } : {};
   sys.startBattle(gs, cloneBattle(battleDef));
   const totalPlayer0 = aliveTroops(gs.activeLegionBattle.units, 'player');
   const totalEnemy0 = aliveTroops(gs.activeLegionBattle.units, 'enemy');
@@ -52,12 +52,12 @@ export function simulateOnce(battleDef, rng) {
   };
 }
 
-/** 对一场军团战做 N 次模拟，汇总统计 */
-export function simulateLegionBattle(battleDef, { runs = 1000, seed = 12345 } = {}) {
+/** 对一场军团战做 N 次模拟，汇总统计。strategySchema 可指定题材（缺省=三国默认）。 */
+export function simulateLegionBattle(battleDef, { runs = 1000, seed = 12345, strategySchema = null } = {}) {
   const rng = makeSeededRng(seed);
   let wins = 0, roundSum = 0, pLoss = 0, eLoss = 0, timeouts = 0;
   for (let i = 0; i < runs; i++) {
-    const r = simulateOnce(battleDef, rng);
+    const r = simulateOnce(battleDef, rng, strategySchema);
     if (r.winnerSide === 'player') wins++;
     roundSum += r.round;
     pLoss += r.playerLossRatio;

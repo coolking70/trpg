@@ -40,7 +40,7 @@ import { ContextRetriever } from '../systems/ContextRetriever.js';
 import { GamePreset } from '../models/GamePreset.js';
 import { GameState } from '../models/GameState.js';
 import { canUseFormation, generalHasTactic } from '../data/warfare.js';
-import { schemaOf } from '../data/strategySchema.js';
+import { schemaOf, battleUnitKey } from '../data/strategySchema.js';
 import { assembleLegionBattle, settleLegionBattle } from '../systems/legionOrchestration.js';
 import { applyStrategyEffect, applySeasonEvents } from '../systems/strategyOrchestration.js';
 
@@ -828,8 +828,8 @@ export class GameSession {
         battleType: 'field', enemyFactionId: sg.attacker,
         objectiveName: `${this._holdingName(sg.holdingId)}·突围决战`, supply: { player: 9999, enemy: atk.supply },
         units: [
-          { id: 'def_main', side: 'player', unitType: 'spearman', troops: Math.max(1, def.troops) },
-          { id: 'atk_main', side: 'enemy', unitType: 'infantry', troops: Math.max(1, atk.troops) },
+          { id: 'def_main', side: 'player', unitType: battleUnitKey(schemaOf(this.gameState), 'defender'), troops: Math.max(1, def.troops) },
+          { id: 'atk_main', side: 'enemy', unitType: battleUnitKey(schemaOf(this.gameState), 'attacker'), troops: Math.max(1, atk.troops) },
         ],
       });
       this.gameState.addNarrative('system', `🐎 ${this._holdingName(sg.holdingId)} 守军大开城门，倾力突围！`);
