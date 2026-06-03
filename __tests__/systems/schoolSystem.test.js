@@ -138,6 +138,45 @@ describe('学期推进 / 招募 / 快照', () => {
     expect(gs.activeCharacters.map(c => c.id).sort()).toEqual(['pc', 'perm']); // 临时全撤、永久保留
   });
 
+  test('期末挂科 → 学期推进时执行留级（pendingPenalty）', () => {
+    const sys = mkSys(); const gs = mkGS();
+    sys.initFromPreset(gs, { id: 'p', schoolSetup: {} });
+    sys.electCourse(gs, 'c_letters');
+    gs.activeCharacters[0].stats.intellect = 1; // 必挂
+    gs.schoolState.term = 2; // 学年末
+    const ex = sys.takeExam(gs, 'final');
+    expect(ex.passed).toBe(false);
+    expect(gs.schoolState.pendingPenalty).toBe('retain');
+    const adv = sys.advanceTerm(gs);
+    expect(adv.outcome).toBe('retain');
+    expect(gs.schoolState.pendingPenalty).toBeNull(); // 已结算清除
+  });
+
+  test('记过累计达阈值 → 退学；violateRule 报告纪律状态', () => {
+    const sys = mkSys(); const gs = mkGS();
+    sys.initFromPreset(gs, { id: 'p', schoolSetup: {} });
+    const v1 = sys.violateRule(gs, 'no_fight'); // +2
+    expect(v1.discipline).toBe('warned');
+    sys.violateRule(gs, 'no_fight'); // 4
+    const v3 = sys.violateRule(gs, 'no_theft'); // +3 → 7 (>=5 half of 9) → probation
+    expect(v3.discipline).toBe('probation');
+    sys.violateRule(gs, 'no_fight'); // 9 → expulsion_pending
+    gs.schoolState.term = 2;
+    const adv = sys.advanceTerm(gs);
+    expect(adv.outcome).toBe('expel');
+  });
+
+  test('竞赛（跨校联赛）：高属性夺魁得奖励', () => {
+    const sys = mkSys(); const gs = mkGS();
+    sys.initFromPreset(gs, { id: 'p', schoolSetup: {} });
+    gs.activeCharacters[0].stats.attack = 30;
+    const before = gs.activeCharacters[0].stats.attack;
+    const r = sys.takeExam(gs, 'interschool');
+    expect(r.kind).toBe('competition');
+    expect(r.reward).toBeTruthy(); // 夺得名次奖励
+    expect(gs.activeCharacters[0].stats.attack).toBeGreaterThan(before);
+  });
+
   test('snapshot 概览', () => {
     const sys = mkSys(); const gs = mkGS();
     sys.initFromPreset(gs, { id: 'p', schoolSetup: { schoolName: '青云' } });

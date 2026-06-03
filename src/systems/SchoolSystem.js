@@ -208,6 +208,10 @@ export class SchoolSystem extends GameSystem {
     });
     st.examResults.push({ exam: examId, name: def.name, kind: def.kind, score: out.score, rank: out.rank, passed: out.passed });
 
+    // 挂科惩罚记入待决（学期推进时执行留级/退学）；expel 优先于 retain
+    if (out.penalty === 'expel') st.pendingPenalty = 'expel';
+    else if (out.penalty === 'retain' && st.pendingPenalty !== 'expel') st.pendingPenalty = 'retain';
+
     // 名次奖励
     let rewardApplied = null;
     if (out.reward) rewardApplied = this._applyGrants(char, { stats: out.reward.stats || {}, skills: out.reward.skills || [] });
@@ -239,7 +243,13 @@ export class SchoolSystem extends GameSystem {
     if (!v) return { ok: false, reason: '无此校规' };
     st.demerits = (st.demerits || 0) + v.demerits;
     st.violations.push({ ruleId: v.ruleId, name: v.name, severe: v.severe });
-    return { ok: true, ...v, totalDemerits: st.demerits };
+    // 立即纪律状态：记过满 / 重大违纪累计 → 退学在望；过半 → 留校察看
+    const expelD = schema.curriculum?.expelDemerits ?? 9;
+    const severeCount = st.violations.filter(x => x.severe).length;
+    let discipline = 'warned';
+    if (st.demerits >= expelD || severeCount >= 3) discipline = 'expulsion_pending';
+    else if (st.demerits >= Math.ceil(expelD / 2)) discipline = 'probation';
+    return { ok: true, ...v, totalDemerits: st.demerits, discipline };
   }
 
   // ============================================================
@@ -270,6 +280,8 @@ export class SchoolSystem extends GameSystem {
       // advance_term 默认保留在修课程；升级/留级清空重选
     }
     if (outcome.type === 'promote' || outcome.type === 'retain') st.enrolled = [];
+    // 待决考试惩罚已结算 → 清除
+    st.pendingPenalty = null;
     st.gpa = computeGpa(st);
     return { ok: true, outcome: outcome.type, reason: outcome.reason, before, after: { year: st.year, term: st.term }, status: st.status };
   }
@@ -369,7 +381,10 @@ export class SchoolSystem extends GameSystem {
       clubs: (st.clubs || []).map(c => ({ id: c, name: schema.clubs?.[c]?.name || c })),
       demerits: st.demerits || 0,
       violations: (st.violations || []).length,
+      severeViolations: (st.violations || []).filter(v => v.severe).length,
       retainCount: st.retainCount || 0,
+      pendingPenalty: st.pendingPenalty || null, // 'retain' | 'expel' | null（学期推进时执行）
+      examResults: (st.examResults || []).slice(-5),
       recruitable: eligibleRecruits(st, schema),
       terms: schema.narration?.terms || {},
     };

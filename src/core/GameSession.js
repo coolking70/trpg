@@ -432,6 +432,21 @@ export class GameSession {
         if (gs.schoolState) sc.disbandTempParty(gs);
         break;
       }
+      // 强制/被动参加考试或竞赛（如统考、跨校联赛点名出战）
+      case 'school_exam': {
+        const sc = this.sys('SchoolSystem');
+        if (gs.schoolState && eff.examId) {
+          const r = sc.takeExam(gs, eff.examId, { fieldSize: eff.fieldSize });
+          if (r.ok) {
+            let line = `📣 ${r.name}：得分 ${r.score}，第 ${r.rank}/${r.fieldSize} 名，${r.passed ? '通过' : '未通过'}。`;
+            if (r.reward) line += '（名次奖励到手）';
+            if (r.penalty === 'retain') line += '（不及格，面临留级）';
+            if (r.penalty === 'expel') line += '（成绩太差，面临退学）';
+            gs.addNarrative('system', line);
+          }
+        }
+        break;
+      }
     }
   }
 

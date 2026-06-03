@@ -25,6 +25,7 @@ export const DEFAULT_SCHOOL_SCHEMA = {
     yearsToGraduate: 4,
     passGpa: 1.0,                // 低于此 → 留级风险
     expelGpa: 0.5,               // 远低于此（或多次留级/重大违纪）→ 退学
+    expelDemerits: 9,            // 记过累计达此 → 勒令退学
     maxElectivesPerTerm: 5,
   },
   // 专业（major-fixed 模式用 fixedCourses；free-credits 模式 major 仅作方向/必修标记）
@@ -112,10 +113,22 @@ export function advanceOutcome(schoolState, schema) {
   const year = schoolState.year || 1, term = schoolState.term || 1;
   const termsPerYear = cur.termsPerYear || 2;
 
-  // 退学：GPA 崩 或 重大违纪累计
+  // 待决考试惩罚（期末挂科 → retain/expel；由 takeExam 记入 pendingPenalty）
+  const pending = schoolState.pendingPenalty || null;
+  if (pending === 'expel') return { type: 'expel', reason: '考试不合格，勒令退学' };
+
+  // 退学：GPA 崩 / 重大违纪累计 / 记过满 / 多次留级
   const severeViolations = (schoolState.violations || []).filter(v => v.severe).length;
-  if (gpa < (cur.expelGpa ?? 0.5) || severeViolations >= 3 || (schoolState.retainCount || 0) >= 2) {
-    return { type: 'expel', reason: gpa < (cur.expelGpa ?? 0.5) ? '学业不振，绩点过低' : '屡犯校规/多次留级' };
+  const demeritsOver = (schoolState.demerits || 0) >= (cur.expelDemerits ?? 9);
+  if (gpa < (cur.expelGpa ?? 0.5) || severeViolations >= 3 || demeritsOver || (schoolState.retainCount || 0) >= 2) {
+    let reason = '屡犯校规/多次留级';
+    if (gpa < (cur.expelGpa ?? 0.5)) reason = '学业不振，绩点过低';
+    else if (demeritsOver) reason = '记过累累，校纪难容';
+    return { type: 'expel', reason };
+  }
+  // 期末挂科 → 留级（无论学期是否结束）
+  if (pending === 'retain' && term >= termsPerYear) {
+    return { type: 'retain', reason: '期末考试不合格' };
   }
   // 学期内推进
   if (term < termsPerYear) {
