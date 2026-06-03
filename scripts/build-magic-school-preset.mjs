@@ -19,6 +19,7 @@ const schoolSchema = {
     conjuration: { name: '咒法学派', desc: '召唤奇术、奥妙无穷。',
       requiredByYear: { 1: ['m_fund', 'm_summon1'], 2: ['m_summon2', 'm_ward'] }, requiredCourses: ['m_fund', 'm_summon1'] },
   },
+  recruitAffinity: 30, // 压缩学制：关系阈值相应下调，使一学年内培养的师友可于毕业招募
 };
 
 const character = {
@@ -104,7 +105,7 @@ const events = [
     trigger: sc({ inScene: ['scene_library'], requireSchoolState: { completed: 'm_fund' } }), tags: ['main'],
     choices: [
       { id: 'c_report', text: '上报校长（守校规）', outcomes: [{ probability: 1, text: '你转身报告了校长。凯尔被记过，狠狠瞪了你一眼，但禁咒被封存了。', effects: [{ type: 'school_relationship', npcId: 'npc_rival', delta: -25 }, { type: 'school_relationship', npcId: 'npc_dean', delta: 20, role: 'dean' }, { type: 'set_variable', name: 'forbidden_path', value: 'report' }] }] },
-      { id: 'c_dissuade', text: '劝阻凯尔收手', outcomes: [{ probability: 1, text: '你按住他的手，苦劝良久。凯尔最终把残页塞回原处，看你的眼神多了几分信任。', effects: [{ type: 'school_relationship', npcId: 'npc_rival', delta: 25 }, { type: 'set_variable', name: 'forbidden_path', value: 'dissuade' }] }] },
+      { id: 'c_dissuade', text: '劝阻凯尔收手', outcomes: [{ probability: 1, text: '你按住他的手，苦劝良久。凯尔最终把残页塞回原处，看你的眼神多了几分信任。', effects: [{ type: 'school_relationship', npcId: 'npc_rival', delta: 32 }, { type: 'set_variable', name: 'forbidden_path', value: 'dissuade' }] }] },
       { id: 'c_study', text: '一起偷偷研究（违校规）', outcomes: [{ probability: 1, text: '禁忌的知识在指尖流淌，你学会了一式危险的咒法——但这违反了校规，迟早要付出代价。', effects: [{ type: 'school_relationship', npcId: 'npc_rival', delta: 30 }, { type: 'school_violation', ruleId: 'no_forbidden' }, { type: 'set_variable', name: 'forbidden_path', value: 'study' }] }] },
     ] },
   // 禁咒造物失控（秘境，2 年级、禁咒线之后）—— Boss 战
@@ -119,7 +120,7 @@ const events = [
     description: '毕业典礼的钟声在云端回荡。四年同窗、师友就要各奔前程。你环顾身边——谁，愿意与你同行下一段旅程？',
     trigger: sc({ inScene: ['scene_academy'], requireSchoolState: { status: 'graduated' } }), tags: ['main', 'ending'],
     choices: [
-      { id: 'c_recruit', text: '邀请交好的师友同行（在就学动作里招募）', outcomes: [{ probability: 1, text: '你向交心的伙伴们发出邀请。奥术之路，未完待续。', effects: [{ type: 'set_variable', name: 'graduated', value: true }] }] },
+      { id: 'c_recruit', text: '邀请交好的师友同行（在就学动作里招募）', outcomes: [{ probability: 1, text: '你向交心的伙伴们发出邀请。奥术之路，未完待续。', effects: [{ type: 'school_disband_party' }, { type: 'set_variable', name: 'graduated', value: true }] }] },
     ] },
 ];
 

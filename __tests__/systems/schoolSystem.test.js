@@ -152,6 +152,22 @@ describe('学期推进 / 招募 / 快照', () => {
     expect(gs.schoolState.pendingPenalty).toBeNull(); // 已结算清除
   });
 
+  test('期末挂科于学期内：pendingPenalty 跨学期更替保留，至学年末才留级', () => {
+    const sys = mkSys(); const gs = mkGS();
+    sys.initFromPreset(gs, { id: 'p', schoolSetup: {} });
+    sys.electCourse(gs, 'c_letters');
+    gs.activeCharacters[0].stats.intellect = 1; // 必挂
+    gs.schoolState.term = 1; // 学期内（非学年末）
+    sys.takeExam(gs, 'final');
+    expect(gs.schoolState.pendingPenalty).toBe('retain');
+    const a1 = sys.advanceTerm(gs);                 // 学期内更替
+    expect(a1.outcome).toBe('advance_term');
+    expect(gs.schoolState.pendingPenalty).toBe('retain'); // 保留，不被抵消
+    const a2 = sys.advanceTerm(gs);                 // 学年末
+    expect(a2.outcome).toBe('retain');
+    expect(gs.schoolState.pendingPenalty).toBeNull();
+  });
+
   test('记过累计达阈值 → 退学；violateRule 报告纪律状态', () => {
     const sys = mkSys(); const gs = mkGS();
     sys.initFromPreset(gs, { id: 'p', schoolSetup: {} });

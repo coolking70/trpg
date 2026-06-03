@@ -283,8 +283,9 @@ export class SchoolSystem extends GameSystem {
       // advance_term 默认保留在修课程；升级/留级清空重选
     }
     if (outcome.type === 'promote' || outcome.type === 'retain') st.enrolled = [];
-    // 待决考试惩罚已结算 → 清除
-    st.pendingPenalty = null;
+    // 待决考试惩罚：仅在学年末/退学等"已结算"时清除；学期内推进(advance_term)应保留，
+    //   使期末挂科的留级判定持续到学年末，而非被中途的学期更替抵消。
+    if (outcome.type !== 'advance_term') st.pendingPenalty = null;
     st.gpa = computeGpa(st);
     return { ok: true, outcome: outcome.type, reason: outcome.reason, before, after: { year: st.year, term: st.term }, status: st.status };
   }

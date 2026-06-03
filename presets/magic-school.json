@@ -326,7 +326,7 @@
       "classmate",
       "roommate"
     ],
-    "recruitAffinity": 60,
+    "recruitAffinity": 30,
     "narration": {
       "settingTone": "一座漂浮于云端的古老魔法学院，塔楼藏书无数，学徒们钻研奥秘、彼此竞逐。",
       "terms": {
@@ -874,7 +874,7 @@
                 {
                   "type": "school_relationship",
                   "npcId": "npc_rival",
-                  "delta": 25
+                  "delta": 32
                 },
                 {
                   "type": "set_variable",
@@ -995,6 +995,9 @@
               "probability": 1,
               "text": "你向交心的伙伴们发出邀请。奥术之路，未完待续。",
               "effects": [
+                {
+                  "type": "school_disband_party"
+                },
                 {
                   "type": "set_variable",
                   "name": "graduated",
