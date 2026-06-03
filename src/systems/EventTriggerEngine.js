@@ -113,6 +113,15 @@ export class EventTriggerEngine extends GameSystem {
    * 评估复合触发器（所有给定条件必须满足）
    */
   _evaluateComposite(condition, gameState, context) {
+    // 身份门控（Phase 46，通用）：仅当玩家战略身份(playerRole)在白名单内才触发。
+    //   常用于把"主角本位的主线事件"限定给 ruler——底层视角(officer/soldier)不被强行卷入主公的剧情。
+    //   无战略层时 playerRole 视作 'ruler'（向后兼容：未设此条件的事件不受影响）。
+    if (condition.requirePlayerRole) {
+      const need = Array.isArray(condition.requirePlayerRole) ? condition.requirePlayerRole : [condition.requirePlayerRole];
+      const role = gameState?.strategicState?.playerRole || 'ruler';
+      if (!need.includes(role)) return false;
+    }
+
     // 场景条件（新版）— 必须当前在指定的场景之一
     if (condition.inScene && condition.inScene.length > 0) {
       if (context.moment !== TRIGGER_MOMENTS.SCENE_ENTER) return false;

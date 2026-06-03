@@ -33,23 +33,36 @@ describe('Phase 45 — 三国出身轴', () => {
     s.destroy();
   });
 
-  test('行伍小卒 → soldier，无号令权、主角身份改写', async () => {
+  test('行伍小卒 → soldier，无号令权、身份/属性/开局场景皆改写', async () => {
     const s = await load('footman');
     expect(s.gameState.strategicState.playerRole).toBe('soldier');
     expect(s.sys('StrategicSystem').playerCommands(s.gameState)).toBe(false);
-    expect(s.gameState.activeCharacters[0].name).toBe('无名小卒');
-    // 底层视角：getState 不给指挥选项
+    const pc = s.gameState.activeCharacters[0];
+    expect(pc.name).toBe('无名小卒');
+    expect(pc.stats.hp).toBe(46);            // 出身定制的小卒属性（非继承刘备高数值）
+    expect(pc.stats.hpCurrent).toBe(46);
+    // 开局在军营，而非被塞进桃园主线事件
+    expect(s.gameState.mapState.currentSceneId).toBe('scene_junying');
     const st = s.getState();
+    expect(st.situation).not.toBe('event');   // 主线事件不强加于小卒
     expect(st.options.some(o => o.type === 'govern')).toBe(false);
     expect(st.strategy.playerRole).toBe('soldier');
     s.destroy();
   });
 
-  test('蜀军裨将 → officer，亦无国策号令权', async () => {
+  test('蜀军裨将 → officer，定制属性 + 军营开局', async () => {
     const s = await load('officer');
     expect(s.gameState.strategicState.playerRole).toBe('officer');
     expect(s.sys('StrategicSystem').playerCommands(s.gameState)).toBe(false);
     expect(s.gameState.activeCharacters[0].name).toBe('裨将');
+    expect(s.gameState.activeCharacters[0].stats.hp).toBe(70);
+    expect(s.gameState.mapState.currentSceneId).toBe('scene_junying');
     s.destroy();
+  });
+
+  test('主线事件已限定 ruler 触发（requirePlayerRole）', () => {
+    const mains = (preset.events || []).filter(e => (e.tags || []).includes('main'));
+    expect(mains.length).toBeGreaterThan(0);
+    expect(mains.every(e => (e.trigger?.condition?.requirePlayerRole || []).includes('ruler'))).toBe(true);
   });
 });

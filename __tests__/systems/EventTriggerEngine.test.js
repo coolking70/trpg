@@ -327,6 +327,26 @@ describe('EventTriggerEngine', () => {
     });
   });
 
+  // Phase 46 — 身份门控：requirePlayerRole 限定事件触发的玩家战略身份
+  describe('Phase 46 — requirePlayerRole 身份门控', () => {
+    const ev = { id: 'e_main', type: 'event', trigger: { type: 'composite', condition: { inScene: ['s1'], requirePlayerRole: ['ruler'] } } };
+    const gsRole = (role) => ({ ...makeGameState(), mapState: { currentSceneId: 's1' }, strategicState: role ? { playerRole: role } : undefined });
+    test('ruler 触发；soldier/officer 不触发', () => {
+      const engine = makeEngine([ev]);
+      expect(engine.scan(gsRole('ruler'), { moment: 'scene_enter' })).toContain('e_main');
+      expect(engine.scan(gsRole('soldier'), { moment: 'scene_enter' })).not.toContain('e_main');
+      expect(engine.scan(gsRole('officer'), { moment: 'scene_enter' })).not.toContain('e_main');
+    });
+    test('无战略层 → playerRole 视作 ruler（向后兼容）', () => {
+      const engine = makeEngine([ev]);
+      expect(engine.scan(gsRole(null), { moment: 'scene_enter' })).toContain('e_main');
+    });
+    test('未设 requirePlayerRole 的事件不受影响', () => {
+      const engine = makeEngine([{ id: 'e_any', type: 'event', trigger: { type: 'composite', condition: { inScene: ['s1'] } } }]);
+      expect(engine.scan(gsRole('soldier'), { moment: 'scene_enter' })).toContain('e_any');
+    });
+  });
+
   // Phase 29 — 随机遭遇每次进入场景只触发一次（修复战斗后补扫 SCENE_ENTER 背靠背重复触发）
   describe('Phase 29 — 概率随机遭遇的单次访问冷却', () => {
     function encEngine() {

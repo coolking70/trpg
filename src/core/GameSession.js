@@ -141,6 +141,7 @@ export class GameSession {
   _applyCreationChoices(choices) {
     const tags = new Set(this.gameState.playerTags || []);
     const protag = this.gameState.activeCharacters[0];
+    let originStartScene = null;
     for (const axis of ['races', 'origins', 'backgrounds', 'faiths']) {
       const opts = this.preset.startingOptions[axis] || [];
       const opt = opts.find(o => o.id === choices[axis]) || opts[0];
@@ -161,6 +162,13 @@ export class GameSession {
           ...(opt.strategicFaction ? { factionId: opt.strategicFaction } : {}),
         };
       }
+      // 出身可定义整套基础属性（Phase 46，通用）：opt.stats 直接覆盖（先于 statBonus 叠加），
+      //   使"小卒/平民"等出身拥有与身份相称的属性，而非继承主角的高数值卡。
+      if (opt.stats && protag) {
+        protag.stats = { ...protag.stats, ...opt.stats };
+        if (opt.stats.hp != null) protag.stats.hpCurrent = protag.stats.hp;
+        if (opt.stats.mp != null) protag.stats.mpCurrent = protag.stats.mp;
+      }
       if (opt.statBonus && protag) {
         for (const [k, v] of Object.entries(opt.statBonus)) {
           protag.stats[k] = (protag.stats[k] || 0) + v;
@@ -168,15 +176,19 @@ export class GameSession {
           if (k === 'mp') protag.stats.mpCurrent = protag.stats.mp;
         }
       }
+      // 出身可直接指定开局场景（Phase 46，通用）：底层出身可从军营/旅途等切入，不被塞进主角的开场。
+      if (opt.startSceneId) originStartScene = opt.startSceneId;
     }
     this.gameState.playerTags = [...tags];
 
-    // 起始场景路由
-    let startSceneId = null;
-    for (const rule of (this.preset.startingSceneRules || [])) {
-      if (rule.default) continue;
-      const need = rule.when?.tags || [];
-      if (need.every(t => tags.has(t))) { startSceneId = rule.sceneId; break; }
+    // 起始场景路由：出身直指 > startingSceneRules（tag 匹配）> 默认规则
+    let startSceneId = originStartScene;
+    if (!startSceneId) {
+      for (const rule of (this.preset.startingSceneRules || [])) {
+        if (rule.default) continue;
+        const need = rule.when?.tags || [];
+        if (need.every(t => tags.has(t))) { startSceneId = rule.sceneId; break; }
+      }
     }
     if (!startSceneId) {
       const defRule = this.preset.startingSceneRules?.find(r => r.default);

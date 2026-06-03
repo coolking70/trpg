@@ -4,6 +4,15 @@
 
 ## [Unreleased]
 
+### Phase 46 — 出身定制身份 + 主角本位事件门控（通用机制）🎭🚪
+
+三国小卒玩测暴露两点（被强塞主角开场、继承主角高属性），修为**通用引擎能力**，任何剧本可用：
+
+- **出身定制（`_applyCreationChoices`，通用）**：`startingOptions.origins[*]` 新增 `stats`（整套基础属性覆盖，先于 statBonus）、`startSceneId`（该出身的开局场景）、`charName/charTitle/charDescription`（改写主角身份）。低阶出身因此拥有相称属性、从军营/旅途等切入，而非继承主角高数值卡、被塞进主角开场。
+- **身份门控事件（`EventTriggerEngine`，通用）**：trigger.condition 新增 `requirePlayerRole`（白名单）。主角本位的主线事件可限定仅 `ruler` 触发；底层视角(officer/soldier)不被强行卷入主公剧情。无战略层时 playerRole 视作 ruler（向后兼容，未设此条件的事件不受影响）。
+- **应用到三国**：`patch-sanguo-origins.mjs` 用上述通用能力——裨将/小卒有定制属性、于「行伍军营」开局、16 个主线事件限定 ruler 触发；主公仍为刘备、桃园开局。
+- **验证**：jest 770/770（+EventTriggerEngine 身份门控 3 例、sanguoOrigins 扩充）、MCP 45/45、build 通过；真 GM 实测小卒开局已落在「行伍军营」travel 态、HP 46。
+
 ### Phase 45 — 局部战斗换皮 + 浏览器面板 + 题材口吻 🎭🖥️
 
 **P45a 局部战斗主题换皮**：`schema.narration.skirmish`（小队/援兵/军士/将领称谓 + 将领名池）。`SkirmishSystem` 援兵命名读 `s.labels`，`buildSkirmishDef` 据题材命名小队/敌兵/敌将。西幻（同袍士兵/骑士统领/黑鸦骑士）、现代（同班战友/校官/钢铁上校）各配 skirmish 措辞。

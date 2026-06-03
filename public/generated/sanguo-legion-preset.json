@@ -575,7 +575,10 @@
           "excludeCompletedEvents": [
             "ev_taoyuan_main"
           ],
-          "probability": 1
+          "probability": 1,
+          "requirePlayerRole": [
+            "ruler"
+          ]
         }
       },
       "priority": 100,
@@ -639,7 +642,10 @@
           "excludeCompletedEvents": [
             "ev_hulao_main"
           ],
-          "probability": 1
+          "probability": 1,
+          "requirePlayerRole": [
+            "ruler"
+          ]
         }
       },
       "priority": 100,
@@ -754,7 +760,10 @@
           "excludeCompletedEvents": [
             "ev_xiapi_main"
           ],
-          "probability": 1
+          "probability": 1,
+          "requirePlayerRole": [
+            "ruler"
+          ]
         }
       },
       "priority": 100,
@@ -1028,7 +1037,10 @@
           "excludeCompletedEvents": [
             "ev_guandu_main"
           ],
-          "probability": 1
+          "probability": 1,
+          "requirePlayerRole": [
+            "ruler"
+          ]
         }
       },
       "priority": 100,
@@ -1249,7 +1261,10 @@
           "excludeCompletedEvents": [
             "ev_sangu_main"
           ],
-          "probability": 1
+          "probability": 1,
+          "requirePlayerRole": [
+            "ruler"
+          ]
         }
       },
       "priority": 100,
@@ -1313,7 +1328,10 @@
           "excludeCompletedEvents": [
             "ev_bowang_main"
           ],
-          "probability": 1
+          "probability": 1,
+          "requirePlayerRole": [
+            "ruler"
+          ]
         }
       },
       "priority": 100,
@@ -1526,7 +1544,10 @@
           "excludeCompletedEvents": [
             "ev_changban_main"
           ],
-          "probability": 1
+          "probability": 1,
+          "requirePlayerRole": [
+            "ruler"
+          ]
         }
       },
       "priority": 100,
@@ -1642,7 +1663,10 @@
           "excludeCompletedEvents": [
             "ev_chibi_main"
           ],
-          "probability": 1
+          "probability": 1,
+          "requirePlayerRole": [
+            "ruler"
+          ]
         }
       },
       "priority": 100,
@@ -1848,7 +1872,10 @@
           "excludeCompletedEvents": [
             "ev_nanjun_main"
           ],
-          "probability": 1
+          "probability": 1,
+          "requirePlayerRole": [
+            "ruler"
+          ]
         }
       },
       "priority": 100,
@@ -2069,7 +2096,10 @@
           "excludeCompletedEvents": [
             "ev_hanzhong_main"
           ],
-          "probability": 1
+          "probability": 1,
+          "requirePlayerRole": [
+            "ruler"
+          ]
         }
       },
       "priority": 100,
@@ -2289,7 +2319,10 @@
           "excludeCompletedEvents": [
             "ev_fancheng_main"
           ],
-          "probability": 1
+          "probability": 1,
+          "requirePlayerRole": [
+            "ruler"
+          ]
         }
       },
       "priority": 100,
@@ -2506,7 +2539,10 @@
           "excludeCompletedEvents": [
             "ev_maicheng_main"
           ],
-          "probability": 1
+          "probability": 1,
+          "requirePlayerRole": [
+            "ruler"
+          ]
         }
       },
       "priority": 100,
@@ -2621,7 +2657,10 @@
           "excludeCompletedEvents": [
             "ev_yiling_main"
           ],
-          "probability": 1
+          "probability": 1,
+          "requirePlayerRole": [
+            "ruler"
+          ]
         }
       },
       "priority": 100,
@@ -2832,7 +2871,10 @@
           "excludeCompletedEvents": [
             "ev_nanman_main"
           ],
-          "probability": 1
+          "probability": 1,
+          "requirePlayerRole": [
+            "ruler"
+          ]
         }
       },
       "priority": 100,
@@ -3046,7 +3088,10 @@
           "excludeCompletedEvents": [
             "ev_jieting_main"
           ],
-          "probability": 1
+          "probability": 1,
+          "requirePlayerRole": [
+            "ruler"
+          ]
         }
       },
       "priority": 100,
@@ -3256,7 +3301,10 @@
           "excludeCompletedEvents": [
             "ev_finale"
           ],
-          "probability": 1
+          "probability": 1,
+          "requirePlayerRole": [
+            "ruler"
+          ]
         }
       },
       "priority": 100,
@@ -3993,6 +4041,28 @@
         "府衙内外吏员奔走，案牍如山，运筹于帷幄之间。"
       ],
       "image": "/assets/library/scenes/state-tavern-normal-day-clear.png"
+    },
+    {
+      "id": "scene_junying",
+      "name": "行伍军营",
+      "type": "settlement",
+      "icon": "⛺",
+      "coords": {
+        "x": 0,
+        "y": 2
+      },
+      "tags": [
+        "spawn"
+      ],
+      "description": "蜀军大营一隅。新卒在此操练、候命，老兵围着篝火低声议论前线的胜负与各路诸侯的动向。",
+      "connections": [
+        {
+          "to": "scene_taoyuan",
+          "label": "前往 义军大营（桃园）"
+        }
+      ],
+      "events": [],
+      "vignettes": []
     }
   ],
   "npcs": [],
@@ -4371,6 +4441,7 @@
         "statBonus": {
           "luck": 2
         },
+        "startSceneId": "scene_taoyuan",
         "description": "汉室宗亲，桃园举义，志在匡复汉室——蜀汉之主，方略征伐皆决于你。"
       },
       {
@@ -4384,10 +4455,17 @@
         "charName": "裨将",
         "charTitle": "蜀军裨将",
         "charDescription": "蜀汉行伍出身的一员裨将，统领一队人马，听命征战。",
-        "statBonus": {
-          "attack": 3,
-          "defense": 2
+        "stats": {
+          "hp": 70,
+          "hpCurrent": 70,
+          "mp": 0,
+          "mpCurrent": 0,
+          "attack": 11,
+          "defense": 7,
+          "speed": 7,
+          "luck": 2
         },
+        "startSceneId": "scene_junying",
         "description": "蜀军一员裨将，统一队人马、亲历阵战。国策非你所能左右，但你能在沙场上博取功名。"
       },
       {
@@ -4400,11 +4478,19 @@
         "strategicRole": "soldier",
         "charName": "无名小卒",
         "charTitle": "蜀军小卒",
-        "charDescription": "涿县乡里一名应募从军的无名小卒，只想在乱世里活着、挣口饱饭。",
-        "statBonus": {
-          "hp": 20
+        "charDescription": "应募从军的无名小卒，只想在乱世里活着、挣口饱饭。",
+        "stats": {
+          "hp": 46,
+          "hpCurrent": 46,
+          "mp": 0,
+          "mpCurrent": 0,
+          "attack": 8,
+          "defense": 5,
+          "speed": 6,
+          "luck": 1
         },
-        "description": "你只是涿县应募从军的乡勇之一。王侯将相的棋局与你无关，你在刀枪缝里求活，偶尔也能立些战功。"
+        "startSceneId": "scene_junying",
+        "description": "你只是应募从军的乡勇之一。王侯将相的棋局与你无关，你在刀枪缝里求活，偶尔也能立些战功。"
       }
     ]
   },
