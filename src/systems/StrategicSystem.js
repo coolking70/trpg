@@ -94,12 +94,17 @@ export class StrategicSystem extends GameSystem {
       }
     }
 
-    const playerFactionId = setup?.playerFactionId || layer?.playerFactionId || ids[0];
+    // 玩家所属势力 + 身份角色（Phase 43）。
+    //   playerRole: 'ruler'(默认，玩家号令该势力) | 'officer' | 'soldier'（底层视角，势力由其 NPC 君主自治）。
+    //   创建期出身可经 gameState._creationStrategic 覆盖（见 GameSession._applyCreationChoices）。
+    const cs = gameState._creationStrategic || {};
+    const playerFactionId = cs.factionId || setup?.playerFactionId || layer?.playerFactionId || ids[0];
+    const playerRole = cs.role || setup?.playerRole || 'ruler';
     if (factions[playerFactionId]) factions[playerFactionId].isPlayer = true;
 
     // 作战层（Phase 41）：区域图 + 旬时钟 + 行军/围城状态（无 regions 则作战层不激活，走旧路径）
     const regions = setup?.regions || layer?.regions || null;
-    gameState.strategicState = { season: 1, warXun: 0, playerFactionId, factions, regions, marches: [], sieges: [] };
+    gameState.strategicState = { season: 1, warXun: 0, playerFactionId, playerRole, factions, regions, marches: [], sieges: [] };
     return gameState.strategicState;
   }
 
@@ -191,6 +196,11 @@ export class StrategicSystem extends GameSystem {
   // ============================================================
   getState(gameState) { return gameState.strategicState || null; }
   getFactionState(gameState, id) { return gameState.strategicState?.factions?.[id] || null; }
+  /** 玩家是否对其所属势力拥有号令权（ruler）。非 ruler（officer/soldier）则势力自治、战争幕后自结算。 */
+  playerCommands(gameState) {
+    return (gameState.strategicState?.playerRole || 'ruler') === 'ruler';
+  }
+
   getPlayerState(gameState) {
     const s = gameState.strategicState;
     return s ? s.factions[s.playerFactionId] || null : null;
@@ -440,10 +450,10 @@ export class StrategicSystem extends GameSystem {
         // 救援行军抵达 → 里应外合解围
         const r = this.applyRelief(gameState, m);
         events.push({ type: 'relief_arrived', relief: m, result: r });
-      } else if (m.defender === pid) {
-        events.push({ type: 'army_arrived', march: m, playerEngagement: true }); // 玩家守方 → 待玩家抉择
+      } else if (m.defender === pid && this.playerCommands(gameState)) {
+        events.push({ type: 'army_arrived', march: m, playerEngagement: true }); // 玩家守方且有号令权 → 待玩家抉择
       } else {
-        // AI 守方：自动闭城固守（建围城，后续旬推进结算）
+        // AI 守方（或玩家无号令权时其势力守方）：守将自动闭城固守（建围城，后续旬推进结算）
         const r = this.resolveEngagement(gameState, m, 'hold');
         events.push({ type: 'siege_begin', siege: r.siege });
       }
@@ -454,7 +464,16 @@ export class StrategicSystem extends GameSystem {
       siegeTick(sg);
       const oc = siegeOutcome(sg);
       events.push({ type: 'siege_tick', siege: sg, outcome: oc });
-      if (oc) { sg._resolved = oc.type; events.push({ type: 'siege_' + oc.type, siege: sg }); }
+      if (oc) {
+        sg._resolved = oc.type;
+        events.push({ type: 'siege_' + oc.type, siege: sg });
+        // 玩家亲自指挥的围城留待玩家收尾；其余（AI-vs-AI / 玩家无号令权）即时结算 → 城池易主、兵粮回流
+        const playerCmdSiege = this.playerCommands(gameState) && (sg.attacker === pid || sg.defender === pid);
+        if (!playerCmdSiege) {
+          const res = this.resolveSiege(gameState, sg, oc.type);
+          events.push({ type: 'siege_resolved', siege: sg, outcome: oc.type, attackerWins: res.attackerWins });
+        }
+      }
     }
     return events;
   }
@@ -607,11 +626,14 @@ export class StrategicSystem extends GameSystem {
       if (prod.food < 0 && f.food <= 0) events.push({ type: 'famine', faction: f.factionId });
     }
 
-    // 2) 敌国 AI（非玩家势力各行一策）
+    // 2) 势力 AI（各行一策）。玩家号令其势力时(ruler)跳过自家；
+    //    底层视角(officer/soldier)时玩家势力亦由其 NPC 君主自治。
+    const playerSelfRuns = !this.playerCommands(gameState);
     for (const f of Object.values(s.factions)) {
-      if (f.isPlayer) continue;
+      if (f.isPlayer && !playerSelfRuns) continue;
       const d = decideEnemyStrategy(f, { factions: s.factions, playerId: s.playerFactionId }, this.rng);
       if (!d) continue;
+      if (f.isPlayer && d) events.push({ type: 'home_decision', decision: d });
       if (d.type === 'policy') {
         this.applyPolicy(gameState, f.factionId, d.policyId);
       } else if (d.type === 'diplomacy') {
