@@ -52,6 +52,9 @@ export class SchoolSystem extends GameSystem {
       st.relationships = JSON.parse(JSON.stringify(setup.relationships));
     }
     if (setup.major) st.major = setup.major;
+    // 创建时出身可指定入学专业/学派/门派（覆盖 setup 默认）
+    const creationMajor = gameState._creationSchool?.major;
+    if (creationMajor && gameState.schoolSchema.majors?.[creationMajor]) st.major = creationMajor;
     // major-fixed 模式：选专业即固定必修课为本学期 enrolled
     const schema = gameState.schoolSchema;
     if (schema.curriculum?.mode === 'major-fixed' && st.major) {

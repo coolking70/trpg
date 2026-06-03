@@ -166,6 +166,10 @@ export class GameSession {
           ...(opt.strategicFaction ? { factionId: opt.strategicFaction } : {}),
         };
       }
+      // 出身可决定入学专业/学派/门派（Phase 48）：initFromPreset 读 gameState._creationSchool.major 覆盖默认。
+      if (opt.schoolMajor) {
+        this.gameState._creationSchool = { ...(this.gameState._creationSchool || {}), major: opt.schoolMajor };
+      }
       // 出身可定义整套基础属性（Phase 46，通用）：opt.stats 直接覆盖（先于 statBonus 叠加），
       //   使"小卒/平民"等出身拥有与身份相称的属性，而非继承主角的高数值卡。
       if (opt.stats && protag) {
