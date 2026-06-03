@@ -678,6 +678,23 @@ const myPreset = {
 
 > 提示：题材**叙事口吻**主要由 `narration.settingTone` + 各表的 `name` 驱动 AI 文风；机制平衡由数值（melee/def/克制倍率/cost）驱动。两者解耦，可分别调。
 
+### 玩家身份：执棋者 or 棋中卒（`playerRole`，Phase 43）
+
+同一个战略世界，玩家既可执掌一方势力，也可只做底层一卒——战略层始终是"底层数据支持"，不必由玩家操控。
+
+- `strategicSetup.playerRole`：`ruler`（默认，玩家号令所属势力）/ `officer` / `soldier`。
+- 非 `ruler` 时：玩家所属势力由其 NPC 君主**自治**（也跑敌国 AI 决策）；战争（行军/围城/城池易主）在季度推进中**全自动结算**；玩家**得不到**内政/外交/作战指挥选项，进言只是表态（AI 不落地为指挥动作）；UI 给"静观时局（一季流转）"入口让世界继续转。
+- **出身决定身份**：`startingOptions.origins`（及 races/backgrounds/faiths）的某个选项可携 `strategicRole` 和可选 `strategicFaction`，玩家选了该出身即按其设定 `playerRole`/所属势力。范例见 [`src/data/themes/modernWarPreset.js`](../src/data/themes/modernWarPreset.js)（最高统帅/前线指挥官/列兵）。
+
+```js
+startingOptions: { origins: [
+  { id: 'king',    name: '君主', strategicRole: 'ruler',   /* …tags/statBonus… */ },
+  { id: 'soldier', name: '小兵', strategicRole: 'soldier', strategicFaction: 'wei' },
+] }
+```
+
+> 底层视角下，要让玩家"被战争波及"，靠 AI GM 据军情（数字摘要已注入【身份】+ 围城/探报）即兴叙述其见闻，或用事件/遭遇（spawn_event / 个人战）把战局落到这名小人物身上。
+
 ---
 
 ## 九、常见陷阱

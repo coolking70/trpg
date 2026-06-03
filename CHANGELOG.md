@@ -4,6 +4,22 @@
 
 ## [Unreleased]
 
+### Phase 43 — 底层视角：战略层幕后自转（玩家可为一卒）🧍‍♂️🌏
+
+战略层是"底层数据支持"，不必由玩家执掌。新增**身份角色 `playerRole`**，让玩家可扮演底层小兵，而天下大势（势力内政外交、行军围城、城池易主）在幕后**全自动运转**。
+
+**P43a 自治地基**：`strategicState.playerRole`（`ruler` 默认 / `officer` / `soldier`）+ `StrategicSystem.playerCommands()`。非 ruler 时：
+- `advanceSeason` 让玩家所属势力也跑 `decideEnemyStrategy`（其 NPC 君主自治），发 `home_decision`。
+- `advanceWarXun`：玩家守方不再弹接敌抉择（守将自动闭城固守）；**非玩家亲自指挥的围城即时 `resolveSiege`**——城池易主、兵粮回流。顺带**修复 AI-vs-AI 围城此前从不易主城池的旧缺陷**。
+
+**P43b 命令门控 + 进谏分级**：`GameSession` 仅在号令权(ruler)下进入 governance 态/给指挥与围城操作；底层视角给"静观时局（一季流转）"入口让世界继续转。`_buildStrategySnapshot` 暴露 `playerRole` + 角色化 hint。AI 数字摘要对非 ruler 不广告 `govern/diplomacy/launch_march` 等指挥动作（注【身份】提示，进言仅表态），但保留军情/围城情报作为小人物见闻；`_applyEngineActions` 对非 ruler 的所有指挥动作不予落地。季度推进叙述城池易主，让玩家从风云中感知战局。
+
+**P43c 出身/职业**：创建期出身选项可携 `strategicRole`/`strategicFaction` → 决定 `playerRole`/所属势力。两个主题包示范剧本加 origins 出身轴（同一战局多身份切入）：现代战争「最高统帅/前线指挥官/列兵」、中世纪西幻「摄政王/骑士统领/步卒」。
+
+**向后兼容**：无 `playerRole` 的剧本默认 `ruler`，行为与此前完全一致。
+
+**验证**：jest 747/747（+soldierStrategy 9 例：小兵视角强敌自动攻取我方城/城池易主/门控/进谏分级 + 出身→身份）、MCP 45/45、build 通过。deepseek-v4-flash 真 GM 抽样（现代战争·列兵）：身份 soldier、玩家进言不改国策，静观时局间列国战事与城池易主全程幕后自转、GM 以小卒口吻叙述。
+
 ### Phase 42 — 战略玩法主题抽象（可换皮框架）+ 围城平衡 + 作战自由进谏 🎨⚔️
 
 把"战术(warfare)·作战(war)·战略(governance)"三层的**三国硬编码数据表**抽成**剧本可覆盖的 `strategySchema`**，机制引擎保持通用，换皮=改数据不碰逻辑；三国为内置默认（零回归）。

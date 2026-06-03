@@ -11,8 +11,9 @@
 - **是什么**：浏览器端 AI GM TRPG，AI 担任游戏主持人，玩家通过卡牌/**场景节点图**/文本推进冒险
 - **技术**：原生 ES Modules + Vite + Three.js (3D 骰子) + Canvas2D，无前端框架
 - **AI 接口**：OpenAI 兼容 `/chat/completions` **及 `/responses`**（hy3 等），默认本地 `qwen/qwen3.6-35b-a3b @ http://127.0.0.1:1234/v1`
-- **当前状态**：Phase 16-42 完成、**Jest 737 / MCP 45 全过**、场景图作为主架构、生产就绪
-- **Phase 42（最新）**：战略玩法**主题抽象框架**——战术/战略/作战/叙事四层数据抽成剧本可覆盖的 `strategySchema`（`src/data/strategySchema.js`，三国为内置默认、零回归），换皮=改数据不碰引擎；附**中世纪西幻 + 现代战争**两个主题包及示范剧本（`src/data/themes/`）。另含围城平衡细调（强攻破城/围困献城/坚守退敌/突围 四路径皆可达）+ 作战自由进谏（`launch_march`/`engage`/`siege_order` 自然语言落地）
+- **当前状态**：Phase 16-43 完成、**Jest 747 / MCP 45 全过**、场景图作为主架构、生产就绪
+- **Phase 43（最新）**：**底层视角**——`strategicState.playerRole`（ruler/officer/soldier），玩家可扮演底层小兵，势力内政外交/行军围城/城池易主在幕后**全自动运转**（`advanceWarXun` 非玩家指挥的围城即时结算，顺带修复 AI-vs-AI 城池不易主旧缺陷）；命令按角色门控、AI 进谏分级；出身轴 `startingOptions.origins.strategicRole` 决定身份。向后兼容（缺省 ruler）
+- **Phase 42**：战略玩法**主题抽象框架**——战术/战略/作战/叙事四层数据抽成剧本可覆盖的 `strategySchema`（`src/data/strategySchema.js`，三国为内置默认、零回归），换皮=改数据不碰引擎；附**中世纪西幻 + 现代战争**两个主题包及示范剧本（`src/data/themes/`）。另含围城平衡细调（强攻破城/围困献城/坚守退敌/突围 四路径皆可达）+ 作战自由进谏（`launch_march`/`engage`/`siege_order` 自然语言落地）
 - **已验证规模**：bundled 最大 **101 节点 / 87 事件 / 22 NPC**；三国剧本 **23 场景 / 30 事件 / 10 场军团战 + 4 场个人战 + 内政外交战略层**（0 必修、全可达，军团战经真 GM 玩测、内政外交链路 headless 验证）
 - **核心能力栈**：场景图 + 快速旅行 + 角色创建 4 轴 + NPC schedule/关系图 + 故事时间 + 营地交互 + worldFlags + 隐藏路径 + IndexedDB + 跨周目元进度 + AI 本地权威状态/相关性检索 + AI Hooks gate(4 tier) + AI 参与度阶梯(L0–L4) + 个人战 buff/AOE/phases/escape + **军团战争系统(单位栈战术制·四战型)** + **叙事化战争层(行军/情报/明暗/围城/救援)** + **内政外交系统(势力级国库 + 理政朝堂 + 敌国活跃 AI，与军团战深耦合)** + **战略主题抽象(可换皮 strategySchema·西幻/现代战争主题包)** + 生态位动态掉落 + Monte Carlo 模拟器(个人战/军团战/围城/战略) + 小说→预设三段确定性管线
 - **MCP 服务器**：69 个工具（小说→预设三段管线，蓝图可编排 `combatPlan` 个人战 / `legionBattlePlan` 军团战 / `strategicSetup` 内政外交；`combat_simulate`/`legion_simulate`/`strategy_simulate` 平衡模拟、战略层生成/审稿、enemy_assign_ecology 等）
@@ -24,7 +25,7 @@
 
 ```bash
 npm install
-npm test          # 737 tests in 58 suites
+npm test          # 747 tests in 59 suites
 npm run dev       # localhost:3000
 npm run build     # 生产构建到 dist/
 npm run test:mcp  # 45 MCP smoke tests
