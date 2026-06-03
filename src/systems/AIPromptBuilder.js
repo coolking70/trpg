@@ -4,6 +4,7 @@
  */
 
 import { estimateTokens } from '../utils/tokenEstimator.js';
+import { schemaOf } from '../data/strategySchema.js';
 
 export class AIPromptBuilder {
   constructor() {
@@ -280,19 +281,25 @@ export class AIPromptBuilder {
       case 'narrate_governance': {
         const p = actionData.player || {};
         const r = p.resources || p;
+        const nrt = schemaOf(gameState).narration || {};
+        const res = schemaOf(gameState).resources || {};
+        const rn = (k, d) => res[k]?.name || d;
+        if (nrt.settingTone) parts.push(`【题材】${nrt.settingTone}`);
         parts.push(`【理政】${actionData.kind === 'season' ? `推进至第 ${actionData.season} 季` : `施行政令: ${actionData.policyId}`}`);
-        if (r.gold != null) parts.push(`国势: 金${r.gold} 粮${r.food} 兵${r.troops} 民心${r.order}`);
+        if (r.gold != null) parts.push(`国势: ${rn('gold', '金')}${r.gold} ${rn('food', '粮')}${r.food} ${rn('troops', '兵')}${r.troops} ${rn('order', '民心')}${r.order}`);
         if (Array.isArray(actionData.events) && actionData.events.length) {
           parts.push(`本季要闻: ${actionData.events.map(e => e.type).join('、')}`);
         }
-        parts.push('用 2-3 句叙述府衙理政的气象与国势变化（半文半白、有三国史诗感）。不要编造未发生的战事或外交结果，只渲染内政治理本身。');
+        parts.push(`用 2-3 句叙述当政者理政的气象与国势变化，口吻须贴合该题材（${nrt.settingTone || '所设世界'}）的时代与用语，切勿串入其它时代的器物称谓。不要编造未发生的战事或外交结果，只渲染内政治理本身。`);
         break;
       }
 
       case 'narrate_diplomacy': {
+        const nrt = schemaOf(gameState).narration || {};
+        if (nrt.settingTone) parts.push(`【题材】${nrt.settingTone}`);
         parts.push(`【外交】动作: ${actionData.action}，对象势力: ${actionData.targetId}`);
         if (actionData.result?.setStance) parts.push(`新立场: ${actionData.result.setStance}`);
-        parts.push('用 2-3 句叙述这场外交斡旋（遣使、谈判、缔约或决裂）。严格按上面的动作与新立场写，不要改写结果。');
+        parts.push('用 2-3 句叙述这场外交斡旋（遣使、谈判、缔约或决裂），口吻贴合该题材的时代用语。严格按上面的动作与新立场写，不要改写结果。');
         break;
       }
 
