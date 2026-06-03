@@ -4,6 +4,16 @@
 
 ## [Unreleased]
 
+### Phase 45 — 局部战斗换皮 + 浏览器面板 + 题材口吻 🎭🖥️
+
+**P45a 局部战斗主题换皮**：`schema.narration.skirmish`（小队/援兵/军士/将领称谓 + 将领名池）。`SkirmishSystem` 援兵命名读 `s.labels`，`buildSkirmishDef` 据题材命名小队/敌兵/敌将。西幻（同袍士兵/骑士统领/黑鸦骑士）、现代（同班战友/校官/钢铁上校）各配 skirmish 措辞。
+
+**P45b 季报/外交叙事口吻吃题材**：`AIPromptBuilder` 的 `narrate_governance`/`narrate_diplomacy` 注入 `narration.settingTone` + 资源标签，要求口吻贴合题材时代用语（替代硬编码"三国史诗感/金粮兵民心"）——现代战争季报不再串入"探马/府库/粮石"等古代器物称谓。
+
+**P45c 浏览器 SkirmishPanel**：新增 `skirmishOrchestration.js`（`skirmishContext`/`buildSkirmishDef`/`settleSkirmish`）作共享单点，GameSession 委托之（去重）。`src/ui/SkirmishPanel.js` 双方小队 HP 条（★玩家/⚑敌将）+ 回合/战线/斩获 + 动作（斩/据守/鼓舞/退却/生擒）；GameUI 调度 `activeSkirmish`；RightPanel 按 `playerCommands` 门控、底层视角给"请缨参战/静观时局"；main.js 接线驱动。Claude Preview 验证渲染。
+
+**验证**：jest 762/762、MCP 45/45、build 通过、Claude Preview 面板渲染正常。
+
 ### Phase 44 — 小兵实战参战：局部战斗 + 局部时间放缓 ⚔️🔍
 
 底层视角（Phase 43）之上，让小兵能"投身战线"——把战略大战中极小一片厮杀放大为一场个人战，而整体战略时间几乎不流逝。
