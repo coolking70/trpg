@@ -4,6 +4,8 @@
  *       局部时间放缓——参战不推进战略时钟（季/旬）；交互模式逐回合、auto 模式一战到底。
  */
 import { GameSession } from '../../src/core/GameSession.js';
+import { StrategicSystem } from '../../src/systems/StrategicSystem.js';
+import { rankForMerit } from '../../src/data/skirmish.js';
 
 function preset(playerRole) {
   return {
@@ -82,6 +84,47 @@ describe('Phase 44 P44b — 请缨参战 + 局部时间放缓', () => {
     }
     expect(st.situation).not.toBe('skirmish');
     expect(s.gameState.soldierCareer.battles).toBe(1);
+    s.destroy();
+  });
+});
+
+describe('Phase 44 P44c — 战功晋升 + 敌将重大事件', () => {
+  test('applyMajorEvent（无围城）：阵斩敌将→敌势力民心/兵力直接受挫', () => {
+    const ss = new StrategicSystem(); ss.eventSystem = null;
+    const gs = { addNarrative() {} };
+    ss.initFromPreset(gs, preset('soldier'));
+    const order0 = ss.getFactionState(gs, 'wei').order, troops0 = ss.getFactionState(gs, 'wei').troops;
+    ss.applyMajorEvent(gs, { kind: 'commander_slain', factionId: 'wei' });
+    expect(ss.getFactionState(gs, 'wei').order).toBeLessThan(order0);
+    expect(ss.getFactionState(gs, 'wei').troops).toBeLessThan(troops0);
+  });
+  test('applyMajorEvent（生擒且其正围我城）：围城动摇退去', () => {
+    const ss = new StrategicSystem(); ss.eventSystem = null;
+    const gs = { addNarrative() {} };
+    ss.initFromPreset(gs, preset('soldier'));
+    const order0 = ss.getFactionState(gs, 'wei').order;
+    gs.strategicState.sieges.push({ id: 'sg1', attacker: 'wei', defender: 'shu', holdingId: 'chengdu',
+      atk: { troops: 20000, morale: 60, supply: 200 }, def: { troops: 5000, morale: 60, supply: 150 }, works: { gate: 200, wall: 300 }, mode: 'blockade', xun: 1 });
+    const r = ss.applyMajorEvent(gs, { kind: 'commander_captured', factionId: 'wei' });
+    expect(ss.getFactionState(gs, 'wei').order).toBeLessThan(order0);
+    expect(r.liftedSiegeHoldingId).toBe('chengdu');       // 生擒主将 → 围城动摇退去
+    expect(gs.strategicState.sieges.some(s => s.id === 'sg1')).toBe(false);
+  });
+
+  test('rankForMerit 阶梯；累计战功晋升、达将官→转 ruler（战略参与）', async () => {
+    expect(rankForMerit(0).name).toBe('士卒');
+    expect(rankForMerit(700).commander).toBe(true);
+    const s = await load('soldier', 'auto');
+    // 直接灌入接近将官的战功，再以一次斩将结局触发晋升
+    s.gameState.soldierCareer = { rank: '屯长', rankTier: 3, merit: 560, kills: 0, battles: 3 };
+    await s._applySkirmishOutcome({
+      type: 'victory', label: '全歼', kills: 5, merit: 70, commanderKill: 'slain',
+      parent: { enemyFactionId: 'wei', commanderName: '魏骁将·王双' },
+    });
+    expect(s.gameState.soldierCareer.rankTier).toBe(4);
+    expect(s.gameState.soldierCareer.rank).toBe('军候');
+    expect(s.gameState.strategicState.playerRole).toBe('ruler'); // 转入战略参与
+    expect(s.sys('StrategicSystem').playerCommands(s.gameState)).toBe(true);
     s.destroy();
   });
 });

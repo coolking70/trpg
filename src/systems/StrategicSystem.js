@@ -609,6 +609,35 @@ export class StrategicSystem extends GameSystem {
     return { attackerWins };
   }
 
+  /**
+   * 战略级重大事件（Phase 44）：极少数情况下，底层个体的壮举撬动全局。
+   *   kind 'commander_slain' | 'commander_captured'：敌方关键将领阵亡/被擒
+   *   → 该势力民心/兵力受挫；若其正围攻某城，士气大挫、兵力削减，甚至阵脚动摇而退兵。
+   * @returns {{ troopHit, liftedSiegeHoldingId }}
+   */
+  applyMajorEvent(gameState, ev = {}) {
+    const st = gameState.strategicState; if (!st) return null;
+    const f = this.getFactionState(gameState, ev.factionId); if (!f) return null;
+    const captured = ev.kind === 'commander_captured';
+    const sev = captured ? 1.4 : 1.0;
+    f.order = Math.max(0, (f.order || 0) - Math.round(12 * sev));
+    const troopHit = Math.round((f.troops || 0) * 0.04 * sev);
+    f.troops = Math.max(0, (f.troops || 0) - troopHit);
+    let liftedSiegeHoldingId = null;
+    for (const sg of (st.sieges || [])) {
+      if (sg._resolved || sg.attacker !== ev.factionId) continue;
+      sg.atk.morale = Math.max(0, sg.atk.morale - Math.round(20 * sev));
+      sg.atk.troops = Math.max(1, Math.round(sg.atk.troops * (1 - 0.12 * sev)));
+      if (captured || sg.atk.morale <= 22) { // 主将折损、士气崩 → 围城之军夺气而退
+        sg._resolved = 'retreat';
+        this.resolveSiege(gameState, sg, 'retreat');
+        liftedSiegeHoldingId = sg.holdingId;
+      }
+    }
+    this._publish('war:majorEvent', { event: ev, troopHit, liftedSiegeHoldingId });
+    return { troopHit, liftedSiegeHoldingId };
+  }
+
   // ============================================================
   // 季度推进：全势力 upkeep + 敌国 AI + 事件产出
   // ============================================================

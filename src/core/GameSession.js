@@ -25,6 +25,7 @@ import { CombatSystem } from '../systems/CombatSystem.js';
 import { LegionWarfareSystem } from '../systems/LegionWarfareSystem.js';
 import { StrategicSystem } from '../systems/StrategicSystem.js';
 import { SkirmishSystem } from '../systems/SkirmishSystem.js';
+import { rankForMerit } from '../data/skirmish.js';
 import { TurnManager } from '../systems/TurnManager.js';
 import { AIGMEngine } from '../systems/AIGMEngine.js';
 import { EventTriggerEngine, TRIGGER_MOMENTS } from '../systems/EventTriggerEngine.js';
@@ -994,10 +995,40 @@ export class GameSession {
     await this._scanAfter(TRIGGER_MOMENTS.SCENE_ENTER);
   }
 
-  /** P44b 占位：战功结算与重大事件在 P44c 实装（此处仅记录基本战功） */
+  /** 战功结算 + 晋升（达将官→转战略参与）+ 敌将偶遇重大事件（Phase 44 P44c） */
   async _applySkirmishOutcome(oc) {
-    const c = (this.gameState.soldierCareer ||= { rank: '士卒', rankTier: 0, merit: 0, kills: 0, battles: 0 });
-    c.merit += oc.merit || 0; c.kills += oc.kills || 0; c.battles += 1;
+    const gs = this.gameState;
+    const ss = this.sys('StrategicSystem');
+    const c = (gs.soldierCareer ||= { rank: '士卒', rankTier: 0, merit: 0, kills: 0, battles: 0 });
+
+    // 阵斩/生擒敌将 → 战略重大事件（极少数个体撬动全局）
+    let bonusMerit = 0;
+    if (oc.commanderKill && oc.parent?.enemyFactionId) {
+      const captured = oc.commanderKill === 'captured';
+      gs.addNarrative('system', captured
+        ? `⚑【重大军情】乱军之中，你竟生擒了 ${oc.parent.commanderName || '敌方骁将'}！`
+        : `⚑【重大军情】你于万军之中阵斩 ${oc.parent.commanderName || '敌方骁将'}，敌阵大乱！`);
+      const r = ss.applyMajorEvent(gs, { kind: captured ? 'commander_captured' : 'commander_slain', factionId: oc.parent.enemyFactionId, commanderName: oc.parent.commanderName });
+      gs.addNarrative('system', `${this._factionName(oc.parent.enemyFactionId)}痛失大将，三军夺气、士气大挫${r?.troopHit ? `（折兵约 ${r.troopHit}）` : ''}。`);
+      if (r?.liftedSiegeHoldingId) gs.addNarrative('system', `🎉 围攻 ${this._holdingName(r.liftedSiegeHoldingId)} 的敌军竟因此动摇而退——这一战，因你而改写！`);
+      bonusMerit = captured ? 120 : 80;
+    }
+
+    c.merit += (oc.merit || 0) + bonusMerit;
+    c.kills += oc.kills || 0;
+    c.battles += 1;
+    if (oc.merit || bonusMerit) gs.addNarrative('system', `（战功 +${(oc.merit || 0) + bonusMerit}，累计 ${c.merit}）`);
+
+    // 晋升（按累计战功）；达 commander 级 → 获号令之权，转入战略参与模式
+    const newRank = rankForMerit(c.merit);
+    if (newRank.tier > (c.rankTier || 0)) {
+      c.rankTier = newRank.tier; c.rank = newRank.name;
+      gs.addNarrative('system', `🎖 论功行赏，你由行伍擢升为「${newRank.name}」！`);
+      if (newRank.commander && gs.strategicState && gs.strategicState.playerRole !== 'ruler') {
+        gs.strategicState.playerRole = 'ruler';
+        gs.addNarrative('system', `自此你执掌一军、可参赞方略——从此你的主张，将真正左右这场天下大势。`);
+      }
+    }
   }
 
   /** 接敌抉择（Phase 41 W3）：sally 出城迎击→野战；hold 闭城固守→围城 */
