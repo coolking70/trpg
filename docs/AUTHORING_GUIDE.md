@@ -686,14 +686,24 @@ const myPreset = {
 - 非 `ruler` 时：玩家所属势力由其 NPC 君主**自治**（也跑敌国 AI 决策）；战争（行军/围城/城池易主）在季度推进中**全自动结算**；玩家**得不到**内政/外交/作战指挥选项，进言只是表态（AI 不落地为指挥动作）；UI 给"静观时局（一季流转）"入口让世界继续转。
 - **出身决定身份**：`startingOptions.origins`（及 races/backgrounds/faiths）的某个选项可携 `strategicRole` 和可选 `strategicFaction`，玩家选了该出身即按其设定 `playerRole`/所属势力。范例见 [`src/data/themes/modernWarPreset.js`](../src/data/themes/modernWarPreset.js)（最高统帅/前线指挥官/列兵）。
 
+- **出身定制身份/属性/开局（Phase 46，通用）**：出身选项除 `strategicRole`/`strategicFaction`，还可携：
+  - `stats`：**整套基础属性覆盖**（先于 `statBonus` 叠加）——低阶出身因此有相称属性，不必继承主角的高数值卡。
+  - `startSceneId`：**该出身的开局场景**——底层身份可从军营/旅途等切入，不被塞进主角的开场。
+  - `charName` / `charTitle` / `charDescription`：**改写主角身份**（如把默认主角「刘备」改写为「无名小卒」）。
+- **主角本位事件门控（Phase 46，通用）**：事件 `trigger.condition.requirePlayerRole`（数组白名单）。把主角剧情/主线事件限定 `requirePlayerRole:['ruler']`，则底层视角（officer/soldier）不会被自动卷入主公的剧情。无战略层时 `playerRole` 视作 `ruler`；未设此条件的事件不受影响（向后兼容）。
+
 ```js
 startingOptions: { origins: [
-  { id: 'king',    name: '君主', strategicRole: 'ruler',   /* …tags/statBonus… */ },
-  { id: 'soldier', name: '小兵', strategicRole: 'soldier', strategicFaction: 'wei' },
+  { id: 'king',    name: '君主', strategicRole: 'ruler',   startSceneId: 'scene_court' /* …tags/statBonus… */ },
+  { id: 'soldier', name: '小兵', strategicRole: 'soldier', strategicFaction: 'wei',
+    charName: '无名小卒', startSceneId: 'scene_barracks',
+    stats: { hp: 46, hpCurrent: 46, attack: 8, defense: 5, speed: 6, luck: 1 } },
 ] }
+// 主线/主角事件：限定仅君主触发
+{ id: 'ev_coronation', tags: ['main'], trigger: { type: 'composite', condition: { inScene: ['scene_court'], requirePlayerRole: ['ruler'] } }, /* … */ }
 ```
 
-> 底层视角下，要让玩家"被战争波及"，靠 AI GM 据军情（数字摘要已注入【身份】+ 围城/探报）即兴叙述其见闻，或用事件/遭遇把战局落到这名小人物身上。
+> 底层视角下，玩家的战争体验靠 战略层幕后自转 + 「请缨参战」局部战斗 + AI GM 据军情（数字摘要已注入【身份】+ 围城/探报）即兴叙述其见闻。三国主线即用此法：小卒于「行伍军营」开局、主线事件限 ruler，体验从行伍间展开。范例见 [`scripts/patch-sanguo-origins.mjs`](../scripts/patch-sanguo-origins.mjs)。
 
 #### 小兵实战参战：局部战斗 + 局部时间放缓（Phase 44）
 
