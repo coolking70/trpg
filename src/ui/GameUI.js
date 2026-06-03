@@ -17,6 +17,7 @@ import { LeftPanel } from './LeftPanel.js';
 import { RightPanel } from './RightPanel.js';
 import { CombatPanel } from './CombatPanel.js';
 import { LegionBattlePanel } from './LegionBattlePanel.js';
+import { SkirmishPanel } from './SkirmishPanel.js';
 import { CombatResultModal } from './CombatResultModal.js';
 import { EndgameModal } from './EndgameModal.js';
 import { CharacterCreationModal } from './CharacterCreationModal.js';
@@ -88,6 +89,7 @@ export class GameUI {
     this.rightPanel = new RightPanel(this.rightPanelEl, this.eventSystem, this.engine);
     this.combatPanel = new CombatPanel(this.rightPanelEl, this.eventSystem, this.engine);
     this.legionPanel = new LegionBattlePanel(this.rightPanelEl, this.eventSystem, this.engine);
+    this.skirmishPanel = new SkirmishPanel(this.rightPanelEl, this.eventSystem, this.engine);
     this.combatResultModal = new CombatResultModal(this.modalContainerEl, this.eventSystem);
     this.endgameModal = new EndgameModal(this.modalContainerEl, this.eventSystem);
     this.characterCreationModal = new CharacterCreationModal(this.modalContainerEl, this.eventSystem);
@@ -195,11 +197,15 @@ export class GameUI {
     this.toolbar.update(gameState);
     this.leftPanel.update(gameState);
 
-    if (gameState && gameState.activeLegionBattle) {
+    if (gameState && gameState.activeSkirmish) {
+      this.skirmishPanel.show();
+      this.skirmishPanel.update(gameState);
+    } else if (gameState && gameState.activeLegionBattle) {
       this.legionPanel.update(gameState);
     } else if (gameState && gameState.activeCombat) {
       this.combatPanel.update(gameState);
     } else {
+      this.skirmishPanel.hide();
       this.rightPanel.update(gameState);
     }
     this.narrativePanel.update(gameState);

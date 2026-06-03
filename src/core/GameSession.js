@@ -25,7 +25,7 @@ import { CombatSystem } from '../systems/CombatSystem.js';
 import { LegionWarfareSystem } from '../systems/LegionWarfareSystem.js';
 import { StrategicSystem } from '../systems/StrategicSystem.js';
 import { SkirmishSystem } from '../systems/SkirmishSystem.js';
-import { rankForMerit } from '../data/skirmish.js';
+import { skirmishContext, buildSkirmishDef, settleSkirmish } from '../systems/skirmishOrchestration.js';
 import { TurnManager } from '../systems/TurnManager.js';
 import { AIGMEngine } from '../systems/AIGMEngine.js';
 import { EventTriggerEngine, TRIGGER_MOMENTS } from '../systems/EventTriggerEngine.js';
@@ -886,35 +886,7 @@ export class GameSession {
 
   /** 当前可参战的战线上下文（活跃围城 / 在途行军涉及玩家势力时）。无则 null。 */
   _skirmishContext(gs) {
-    const st = gs.strategicState; if (!st) return null;
-    const pid = st.playerFactionId;
-    const tideFrom = (mine, foe) => Math.max(-1, Math.min(1, Math.log2(((mine || 1)) / ((foe || 1))) / 2));
-    const siege = (st.sieges || []).find(s => !s._resolved && (s.attacker === pid || s.defender === pid));
-    if (siege) {
-      const asAtk = siege.attacker === pid;
-      const my = asAtk ? siege.atk : siege.def, foe = asAtk ? siege.def : siege.atk;
-      const enemyFid = asAtk ? siege.defender : siege.attacker;
-      return {
-        kind: 'siege', side: asAtk ? 'attacker' : 'defender', enemyFactionId: enemyFid,
-        holdingId: siege.holdingId, tide: tideFrom(my.troops, foe.troops),
-        desc: `${this._holdingName(siege.holdingId)} ${asAtk ? '城下（我军攻城）' : '城头（我军守城）'}`,
-        myMorale: my.morale ?? 70, foeMorale: foe.morale ?? 70,
-      };
-    }
-    const march = (st.marches || []).find(m => !m._done && (m.defender === pid || m.attacker === pid));
-    if (march) {
-      const asAtk = march.attacker === pid;
-      const enemyFid = asAtk ? march.defender : march.attacker;
-      const myT = this.sys('StrategicSystem').getFactionState(gs, pid)?.troops || 1;
-      const foeT = this.sys('StrategicSystem').getFactionState(gs, enemyFid)?.troops || 1;
-      return {
-        kind: 'field', side: asAtk ? 'attacker' : 'defender', enemyFactionId: enemyFid,
-        holdingId: march.targetHoldingId, tide: tideFrom(myT, foeT),
-        desc: asAtk ? '随军行进、前锋遭遇战' : '边境遭遇、阻击来犯前锋',
-        myMorale: 70, foeMorale: 70,
-      };
-    }
-    return null;
+    return skirmishContext(gs, this.sys('StrategicSystem'));
   }
 
   /** 据战线上下文构建并开始一场局部战斗 */
@@ -922,37 +894,10 @@ export class GameSession {
     const ctx = this._skirmishContext(gs);
     if (!ctx) { gs.addNarrative('system', '（当前并无可投身的战事。）'); return; }
     const sk = this.sys('SkirmishSystem');
-    const enemyName = this._factionName(ctx.enemyFactionId);
-    const tide = ctx.tide;
-    // 题材措辞（小队/援兵/敌将命名随题材换皮）
-    const skn = schemaOf(gs).narration?.skirmish || {};
-    const allyW = skn.ally || '袍泽', enemyW = skn.enemy || '敌兵', ncoW = skn.nco || '什长';
-    const commTitle = skn.commanderTitle || '骁将', commPool = skn.commanders || ['关靖', '夏侯尚', '牛金', '王双', '张虎'];
-    // 小队规模 + 援兵（战线越有利我方援兵越足、敌方越少）；据 tide 微调
-    const allyReserves = Math.max(1, Math.round(3 + tide * 2));
-    const enemyReserves = Math.max(1, Math.round(3 - tide * 2));
-    const ek = (n, atk, def, hp, over = {}) => ({ name: n, atk, def, hp, hpMax: hp, ...over });
-    const enemies = [
-      ek(`${enemyName}${enemyW}`, 7, 4, 32), ek(`${enemyName}${enemyW}`, 7, 4, 30), ek(`${enemyName}${ncoW}`, 8, 5, 38),
-    ];
-    // 偶遇敌方关键将领（小概率，且战线不至于太劣）：阵斩/生擒→战略重大事件
-    const rng = sk.rng || Math.random;
-    let bossName = null;
-    if (rng() < 0.12 + Math.max(0, tide) * 0.06) {
-      bossName = `${enemyName}${commTitle}·${commPool[Math.floor(rng() * commPool.length)]}`;
-      enemies.push(ek(bossName, 11, 7, 90, { isCommander: true }));
-    }
-    sk.startSkirmish(gs, {
-      playerChar: gs.activeCharacters[0],
-      allies: [ek(allyW, 7, 4, 34), ek(allyW, 6, 4, 30)],
-      enemies,
-      reserves: { ally: allyReserves, enemy: enemyReserves },
-      tide,
-      labels: { allyReinforce: skn.allyReinforce || '我军援兵', enemyReinforce: skn.enemyReinforce || '敌军援兵' },
-      parent: { kind: ctx.kind, side: ctx.side, factionId: gs.strategicState.playerFactionId, enemyFactionId: ctx.enemyFactionId, holdingId: ctx.holdingId, commanderName: bossName },
-    });
-    gs.addNarrative('system', `⚔ 你随队投身 ${ctx.desc}，刀光血影间，这只是万千战线中的一小片。`);
-    if (bossName) gs.addNarrative('system', `（乱军之中，敌阵里那员被簇拥的骁将格外显眼……）`);
+    const def = buildSkirmishDef(gs, ctx, (id) => this._factionName(id), sk.rng || Math.random);
+    sk.startSkirmish(gs, def);
+    gs.addNarrative('system', `⚔ 你随队投身 ${def._desc}，刀光血影间，这只是万千战线中的一小片。`);
+    if (def._bossName) gs.addNarrative('system', '（乱军之中，敌阵里那员被簇拥的骁将格外显眼……）');
     // auto 模式：直接打完
     if (this.combatMode !== 'interactive') {
       sk.autoResolve(gs);
@@ -996,58 +941,18 @@ export class GameSession {
     const oc = s.outcome;
     this.gameState.activeSkirmish = null;
     this.gameState.addNarrative('system', `🛡 ${oc.label}（斩获约 ${oc.kills}）。`);
-    await this._applySkirmishOutcome(oc); // 战功/晋升/敌将重大事件（P44c）
-    // 局部时间放缓（非冻结）：个人鏖战相对战略时钟极慢——每数场厮杀，宏观战事方推进一旬。
-    const st = this.gameState.strategicState;
-    if (st && st.regions) {
-      st._skirmishTick = (st._skirmishTick || 0) + 1;
-      if (st._skirmishTick % 3 === 0) {
-        const evs = this.sys('StrategicSystem').advanceWarXun(this.gameState);
-        for (const e of (evs || []).filter(x => x.type === 'siege_resolved')) {
-          const sg = e.siege;
-          this.gameState.addNarrative('system', e.attackerWins
-            ? `🏯 战报：${this._holdingName(sg.holdingId)} 失守，落入 ${this._factionName(sg.attacker)} 之手。`
-            : `🛡 战报：${this._factionName(sg.attacker)} 攻 ${this._holdingName(sg.holdingId)} 不克而退。`);
-        }
-      }
-    }
+    await this._applySkirmishOutcome(oc); // 战功/晋升/敌将重大事件 + 局部时间放缓（共享编排）
     await this._scanAfter(TRIGGER_MOMENTS.SCENE_ENTER);
   }
 
-  /** 战功结算 + 晋升（达将官→转战略参与）+ 敌将偶遇重大事件（Phase 44 P44c） */
+  /** 战功结算 + 晋升 + 敌将重大事件 + 局部时间放缓（共享编排，Phase 45 P45c） */
   async _applySkirmishOutcome(oc) {
-    const gs = this.gameState;
-    const ss = this.sys('StrategicSystem');
-    const c = (gs.soldierCareer ||= { rank: '士卒', rankTier: 0, merit: 0, kills: 0, battles: 0 });
-
-    // 阵斩/生擒敌将 → 战略重大事件（极少数个体撬动全局）
-    let bonusMerit = 0;
-    if (oc.commanderKill && oc.parent?.enemyFactionId) {
-      const captured = oc.commanderKill === 'captured';
-      gs.addNarrative('system', captured
-        ? `⚑【重大军情】乱军之中，你竟生擒了 ${oc.parent.commanderName || '敌方骁将'}！`
-        : `⚑【重大军情】你于万军之中阵斩 ${oc.parent.commanderName || '敌方骁将'}，敌阵大乱！`);
-      const r = ss.applyMajorEvent(gs, { kind: captured ? 'commander_captured' : 'commander_slain', factionId: oc.parent.enemyFactionId, commanderName: oc.parent.commanderName });
-      gs.addNarrative('system', `${this._factionName(oc.parent.enemyFactionId)}痛失大将，三军夺气、士气大挫${r?.troopHit ? `（折兵约 ${r.troopHit}）` : ''}。`);
-      if (r?.liftedSiegeHoldingId) gs.addNarrative('system', `🎉 围攻 ${this._holdingName(r.liftedSiegeHoldingId)} 的敌军竟因此动摇而退——这一战，因你而改写！`);
-      bonusMerit = captured ? 120 : 80;
-    }
-
-    c.merit += (oc.merit || 0) + bonusMerit;
-    c.kills += oc.kills || 0;
-    c.battles += 1;
-    if (oc.merit || bonusMerit) gs.addNarrative('system', `（战功 +${(oc.merit || 0) + bonusMerit}，累计 ${c.merit}）`);
-
-    // 晋升（按累计战功）；达 commander 级 → 获号令之权，转入战略参与模式
-    const newRank = rankForMerit(c.merit);
-    if (newRank.tier > (c.rankTier || 0)) {
-      c.rankTier = newRank.tier; c.rank = newRank.name;
-      gs.addNarrative('system', `🎖 论功行赏，你由行伍擢升为「${newRank.name}」！`);
-      if (newRank.commander && gs.strategicState && gs.strategicState.playerRole !== 'ruler') {
-        gs.strategicState.playerRole = 'ruler';
-        gs.addNarrative('system', `自此你执掌一军、可参赞方略——从此你的主张，将真正左右这场天下大势。`);
-      }
-    }
+    settleSkirmish(this.gameState, {
+      ss: this.sys('StrategicSystem'), oc,
+      addNarrative: (t) => this.gameState.addNarrative('system', t),
+      holdingName: (id) => this._holdingName(id),
+      factionName: (id) => this._factionName(id),
+    });
   }
 
   /** 接敌抉择（Phase 41 W3）：sally 出城迎击→野战；hold 闭城固守→围城 */

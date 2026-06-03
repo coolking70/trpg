@@ -1,0 +1,56 @@
+/* 局部战斗面板样式 — 小兵实战参战时替代 RightPanel */
+
+.skirmish-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.skirmish-panel__head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.skirmish-panel__title { font-size: 15px; font-weight: bold; color: #f59e0b; letter-spacing: 1px; }
+.skirmish-panel__meta { color: #a0a0b8; font-size: 12px; }
+
+.skirmish-panel__side { display: flex; flex-direction: column; gap: 5px; }
+.skirmish-panel__side-h { font-size: 13px; font-weight: bold; }
+.skirmish-panel__side--ally .skirmish-panel__side-h { color: #4ade80; }
+.skirmish-panel__side--enemy .skirmish-panel__side-h { color: #ef4444; }
+
+.skirmish-panel__unit {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px; padding: 5px 8px;
+}
+.skirmish-panel__unit.is-player { background: rgba(74, 222, 128, 0.12); }
+.skirmish-panel__unit.is-commander { background: rgba(239, 68, 68, 0.16); }
+.skirmish-panel__uname { flex: 0 0 42%; font-size: 12px; color: #e6e6f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.skirmish-panel__bar {
+  position: relative; flex: 1; height: 14px;
+  background: rgba(0, 0, 0, 0.35); border-radius: 7px; overflow: hidden;
+}
+.skirmish-panel__bar > i {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: linear-gradient(90deg, #ef4444, #f59e0b);
+}
+.skirmish-panel__side--ally .skirmish-panel__bar > i { background: linear-gradient(90deg, #16a34a, #4ade80); }
+.skirmish-panel__bar > b {
+  position: relative; z-index: 1; display: block; text-align: center;
+  font-size: 10px; line-height: 14px; color: #fff; font-weight: normal;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+.skirmish-panel__acts {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.skirmish-panel__btn { font-size: 12px; padding: 6px 10px; }
+.skirmish-panel__btn:disabled { opacity: 0.5; cursor: not-allowed; }

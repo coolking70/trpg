@@ -53,6 +53,7 @@ import { GameUI } from './ui/GameUI.js';
 // 数据
 import { DEFAULT_PRESET } from './data/defaultPreset.js';
 import { schemaOf, battleUnitKey } from './data/strategySchema.js';
+import { skirmishContext, buildSkirmishDef, settleSkirmish } from './systems/skirmishOrchestration.js';
 import { assignPresetImages } from './data/assetLibrary.js';
 
 // Phase 26E — 项目自带预设清单（Vite 在构建时把 presets/*.json 都打入 bundle）
@@ -356,6 +357,11 @@ class TRPGApp {
     // ---- 理政朝堂情境选项（来自 RightPanel 国势条） ----
     es.subscribe('strategy:uiAction', (evt) => {
       this._handleStrategyUiAction(evt.data || {});
+    });
+
+    // ---- 局部战斗（来自 SkirmishPanel） ----
+    es.subscribe('skirmish:playerAction', (evt) => {
+      this._handleSkirmishAction(evt.data || {});
     });
 
     // ---- 工具栏操作 ----
@@ -1568,6 +1574,10 @@ class TRPGApp {
     const st = this.gameState?.strategicState;
     if (!ss || !st) return;
     const ai = this.engine.getSystem('AIGMEngine');
+    if (data.kind === 'skirmish_join') {
+      this._startSkirmishBrowser();
+      return;
+    }
     if (data.kind === 'govern') {
       const r = ss.applyPolicy(this.gameState, st.playerFactionId, data.policyId);
       this.gameState.addNarrative('system', r.ok ? `📜 ${r.narrative}` : `（${r.reason}）`);
@@ -1641,6 +1651,41 @@ class TRPGApp {
 
   _stratName(id) { return this.gameState?.strategicState?.factions?.[id]?.name || id; }
   _stratHolding(id) { for (const f of Object.values(this.gameState?.strategicState?.factions || {})) { const h = (f.holdings || []).find(x => x.id === id); if (h) return h.name; } return id; }
+
+  // ============================================================
+  // 局部战斗（Phase 45 P45c，浏览器）—— 小兵实战参战，由 SkirmishPanel 逐回合驱动
+  // ============================================================
+  _startSkirmishBrowser() {
+    const ss = this.engine.getSystem('StrategicSystem');
+    const sk = this.engine.getSystem('SkirmishSystem');
+    if (!ss || !sk) return;
+    const ctx = skirmishContext(this.gameState, ss);
+    if (!ctx) { this.gameState.addNarrative('system', '（当前并无可投身的战事。）'); this.eventSystem.publish('game:stateChanged', { gameState: this.gameState }); return; }
+    const def = buildSkirmishDef(this.gameState, ctx, (id) => this._stratName(id), sk.rng || Math.random);
+    sk.startSkirmish(this.gameState, def);
+    this.gameState.addNarrative('system', `⚔ 你随队投身 ${def._desc}，刀光血影间，这只是万千战线中的一小片。`);
+    if (def._bossName) this.gameState.addNarrative('system', '（乱军之中，敌阵里那员被簇拥的骁将格外显眼……）');
+    this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+  }
+
+  async _handleSkirmishAction(data) {
+    const sk = this.engine.getSystem('SkirmishSystem');
+    if (!sk || !this.gameState.activeSkirmish) return;
+    const r = sk.submitPlayerAction(this.gameState, { type: data.skAction || 'attack', targetId: data.targetId });
+    for (const line of (r.log || [])) this.gameState.addNarrative('system', line);
+    if (r.outcome) {
+      const oc = r.outcome;
+      this.gameState.activeSkirmish = null;
+      this.gameState.addNarrative('system', `🛡 ${oc.label}（斩获约 ${oc.kills}）。`);
+      settleSkirmish(this.gameState, {
+        ss: this.engine.getSystem('StrategicSystem'), oc,
+        addNarrative: (t) => this.gameState.addNarrative('system', t),
+        holdingName: (id) => this._stratHolding(id),
+        factionName: (id) => this._stratName(id),
+      });
+    }
+    this.eventSystem.publish('game:stateChanged', { gameState: this.gameState });
+  }
 
   /** 军团战结束：叙述 + drawFromStrategy 结算（与 GameSession 对齐） */
   async _endLegionBattle(turnResult) {

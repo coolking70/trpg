@@ -6,6 +6,7 @@
 import { CardRenderer } from '../rendering/CardRenderer.js';
 import { schemaOf } from '../data/strategySchema.js';
 import { campaignStatus } from '../data/campaign.js';
+import { skirmishContext } from '../systems/skirmishOrchestration.js';
 
 const STANCE_LABEL = { ally: '盟', trade: '睦', neutral: '中', rival: '隙', war: '战', vassal: '附' };
 
@@ -140,8 +141,25 @@ export class RightPanel {
     };
     const pend = this.gameState._pendingEngagement;
     const ss = this.engine?.getSystem?.('StrategicSystem');
+    const commands = ss ? ss.playerCommands(this.gameState) : true;
     const sg = !pend && ss ? ss.playerSiege(this.gameState) : null;
-    if (pend) {
+    // 底层视角（soldier/officer）：不给指挥按钮——其势力卷入战事时给"请缨参战"+"静观时局"
+    if (!commands && st.regions) {
+      const ctx = ss ? skirmishContext(this.gameState, ss) : null;
+      const wrap = document.createElement('div');
+      wrap.className = 'right-panel__strategy-acts';
+      if (ctx) {
+        const banner = document.createElement('div');
+        banner.className = 'right-panel__strategy-campaign';
+        banner.textContent = `⚔ 战事将至：${ctx.desc}（${ctx.tide >= 0.33 ? '战线有利' : ctx.tide <= -0.33 ? '战线吃紧' : '胜负难料'}）`;
+        this._strategyEl.appendChild(banner);
+        wrap.appendChild(mkWar('⚔ 请缨参战', { kind: 'skirmish_join' }, '投身当前战线的一片厮杀（局部时间放缓）'));
+      }
+      wrap.appendChild(mkWar('静观时局（一季流转）', { kind: 'season' }, '势力自治、战争幕后自结算'));
+      this._strategyEl.appendChild(wrap);
+      return;
+    }
+    if (commands && pend) {
       const wrap = document.createElement('div');
       wrap.className = 'right-panel__strategy-acts';
       const banner = document.createElement('div');
@@ -153,7 +171,7 @@ export class RightPanel {
       this._strategyEl.appendChild(wrap);
       return;
     }
-    if (sg) {
+    if (commands && sg) {
       const pid = st.playerFactionId;
       const banner = document.createElement('div');
       banner.className = 'right-panel__strategy-campaign';
@@ -176,9 +194,9 @@ export class RightPanel {
       return;
     }
 
-    // 情境选项：仅当处于「理政」场景（scene.tags 含 governance）
+    // 情境选项：仅号令权(ruler)且处于「理政」场景（scene.tags 含 governance）
     const scene = this._currentScene();
-    const atCourt = scene && (scene.tags || []).includes('governance');
+    const atCourt = commands && scene && (scene.tags || []).includes('governance');
     if (atCourt) {
       const acts = document.createElement('div');
       acts.className = 'right-panel__strategy-acts';
