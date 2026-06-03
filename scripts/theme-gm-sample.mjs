@@ -54,13 +54,23 @@ async function main() {
     console.log(`〔开局〕${preset.factions.find(f => f.id === playerFid)?.name} 持城：${holdingsOf(st0, playerFid)}`);
     await s.applyAction({ type: 'say', text: '我只是军中一名小卒，擦拭着兵器，听着老兵们议论前线的战事。' });
     console.log('>>> 表态（小卒见闻）：'); console.log(lastNarr(s.gameState, 3));
-    for (let i = 0; i < 8; i++) {
-      await s.applyAction({ type: 'advance_season' }); // 静观时局：势力自治 + 战争幕后结算
-      const st = s.gameState.strategicState;
-      const rank = st.factions[playerFid]?.holdings?.length || 0;
-      process.stdout.write(`  季${st.season}: 我方持城${rank}（${holdingsOf(st, playerFid)}）\n`);
+    for (let i = 0; i < 14; i++) {
+      const view = s.getState();
+      const join = view.options.find(o => o.type === 'skirmish_join');
+      if (join) {
+        console.log(`\n>>> 请缨参战（季${s.gameState.strategicState.season}）`);
+        await s.applyAction({ type: 'skirmish_join' }); // auto 模式：一战到底
+        console.log(lastNarr(s.gameState, 4));
+        const c = s.gameState.soldierCareer;
+        if (c) console.log(`  〔行伍〕${c.rank} 战功${c.merit} 斩获${c.kills} 历战${c.battles}　身份:${s.gameState.strategicState.playerRole}`);
+        if (s.gameState.strategicState.playerRole === 'ruler') { console.log('  （已积功擢为指挥官，转入战略参与）'); break; }
+      } else {
+        await s.applyAction({ type: 'advance_season' });
+        const st = s.gameState.strategicState;
+        process.stdout.write(`  季${st.season}: 我方持城${st.factions[playerFid]?.holdings?.length || 0}（${holdingsOf(st, playerFid)}）\n`);
+      }
     }
-    console.log('\n〔时局流转后的最近叙述〕'); console.log(lastNarr(s.gameState, 5));
+    console.log('\n〔最近叙述〕'); console.log(lastNarr(s.gameState, 5));
     console.log(`\n〔最终格局〕${Object.values(st0.factions).map(f => `${f.name}:${holdingsOf(s.gameState.strategicState, f.factionId)}`).join('　')}`);
   }
   console.log('\n=== 抽样完成 ===');

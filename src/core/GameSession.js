@@ -992,6 +992,20 @@ export class GameSession {
     this.gameState.activeSkirmish = null;
     this.gameState.addNarrative('system', `🛡 ${oc.label}（斩获约 ${oc.kills}）。`);
     await this._applySkirmishOutcome(oc); // 战功/晋升/敌将重大事件（P44c）
+    // 局部时间放缓（非冻结）：个人鏖战相对战略时钟极慢——每数场厮杀，宏观战事方推进一旬。
+    const st = this.gameState.strategicState;
+    if (st && st.regions) {
+      st._skirmishTick = (st._skirmishTick || 0) + 1;
+      if (st._skirmishTick % 3 === 0) {
+        const evs = this.sys('StrategicSystem').advanceWarXun(this.gameState);
+        for (const e of (evs || []).filter(x => x.type === 'siege_resolved')) {
+          const sg = e.siege;
+          this.gameState.addNarrative('system', e.attackerWins
+            ? `🏯 战报：${this._holdingName(sg.holdingId)} 失守，落入 ${this._factionName(sg.attacker)} 之手。`
+            : `🛡 战报：${this._factionName(sg.attacker)} 攻 ${this._holdingName(sg.holdingId)} 不克而退。`);
+        }
+      }
+    }
     await this._scanAfter(TRIGGER_MOMENTS.SCENE_ENTER);
   }
 
