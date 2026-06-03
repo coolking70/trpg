@@ -1705,7 +1705,11 @@ class TRPGApp {
     if (narr) gs.addNarrative('system', narr);
 
     const hook = r && r.eventHook;
-    if (hook) { try { await ai.processGameAction('school_activity', { hook, op, result: r, school: sc.snapshot(gs) }, gs); } catch { /* */ } }
+    if (hook) {
+      const matched = this.engine.getSystem('EventTriggerEngine')?.scan(gs, { moment: TRIGGER_MOMENTS.SCHOOL_ACTIVITY, schoolHook: hook }) || [];
+      if (matched.length) { this._triggerEvent(matched[0]); }
+      else { try { await ai.processGameAction('school_activity', { hook, op, result: r, school: sc.snapshot(gs) }, gs); } catch { /* */ } }
+    }
 
     this.eventSystem.publish('game:stateChanged', { gameState: gs });
   }

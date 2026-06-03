@@ -268,6 +268,13 @@ export class GameSession {
     if (ids.length > 0) await this._triggerEvent(ids[0]);
   }
 
+  /** 就学钩子事件扫描（Phase 48）：上课/社团等携 eventHook → 触发匹配的校园剧情。返回是否有事件触发。 */
+  async _scanSchoolHook(hook) {
+    const ids = this.sys('EventTriggerEngine').scan(this.gameState, { moment: TRIGGER_MOMENTS.SCHOOL_ACTIVITY, schoolHook: hook });
+    if (ids.length > 0) { await this._triggerEvent(ids[0]); return true; }
+    return false;
+  }
+
   async resolveEventChoice(eventId, choiceId) {
     const cm = this.sys('CardManager');
     const ai = this.sys('AIGMEngine');
@@ -1530,11 +1537,15 @@ export class GameSession {
     if (r && r.ok === false) narr = `无法执行：${r.reason}`;
     if (narr) gs.addNarrative('system', narr);
 
-    // 实践课 / 社团活动可挂事件钩子 → 触发特殊剧情（事件系统按 requireSchoolState 等条件评估）
+    // 实践课 / 社团活动可挂事件钩子 → 触发特殊剧情（事件按 requireSchoolState.eventHook 评估）；
+    //   有匹配事件则触发其剧情；否则退化为 AI 即兴旁白。
     const hook = r && r.eventHook;
     if (hook) {
-      try { await this.sys('AIGMEngine').processGameAction('school_activity', { hook, op, result: r, school: sc.snapshot(gs) }, gs); }
-      catch { /* AI 不可用静默 */ }
+      const fired = await this._scanSchoolHook(hook);
+      if (!fired) {
+        try { await this.sys('AIGMEngine').processGameAction('school_activity', { hook, op, result: r, school: sc.snapshot(gs) }, gs); }
+        catch { /* AI 不可用静默 */ }
+      }
     }
     return r;
   }

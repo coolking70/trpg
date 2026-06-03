@@ -85,4 +85,29 @@ describe('SC3 — 学校作为可选模块', () => {
     expect(s.getState().ready).toBe(true);
     s.destroy();
   });
+
+  test('课程 eventHook → 触发 requireSchoolState.eventHook 门控的校园剧情', async () => {
+    // 自定义 schema：实践课带 eventHook；剧本含一个 hook 门控事件
+    const preset = {
+      presetId: 'sch2', name: '钩子学院', author: 't', lore: { worldName: 'X' },
+      characters: [{ id: 'char_player', name: '学子', stats: { hp: 40, hpCurrent: 40, mp: 10, mpCurrent: 10, attack: 8, defense: 4, speed: 7, luck: 3, intellect: 12 }, skills: [] }],
+      enemies: [], items: [],
+      schoolSchema: { courses: { c_prac: { name: '实践课', credits: 3, type: 'practical', attr: 'luck', prereqs: [], grants: { stats: { luck: 1 } }, eventHook: 'field_hook' } } },
+      schoolSetup: { schoolName: '钩子学院' },
+      events: [
+        { id: 'ev_hooked', type: 'event', name: '实践奇遇', description: '实践途中你遇到一桩奇事。', eventType: 'story',
+          trigger: { type: 'composite', condition: { requireSchoolState: { eventHook: 'field_hook' } } }, tags: [], maxTriggers: 1,
+          choices: [{ id: 'c1', text: '一探究竟', outcomes: [{ probability: 1, text: '你揭开了真相。', effects: [{ type: 'set_variable', name: 'hook_fired', value: true }] }] }] },
+      ],
+      scenes: [{ id: 'scene_campus', name: '校园', type: 'town', icon: '🏫', coords: { x: 0, y: 0 }, tags: ['spawn', 'school'], description: '校园。', connections: [], events: [], vignettes: [] }],
+      startingSceneId: 'scene_campus',
+    };
+    const s = await boot(preset);
+    await s.applyAction({ type: 'school', op: 'elect', courseId: 'c_prac' });
+    await s.applyAction({ type: 'school', op: 'attend', courseId: 'c_prac' });
+    const st = s.getState();
+    expect(st.situation).toBe('event');          // hook 触发了校园剧情事件
+    expect(st.event.id).toBe('ev_hooked');
+    s.destroy();
+  });
 });

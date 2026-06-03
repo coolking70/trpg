@@ -14,6 +14,7 @@ export const TRIGGER_MOMENTS = {
   EVENT_COMPLETE: 'event_complete',
   VARIABLE_CHANGE: 'variable_change',
   SCENE_ENTER: 'scene_enter',  // 新增：抵达场景时扫描
+  SCHOOL_ACTIVITY: 'school_activity',  // Phase 48：上课/社团等就学动作携 eventHook 时扫描
 };
 
 export class EventTriggerEngine extends GameSystem {
