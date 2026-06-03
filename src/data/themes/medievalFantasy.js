@@ -86,6 +86,11 @@ export const medievalFantasySchema = {
     postures: { raid: '潜行奇袭（轻骑潜行，敌不及备）', open: '举旗誓师讨伐（传檄召盟，士气如虹）' },
     siegeVerbs: { breach: '城门洞开', surrender: '粮尽开城', fallen: '城堡陷落', retreat: '攻方撤围' },
     terms: { general: '统帅', troops: '军队', holding: '城堡', faction: '王国', march: '进军' },
+    skirmish: {
+      ally: '同袍士兵', allyReinforce: '驰援的骑士小队', enemy: '敌国士卒', enemyReinforce: '敌方增援队',
+      nco: '军士长', commanderTitle: '骑士统领',
+      commanders: ['黑鸦骑士', '断剑团长', '铁誓骑士', '荆棘公爵', '灰鹰骑士'],
+    },
   },
 };
 

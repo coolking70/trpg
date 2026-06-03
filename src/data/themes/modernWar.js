@@ -87,6 +87,11 @@ export const modernWarSchema = {
     postures: { raid: '闪电突袭（隐蔽机动，敌雷达难察）', open: '正式宣战进攻（盟友响应，士气高涨但暴露意图）' },
     siegeVerbs: { breach: '防线被突破', surrender: '守军投降', fallen: '阵地失守', retreat: '攻势受挫撤退' },
     terms: { general: '指挥官', troops: '部队', holding: '城市', faction: '国家', march: '推进' },
+    skirmish: {
+      ally: '同班战友', allyReinforce: '增援的步兵班', enemy: '敌军士兵', enemyReinforce: '敌方增援',
+      nco: '军士', commanderTitle: '校官',
+      commanders: ['钢铁上校', '铁壁少校', '赤狼中校', '幽灵上尉', '黑隼少将'],
+    },
   },
 };
 

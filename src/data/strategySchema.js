@@ -35,6 +35,11 @@ export const DEFAULT_NARRATION = {
   siegeVerbs: { breach: '城门告破', surrender: '粮尽献城', fallen: '城陷', retreat: '攻方退兵' },
   // 单位/势力称谓（供叙述层借用）
   terms: { general: '武将', troops: '兵马', holding: '城池', faction: '势力', march: '行军' },
+  // 局部战斗（小兵实战参战）措辞：小队/援兵/敌将命名（Phase 45）
+  skirmish: {
+    ally: '袍泽', allyReinforce: '我军援兵', enemy: '敌兵', enemyReinforce: '敌军援兵',
+    nco: '什长', commanderTitle: '骁将', commanders: ['关靖', '夏侯尚', '牛金', '王双', '张虎'],
+  },
 };
 
 /**

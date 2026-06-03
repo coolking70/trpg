@@ -71,6 +71,7 @@ export class SkirmishSystem extends GameSystem {
       deaths: { ally: 0, enemy: 0 },
       moraleBonus: { ally: 0, enemy: 0 }, // 鼓舞/援军到场的临时加成
       kills: 0, commanderKill: null, // 'slain' | 'captured'
+      labels: def.labels || { allyReinforce: '我军援兵', enemyReinforce: '敌军援兵' },
       log: [], outcome: null,
     };
     gameState.activeSkirmish = s;
@@ -201,15 +202,15 @@ export class SkirmishSystem extends GameSystem {
   _reinforce(s, log) {
     if (s._enemyDiedThisRound && reinforcementChance('enemy', s.tide, s.reserves.enemy, this.rng)) {
       s.reserves.enemy -= 1;
-      const u = { id: `sk_${++_uid}`, name: '敌军援兵', isAlly: false, isCommander: false, hp: 28, hpMax: 28, atk: 6, def: 3, speed: 5 };
+      const u = { id: `sk_${++_uid}`, name: s.labels.enemyReinforce, isAlly: false, isCommander: false, hp: 28, hpMax: 28, atk: 6, def: 3, speed: 5 };
       s.enemies.push(u); s.committed.enemy += 1; s.moraleBonus.enemy += 8;
-      log.push('🜸 敌军一队援兵杀入战团！');
+      log.push(`🜸 ${s.labels.enemyReinforce}一队杀入战团！`);
     }
     if (s._allyDiedThisRound && reinforcementChance('ally', s.tide, s.reserves.ally, this.rng)) {
       s.reserves.ally -= 1;
-      const u = { id: `sk_${++_uid}`, name: '我军援兵', isAlly: true, isCommander: false, hp: 28, hpMax: 28, atk: 7, def: 3, speed: 5 };
+      const u = { id: `sk_${++_uid}`, name: s.labels.allyReinforce, isAlly: true, isCommander: false, hp: 28, hpMax: 28, atk: 7, def: 3, speed: 5 };
       s.allies.push(u); s.committed.ally += 1; s.moraleBonus.ally += 8;
-      log.push('🜂 我军一队袍泽驰援而至！');
+      log.push(`🜂 ${s.labels.allyReinforce}驰援而至！`);
     }
     s._enemyDiedThisRound = false; s._allyDiedThisRound = false;
   }

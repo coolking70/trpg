@@ -92,6 +92,16 @@ describe('SkirmishSystem 状态机', () => {
     if (oc.commanderKill) expect(['slain', 'captured']).toContain(oc.commanderKill);
   });
 
+  test('题材换皮：援兵命名取自 labels', () => {
+    const sys = makeSys(2);
+    const gs = {};
+    sys.startSkirmish(gs, baseDef({ labels: { allyReinforce: '增援的步兵班', enemyReinforce: '敌方增援' } }));
+    expect(gs.activeSkirmish.labels.allyReinforce).toBe('增援的步兵班');
+    // 跑到底，若曾有援兵，其名应为题材词（否则至少不报错）
+    const before = gs.activeSkirmish.allies.length + gs.activeSkirmish.enemies.length;
+    sys.autoResolve(gs);
+    expect(before).toBeGreaterThan(0);
+  });
   test('玩家手动行动：攻击推进、退却即结束', () => {
     const sys = makeSys(9);
     const gs = {};

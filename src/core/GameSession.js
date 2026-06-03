@@ -924,26 +924,31 @@ export class GameSession {
     const sk = this.sys('SkirmishSystem');
     const enemyName = this._factionName(ctx.enemyFactionId);
     const tide = ctx.tide;
+    // 题材措辞（小队/援兵/敌将命名随题材换皮）
+    const skn = schemaOf(gs).narration?.skirmish || {};
+    const allyW = skn.ally || '袍泽', enemyW = skn.enemy || '敌兵', ncoW = skn.nco || '什长';
+    const commTitle = skn.commanderTitle || '骁将', commPool = skn.commanders || ['关靖', '夏侯尚', '牛金', '王双', '张虎'];
     // 小队规模 + 援兵（战线越有利我方援兵越足、敌方越少）；据 tide 微调
     const allyReserves = Math.max(1, Math.round(3 + tide * 2));
     const enemyReserves = Math.max(1, Math.round(3 - tide * 2));
     const ek = (n, atk, def, hp, over = {}) => ({ name: n, atk, def, hp, hpMax: hp, ...over });
     const enemies = [
-      ek(`${enemyName}兵`, 7, 4, 32), ek(`${enemyName}兵`, 7, 4, 30), ek(`${enemyName}什长`, 8, 5, 38),
+      ek(`${enemyName}${enemyW}`, 7, 4, 32), ek(`${enemyName}${enemyW}`, 7, 4, 30), ek(`${enemyName}${ncoW}`, 8, 5, 38),
     ];
     // 偶遇敌方关键将领（小概率，且战线不至于太劣）：阵斩/生擒→战略重大事件
     const rng = sk.rng || Math.random;
     let bossName = null;
     if (rng() < 0.12 + Math.max(0, tide) * 0.06) {
-      bossName = `${enemyName}骁将·${['关靖', '夏侯尚', '牛金', '王双', '张虎'][Math.floor(rng() * 5)]}`;
+      bossName = `${enemyName}${commTitle}·${commPool[Math.floor(rng() * commPool.length)]}`;
       enemies.push(ek(bossName, 11, 7, 90, { isCommander: true }));
     }
     sk.startSkirmish(gs, {
       playerChar: gs.activeCharacters[0],
-      allies: [ek('袍泽', 7, 4, 34), ek('什伍同袍', 6, 4, 30)],
+      allies: [ek(allyW, 7, 4, 34), ek(allyW, 6, 4, 30)],
       enemies,
       reserves: { ally: allyReserves, enemy: enemyReserves },
       tide,
+      labels: { allyReinforce: skn.allyReinforce || '我军援兵', enemyReinforce: skn.enemyReinforce || '敌军援兵' },
       parent: { kind: ctx.kind, side: ctx.side, factionId: gs.strategicState.playerFactionId, enemyFactionId: ctx.enemyFactionId, holdingId: ctx.holdingId, commanderName: bossName },
     });
     gs.addNarrative('system', `⚔ 你随队投身 ${ctx.desc}，刀光血影间，这只是万千战线中的一小片。`);
