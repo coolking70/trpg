@@ -28,6 +28,7 @@ import { z } from 'zod';
 import fs from 'node:fs';
 import path from 'node:path';
 import { recommendStrategyModule } from './strategyModule.mjs';
+import { recommendSchoolModule } from './schoolModule.mjs';
 
 // 默认目标文件
 const DEFAULT_FILE = path.resolve(process.cwd(), 'preset-draft.json');
@@ -58,7 +59,7 @@ function createEmptyPreset() {
     npcs: [],                       // Phase 19B
     strategicLayer: null,           // Phase 27: faction holdings / resources / governance, played through TRPG briefings
     strategicSetup: null,           // Phase 33: 内政外交活状态种子（玩家势力资源 + 外交立场）
-    modules: { strategy: false },   // Phase 47: 可选模块开关（战略系统：军团战+内政外交+战争+底层视角）
+    modules: { strategy: false, school: false },   // Phase 47/48: 可选模块开关（战略系统 / 学校系统）
     startingOptions: null,          // Phase 19A
     startingSceneRules: [],         // Phase 19A
     combatMode: 'party',            // Phase 19
@@ -819,6 +820,9 @@ function normalizeBlueprint(raw = {}, digest = {}, { sizeClass = 'medium' } = {}
   // 战略系统可选模块（Phase 47）：显式 raw.strategyModule 优先；否则按需求分析自动判定。
   const rec = recommendStrategyModule(digest);
   const strategyModule = (raw.strategyModule !== undefined && raw.strategyModule !== null) ? !!raw.strategyModule : rec.strategy;
+  // 学校系统可选模块（Phase 48）：显式 raw.schoolModule 优先；否则按需求分析自动判定。
+  const recSchool = recommendSchoolModule(digest);
+  const schoolModule = (raw.schoolModule !== undefined && raw.schoolModule !== null) ? !!raw.schoolModule : recSchool.school;
   return {
     schemaVersion: 1,
     title: raw.title || digest.title || '未命名',
@@ -827,6 +831,8 @@ function normalizeBlueprint(raw = {}, digest = {}, { sizeClass = 'medium' } = {}
     scale,
     strategyModule,
     strategyModuleRationale: rec,
+    schoolModule,
+    schoolModuleRationale: recSchool,
     scope: {
       includeBeatIds: Array.isArray(raw.scope?.includeBeatIds) ? raw.scope.includeBeatIds : beats.map(b => b.id),
       startBeatId: raw.scope?.startBeatId || beats[0]?.id || '',
@@ -885,7 +891,16 @@ async function buildPresetFromBlueprint(blueprint, digest) {
   const strategyOn = (blueprint.strategyModule !== undefined && blueprint.strategyModule !== null)
     ? !!blueprint.strategyModule
     : (!!blueprint.strategicSetup || (blueprint.chapters || []).some(c => (c.legionBattlePlan || []).length > 0));
-  p.modules = { strategy: strategyOn };
+  // 学校系统（可选模块，Phase 48）：blueprint.schoolModule 显式开关；否则按内容推断（有 schoolSetup）。
+  const schoolOn = (blueprint.schoolModule !== undefined && blueprint.schoolModule !== null)
+    ? !!blueprint.schoolModule
+    : !!blueprint.schoolSetup;
+  p.modules = { strategy: strategyOn, school: schoolOn };
+  // 开启学校系统：透传 schoolSetup / schoolSchema（题材包），关闭则不产出（普通剧本零负担）。
+  if (schoolOn) {
+    p.schoolSetup = blueprint.schoolSetup || { schoolName: blueprint.title || '学院' };
+    if (blueprint.schoolSchema) p.schoolSchema = blueprint.schoolSchema;
+  }
 
   // 角色：主角 + companions（按 characterMapping）
   const roleOf = new Map((blueprint.characterMapping || []).map(m => [m.digestCharId, m.gameRole]));
@@ -3813,6 +3828,7 @@ tools.blueprint_draft = {
     sizeClass: z.enum(['small', 'medium', 'large']).default('medium').describe('目标规模：small 15-25 / medium 40-60 / large 80-120 场景'),
     arc: z.string().optional().describe('只取小说哪一段/卷（自由文本提示）'),
     strategyModule: z.boolean().optional().describe('战略系统可选模块（军团战+内政外交+战争+底层视角）：省略=据需求自动判定；可显式 true/false 覆盖'),
+    schoolModule: z.boolean().optional().describe('学校系统可选模块（选课/学分·学习成长·社团实践·师友招募·校规·考试竞赛）：省略=据需求自动判定；可显式 true/false 覆盖'),
     apiKey: z.string().optional(),
     baseUrl: z.string().optional().describe(`默认 ${DEFAULT_OPENAI_BASE_URL}`),
     model: z.string().optional().describe(`默认 ${DEFAULT_OPENAI_MODEL}`),
@@ -3829,8 +3845,9 @@ tools.blueprint_draft = {
       });
       let raw;
       try { raw = parseAIJson(content); } catch (e) { return err(`蓝图 JSON 解析失败：${e.message}`); }
-      // 显式 strategyModule 覆盖优先（否则 normalizeBlueprint 据需求分析自动判定）
+      // 显式 strategyModule/schoolModule 覆盖优先（否则 normalizeBlueprint 据需求分析自动判定）
       if (args.strategyModule !== undefined) raw.strategyModule = args.strategyModule;
+      if (args.schoolModule !== undefined) raw.schoolModule = args.schoolModule;
       const bp = normalizeBlueprint(raw, digest, args);
       const errs = validateBlueprint(bp, digest);
       const outPath = args.outPath || args.digestPath.replace(/\.digest\.json$|\.json$/, '') + '.blueprint.json';
@@ -3838,11 +3855,16 @@ tools.blueprint_draft = {
       return ok(JSON.stringify({
         message: '已起草 PresetBlueprint（⚠ 请人工审阅/编辑后再进段③）',
         outPath, scale: bp.scale, chapters: bp.chapters.length, endings: bp.endings.length,
-        // Phase 47：战略系统可选模块——已据需求自动判定，可在 blueprint.strategyModule 手动改写
+        // Phase 47/48：可选模块——已据需求自动判定，可在 blueprint.strategyModule/schoolModule 手动改写
         strategyModule: bp.strategyModule,
         strategyModuleRationale: bp.strategyModuleRationale,
+        schoolModule: bp.schoolModule,
+        schoolModuleRationale: bp.schoolModuleRationale,
         validation: errs.length ? errs : 'ok',
-        next: '审阅/编辑 blueprint 后 → 段③ preset_build_from_blueprint' + (bp.strategyModule ? '（含战略系统：军团战/内政外交/战争）' : '（纯个人冒险，无战略系统）'),
+        next: '审阅/编辑 blueprint 后 → 段③ preset_build_from_blueprint'
+          + (bp.strategyModule ? '（含战略系统：军团战/内政外交/战争）' : '')
+          + (bp.schoolModule ? '（含学校系统：选课/考试/社团/招募）' : '')
+          + (!bp.strategyModule && !bp.schoolModule ? '（纯个人冒险，无可选模块）' : ''),
       }, null, 2));
     } catch (e) {
       return err(`起草蓝图失败：${e.message}`);

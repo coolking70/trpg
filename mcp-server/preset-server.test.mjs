@@ -376,6 +376,20 @@ async function main() {
     assert(r.strategy === false, `应不启用战略，实际：${JSON.stringify(r)}`);
   });
 
+  const { recommendSchoolModule } = await import('./schoolModule.mjs');
+  await test('recommendSchoolModule：校园/学院题材 → 启用学校', async () => {
+    const r = recommendSchoolModule({ title: '云霄学徒', tone: '校园·成长', themes: ['学院', '修行'],
+      world: { name: '魔法学院', setting: '少年入魔法学院研习奥术、结交同窗' },
+      locations: [{ name: '学院广场' }, { name: '宿舍' }],
+      plotBeats: [{ title: '入学典礼' }, { title: '期末考试' }, { title: '学院杯竞赛' }] });
+    assert(r.school === true, `应启用学校，实际：${JSON.stringify(r)}`);
+  });
+  await test('recommendSchoolModule：王朝征伐题材 → 不启用学校', async () => {
+    const r = recommendSchoolModule({ title: '三国', tone: '战争·群像', themes: ['兴亡', '王朝'],
+      world: { name: '汉末', setting: '群雄割据、征伐天下' }, plotBeats: [{ title: '官渡之战' }] });
+    assert(r.school === false, `应不启用学校，实际：${JSON.stringify(r)}`);
+  });
+
   const serverPath = path.join(import.meta.dirname || path.dirname(new URL(import.meta.url).pathname), 'preset-server.mjs');
   const client = new StdioClient(serverPath, TMP);
   await client.initialize();
