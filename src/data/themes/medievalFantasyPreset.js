@@ -22,6 +22,15 @@ export const medievalFantasyPreset = {
     { id: 'scene_court', name: '王座厅', type: 'settlement', icon: '🏰', coords: { x: 0, y: 0 }, tags: ['spawn', 'governance'], description: '银月王城的王座厅，群臣列班，等候摄政决断。', connections: [], events: [], vignettes: [] },
   ],
   startingSceneId: 'scene_court',
+  // 出身（Phase 43）：同一乱世，可为王、为将、为卒。王者号令天下；卒者随时局浮沉。
+  startingOptions: {
+    origins: [
+      { id: 'monarch', name: '摄政王', icon: '👑', tags: ['rank:monarch'], strategicRole: 'ruler', statBonus: { luck: 2 }, description: '执掌银月王国，内政外交、征伐和战皆决于你。' },
+      { id: 'knight_cmd', name: '骑士统领', icon: '🛡', tags: ['rank:knight'], strategicRole: 'officer', statBonus: { attack: 2, defense: 2 }, description: '率一队骑士听王命征战，亲冒矢石（暂不掌国策）。' },
+      { id: 'footman', name: '步卒', icon: '🗡', tags: ['rank:footman'], strategicRole: 'soldier', statBonus: { hp: 15 }, description: '军阵中一名无名步卒。王侯将相的棋局与你无关，你只想在乱世中活着回家。' },
+    ],
+  },
+  startingSceneRules: [{ default: true, sceneId: 'scene_court' }],
   strategicSetup: {
     playerFactionId: 'silvermoon',
     regions: {

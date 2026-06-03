@@ -22,6 +22,15 @@ export const modernWarPreset = {
     { id: 'scene_court', name: '战情指挥中心', type: 'settlement', icon: '🛰', coords: { x: 0, y: 0 }, tags: ['spawn', 'governance'], description: '蓝方最高战情指挥中心，参谋环立大屏，等候总指挥决断。', connections: [], events: [], vignettes: [] },
   ],
   startingSceneId: 'scene_court',
+  // 出身（Phase 43）：同一战局，可由不同身份切入。总指挥号令全局；下层身份则战局自转、你随波而行。
+  startingOptions: {
+    origins: [
+      { id: 'supreme', name: '最高统帅', icon: '🎖', tags: ['rank:supreme'], strategicRole: 'ruler', statBonus: { luck: 2 }, description: '执掌蓝方全局，号令三军、内政外交皆决于你。' },
+      { id: 'field_cmd', name: '前线指挥官', icon: '🪖', tags: ['rank:officer'], strategicRole: 'officer', statBonus: { attack: 2, defense: 1 }, description: '统领一支部队，听命于上，亲历战阵（暂不掌国策）。' },
+      { id: 'private', name: '列兵', icon: '🔫', tags: ['rank:soldier'], strategicRole: 'soldier', statBonus: { hp: 15 }, description: '战争机器中的一颗螺丝钉。国运沉浮非你能左右，你只求在炮火中活下去。' },
+    ],
+  },
+  startingSceneRules: [{ default: true, sceneId: 'scene_court' }],
   strategicSetup: {
     playerFactionId: 'blue',
     regions: {

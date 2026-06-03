@@ -7,6 +7,14 @@ import { GameSession } from '../../src/core/GameSession.js';
 import { medievalFantasyPreset } from '../../src/data/themes/medievalFantasyPreset.js';
 import { modernWarPreset } from '../../src/data/themes/modernWarPreset.js';
 
+async function loadWithOrigin(preset, originId, mode = 'interactive') {
+  const s = new GameSession({ combatMode: mode });
+  s.loadPreset(JSON.parse(JSON.stringify(preset)), { origins: originId });
+  s.configureAI({ endpoint: '' });
+  await s.kickoff();
+  return s;
+}
+
 async function load(preset, mode = 'auto') {
   const s = new GameSession({ combatMode: mode });
   s.loadPreset(JSON.parse(JSON.stringify(preset)));
@@ -56,6 +64,18 @@ describe('Phase 42 T4 — 现代战争主题包', () => {
     await s.applyAction({ type: 'govern', policyId: 'conscript' }); // 征召增兵力
     expect(ss.getFactionState(s.gameState, 'blue').troops).toBeGreaterThan(before);
     s.destroy();
+  });
+  test('出身决定战略身份：列兵→soldier（无指挥权）/ 最高统帅→ruler', async () => {
+    const sol = await loadWithOrigin(modernWarPreset, 'private');
+    expect(sol.gameState.strategicState.playerRole).toBe('soldier');
+    expect(sol.sys('StrategicSystem').playerCommands(sol.gameState)).toBe(false);
+    const st = sol.getState();
+    expect(st.options.some(o => o.type === 'govern')).toBe(false); // 列兵无指挥选项
+    sol.destroy();
+    const sup = await loadWithOrigin(modernWarPreset, 'supreme');
+    expect(sup.gameState.strategicState.playerRole).toBe('ruler');
+    expect(sup.sys('StrategicSystem').playerCommands(sup.gameState)).toBe(true);
+    sup.destroy();
   });
   test('战略→军团战使用题材兵种（装甲/步兵）', async () => {
     const s = await load(modernWarPreset, 'auto');

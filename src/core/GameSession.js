@@ -143,6 +143,15 @@ export class GameSession {
       const opt = opts.find(o => o.id === choices[axis]) || opts[0];
       if (!opt) continue;
       (opt.tags || []).forEach(t => tags.add(t));
+      // 出身可决定战略身份（Phase 43）：playerRole(ruler/officer/soldier) + 所属势力。
+      //   initFromPreset 随后读取 gameState._creationStrategic 覆盖默认 playerFactionId/playerRole。
+      if (opt.strategicRole || opt.strategicFaction) {
+        this.gameState._creationStrategic = {
+          ...(this.gameState._creationStrategic || {}),
+          ...(opt.strategicRole ? { role: opt.strategicRole } : {}),
+          ...(opt.strategicFaction ? { factionId: opt.strategicFaction } : {}),
+        };
+      }
       if (opt.statBonus && protag) {
         for (const [k, v] of Object.entries(opt.statBonus)) {
           protag.stats[k] = (protag.stats[k] || 0) + v;
