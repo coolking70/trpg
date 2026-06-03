@@ -17,7 +17,7 @@ import {
 } from '../data/governance.js';
 import { battleTerritoryOutcome } from '../data/campaign.js';
 import { XUN_PER_SEASON, MARCH_BASE_ETA, MARCH_POSTURES, regionDistance, marchEta, marchDetectChance, siegeTick, siegeOutcome, postureMoraleMod } from '../data/war.js';
-import { resolveSchema } from '../data/strategySchema.js';
+import { resolveSchema, schemaOf } from '../data/strategySchema.js';
 
 const clamp200 = (v) => Math.max(0, Math.min(200, Math.round(v)));
 
@@ -57,7 +57,7 @@ export class StrategicSystem extends GameSystem {
       const meta = factionMeta.get(id) || {};
       const seed = setup?.factions?.[id] || {};
       const desc = layer?.factions?.[id] || {};
-      const holdings = this._initHoldings(seed, desc);
+      const holdings = this._initHoldings(seed, desc, gameState.strategySchema.holdingTypes);
       const agg = seed.agg || this._aggFromHoldings(desc.holdings, desc.economy);
       factions[id] = {
         factionId: id,
@@ -72,7 +72,7 @@ export class StrategicSystem extends GameSystem {
         diplomacy: {},
       };
       // 有城池 → 由城池派生 agg（逐城经营，Phase 37）；无城池 → 保留聚合 agg（向后兼容）
-      if (holdings.length) this.recomputeAgg(factions[id]);
+      if (holdings.length) this.recomputeAgg(factions[id], gameState.strategySchema.holdingTypes);
     }
 
     // 外交关系：种子优先，否则从描述层 stance 推导；统一对称化
@@ -103,13 +103,14 @@ export class StrategicSystem extends GameSystem {
     return gameState.strategicState;
   }
 
-  /** 从种子/描述数据构建活城池实体（Phase 37） */
-  _initHoldings(seed = {}, desc = {}) {
+  /** 从种子/描述数据构建活城池实体（Phase 37）。holdingTypes 可由题材覆盖。 */
+  _initHoldings(seed = {}, desc = {}, holdingTypes = HOLDING_TYPES) {
     const raw = (Array.isArray(seed.holdings) && seed.holdings.length) ? seed.holdings : (desc.holdings || []);
+    const fallbackType = holdingTypes.city ? 'city' : Object.keys(holdingTypes)[0];
     return (raw || []).map((h, i) => ({
       id: h.id || `hold_${i + 1}`,
       name: h.name || `城${i + 1}`,
-      type: HOLDING_TYPES[h.type] ? h.type : 'city',
+      type: holdingTypes[h.type] ? h.type : fallbackType,
       population: Math.max(0, Math.round(h.population || 10000)),
       dev: clamp200(h.dev ?? h.productionEfficiency ?? 100),
       security: clampOrder(h.security ?? 50),
@@ -119,17 +120,23 @@ export class StrategicSystem extends GameSystem {
     }));
   }
 
-  /** 由城池派生势力级聚合 agg（人口加权产能 + 平均治安）；无城池则保持 agg 不变 */
-  recomputeAgg(f) {
+  /** 由城池派生势力级聚合 agg（人口加权产能 + 平均治安）；无城池则保持 agg 不变。holdingTypes 可由题材覆盖。 */
+  recomputeAgg(f, holdingTypes = HOLDING_TYPES) {
     const hs = f.holdings || [];
     if (!hs.length) return;
     const pop = hs.reduce((s, h) => s + (h.population || 0), 0);
-    const devSum = hs.reduce((s, h) => s + (h.population || 0) * holdingEffectiveDev(h), 0);
+    const devSum = hs.reduce((s, h) => s + (h.population || 0) * holdingEffectiveDev(h, holdingTypes), 0);
     f.agg = f.agg || {};
     f.agg.population = pop;
     f.agg.productionEfficiency = pop > 0 ? clamp200(devSum / pop) : 100;
     f.agg.security = Math.round(hs.reduce((s, h) => s + holdingEffectiveSecurity(h), 0) / hs.length);
     f.agg.holdingCount = hs.length;
+  }
+
+  /** 题材战略表（缺省=内置三国）。供本系统及 governance/war 纯函数读取。 */
+  _S(gameState) {
+    const s = schemaOf(gameState);
+    return { policies: s.policies, holdingTypes: s.holdingTypes, diplomacyActions: s.diplomacyActions, marchPostures: s.marchPostures };
   }
 
   /** 委任太守（Phase 37）：char = { id, name, warfare } 由调用方从卡牌解析 */
@@ -139,7 +146,7 @@ export class StrategicSystem extends GameSystem {
     if (!h || !char) return { ok: false, reason: '城池或人选不存在' };
     h.governorId = char.id; h.governorName = char.name;
     h.governorBonus = governorBonusFromWarfare(char.warfare);
-    this.recomputeAgg(f);
+    this.recomputeAgg(f, this._S(gameState).holdingTypes);
     this._publish('strategy:governor', { factionId, holdingId, governor: char.name });
     return { ok: true, narrative: `委 ${char.name} 镇守 ${h.name}。` };
   }
@@ -154,7 +161,8 @@ export class StrategicSystem extends GameSystem {
     const [h] = from.holdings.splice(idx, 1);
     h.governorId = null; h.governorName = null; h.governorBonus = null; // 易主后太守去职
     (to.holdings ||= []).push(h);
-    this.recomputeAgg(from); this.recomputeAgg(to);
+    const ht = this._S(gameState).holdingTypes;
+    this.recomputeAgg(from, ht); this.recomputeAgg(to, ht);
     this._publish('strategy:holdingTransfer', { fromId, toId, holdingId, name: h.name });
     return { ok: true, name: h.name };
   }
@@ -194,7 +202,7 @@ export class StrategicSystem extends GameSystem {
   applyPolicy(gameState, factionId, policyId, opts = {}) {
     const f = this.getFactionState(gameState, factionId);
     if (!f) return { ok: false, reason: '势力不存在' };
-    const r = applyPolicyPure(f, policyId);
+    const r = applyPolicyPure(f, policyId, this._S(gameState).policies);
     if (!r.ok) return r;
     if (f.holdings && f.holdings.length) {
       // 逐城经营（Phase 37）：资源照常入库；产能/治安改动落到目标城（无目标=全境），再派生 agg
@@ -207,7 +215,7 @@ export class StrategicSystem extends GameSystem {
           if (ad.security) h.security = clampOrder((h.security ?? 50) + ad.security);
         }
       }
-      this.recomputeAgg(f);
+      this.recomputeAgg(f, this._S(gameState).holdingTypes);
     } else {
       this._applyDeltas(f, r.deltas, r.aggDeltas);
     }
@@ -233,7 +241,7 @@ export class StrategicSystem extends GameSystem {
     const tgt = this.getFactionState(gameState, targetId);
     if (!src || !tgt) return { ok: false, reason: '势力不存在' };
     const rel = this.relationOf(gameState, srcId, targetId);
-    const r = applyDiplomacyPure(src, action, rel, this.rng);
+    const r = applyDiplomacyPure(src, action, rel, this.rng, this._S(gameState).diplomacyActions);
     if (!r.ok) return r;
 
     // 扣成本
@@ -374,8 +382,9 @@ export class StrategicSystem extends GameSystem {
     atk.food = Math.max(0, (atk.food || 0) - supply);
 
     // 公开讨伐（Phase 41 W5）：盟友响应，一同出兵
+    const postures = this._S(gameState).marchPostures;
     const alliesJoined = [];
-    if (MARCH_POSTURES[posture]?.allyResponse) {
+    if (postures[posture]?.allyResponse) {
       for (const [aid, rel] of Object.entries(atk.diplomacy || {})) {
         if (aid === defenderId) continue;
         if (rel.stance === 'ally' || rel.relation >= 50) {
@@ -390,7 +399,7 @@ export class StrategicSystem extends GameSystem {
     const march = {
       id: `march_${attackerId}_${targetHoldingId}_${s.warXun}`,
       attacker: attackerId, defender: defenderId, targetHoldingId, posture,
-      army: { troops: mobilized, supply, generalIds, allies: alliesJoined }, etaXun: marchEta(dist, posture),
+      army: { troops: mobilized, supply, generalIds, allies: alliesJoined }, etaXun: marchEta(dist, posture, postures),
       detected: false, detectedAtXun: null,
     };
     s.marches.push(march);
@@ -414,7 +423,7 @@ export class StrategicSystem extends GameSystem {
       if (!m.detected) {
         const remainHops = Math.max(0, Math.ceil(m.etaXun / MARCH_BASE_ETA));
         const defGen = this._holdingGeneral(gameState, m.targetHoldingId);
-        const chance = marchDetectChance(remainHops, defGen, m.posture);
+        const chance = marchDetectChance(remainHops, defGen, m.posture, this._S(gameState).marchPostures);
         if (chance > 0 && this.rng() < chance) {
           m.detected = true; m.detectedAtXun = s.warXun;
           if (m.defender === pid) events.push({ type: 'march_detected', march: m });
@@ -471,12 +480,13 @@ export class StrategicSystem extends GameSystem {
       return { kind: 'battle', battleDef };
     }
     // hold → 围城。突袭使守方来不及调兵遣将、加固城防（defenderPrep 缩减守军与城防）
-    const prep = MARCH_POSTURES[march.posture]?.defenderPrep ?? 1;
+    const postures = this._S(gameState).marchPostures;
+    const prep = postures[march.posture]?.defenderPrep ?? 1;
     const garrison = this.mobilize(gameState, defender, Math.round((def?.troops || 0) * (0.5 + 0.35 * prep)));
     const siege = {
       id: `siege_${attacker}_${holdingId}_${gameState.strategicState.warXun}`,
       attacker, defender, holdingId, mode: march.posture === 'raid' ? 'assault' : 'blockade', xun: 0,
-      atk: { troops: march.army.troops, morale: 70 + postureMoraleMod(march.posture), supply: march.army.supply },
+      atk: { troops: march.army.troops, morale: 70 + postureMoraleMod(march.posture, postures), supply: march.army.supply },
       def: { troops: garrison, supply: Math.floor((def?.food || 0) * 0.6), morale: 70 },
       works: { gate: Math.round(220 * (0.6 + 0.4 * prep)), wall: Math.round(320 * (0.6 + 0.4 * prep)) }, machinePower: 30,
     };
@@ -536,7 +546,7 @@ export class StrategicSystem extends GameSystem {
       id: `relief_${allyId}_${siege.holdingId}_${gameState.strategicState.warXun}`,
       attacker: allyId, defender: siege.attacker, targetHoldingId: siege.holdingId, posture: 'open',
       army: { troops, supply: Math.floor((ally.food || 0) * 0.3), generalIds: [] },
-      etaXun: marchEta(dist, 'open'), detected: false, detectedAtXun: null, reliefFor: siege.id,
+      etaXun: marchEta(dist, 'open', this._S(gameState).marchPostures), detected: false, detectedAtXun: null, reliefFor: siege.id,
     };
     gameState.strategicState.marches.push(march);
     return march;
@@ -586,8 +596,9 @@ export class StrategicSystem extends GameSystem {
     const events = [];
 
     // 1) upkeep（产出/消耗/民心漂移）；有城池则先由城池派生最新 agg
+    const _ht = this._S(gameState).holdingTypes;
     for (const f of Object.values(s.factions)) {
-      if (f.holdings && f.holdings.length) this.recomputeAgg(f);
+      if (f.holdings && f.holdings.length) this.recomputeAgg(f, _ht);
       const prod = seasonProduction(f);
       this._applyDeltas(f, { gold: prod.gold, food: prod.food, order: prod.order });
       if (prod.food < 0 && f.food <= 0) events.push({ type: 'famine', faction: f.factionId });

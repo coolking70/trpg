@@ -4,7 +4,7 @@
  */
 
 import { CardRenderer } from '../rendering/CardRenderer.js';
-import { POLICIES, DIPLOMACY_ACTIONS, HOLDING_TYPES } from '../data/governance.js';
+import { schemaOf } from '../data/strategySchema.js';
 import { campaignStatus } from '../data/campaign.js';
 
 const STANCE_LABEL = { ally: '盟', trade: '睦', neutral: '中', rival: '隙', war: '战', vassal: '附' };
@@ -121,7 +121,7 @@ export class RightPanel {
       for (const h of me.holdings) {
         const row = document.createElement('div');
         row.className = 'right-panel__city';
-        const tName = HOLDING_TYPES[h.type]?.name || h.type;
+        const tName = schemaOf(this.gameState).holdingTypes[h.type]?.name || h.type;
         row.innerHTML = `<span class="right-panel__city-name">${h.name}<span class="right-panel__city-type">${tName}</span></span>`
           + `<span class="right-panel__city-stat">众${(h.population / 10000).toFixed(1)}万 治${h.security}</span>`
           + `<span class="right-panel__city-gov">${h.governorName ? '守·' + h.governorName : '（无守将）'}</span>`;
@@ -189,14 +189,19 @@ export class RightPanel {
         b.addEventListener('click', () => this.eventSystem.publish('strategy:uiAction', payload));
         return b;
       };
-      for (const pid of ['farming', 'tax', 'conscript', 'relief']) {
-        acts.appendChild(mkBtn(POLICIES[pid].name, { kind: 'govern', policyId: pid }, POLICIES[pid].note));
+      // 政令快捷：取自题材 Schema（优先常用 4 项，缺失则补足前若干项）
+      const sc = schemaOf(this.gameState);
+      const POL = sc.policies, DIP = sc.diplomacyActions;
+      const quick = ['farming', 'tax', 'conscript', 'relief'].filter(k => POL[k]);
+      for (const k of Object.keys(POL)) { if (quick.length >= 4) break; if (!quick.includes(k)) quick.push(k); }
+      for (const pid of quick) {
+        acts.appendChild(mkBtn(POL[pid].name, { kind: 'govern', policyId: pid }, POL[pid].note));
       }
       // 外交：对每个其它势力一个"睦邻/绝交"快捷（朝贡 / 宣战），细节交自由进谏
       for (const [fid, rel] of dip) {
         const name = st.factions[fid]?.name || fid;
-        if (rel.stance !== 'ally' && rel.relation < 40) acts.appendChild(mkBtn(`厚结${name}`, { kind: 'diplomacy', action: 'tribute', targetId: fid }, DIPLOMACY_ACTIONS.tribute.note));
-        if (rel.stance !== 'war') acts.appendChild(mkBtn(`讨${name}`, { kind: 'diplomacy', action: 'declare_war', targetId: fid }, DIPLOMACY_ACTIONS.declare_war.note));
+        if (DIP.tribute && rel.stance !== 'ally' && rel.relation < 40) acts.appendChild(mkBtn(`厚结${name}`, { kind: 'diplomacy', action: 'tribute', targetId: fid }, DIP.tribute.note));
+        if (DIP.declare_war && rel.stance !== 'war') acts.appendChild(mkBtn(`讨${name}`, { kind: 'diplomacy', action: 'declare_war', targetId: fid }, DIP.declare_war.note));
       }
       acts.appendChild(mkBtn('处理政务', { kind: 'season' }, '推进一季，敌国亦各有动作'));
       this._strategyEl.appendChild(acts);

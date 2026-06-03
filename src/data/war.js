@@ -44,15 +44,15 @@ export const MARCH_POSTURES = {
 };
 export const POSTURE_KEYS = Object.keys(MARCH_POSTURES);
 
-/** 行军 ETA（旬）：距离越远越久；突袭略快。adjacent(距离1)也需时间，杜绝"一回合兵临城下"。 */
-export function marchEta(distance, posture = 'open') {
-  const p = MARCH_POSTURES[posture] || MARCH_POSTURES.open;
+/** 行军 ETA（旬）：距离越远越久；突袭略快。adjacent(距离1)也需时间，杜绝"一回合兵临城下"。postures 可由题材覆盖。 */
+export function marchEta(distance, posture = 'open', postures = MARCH_POSTURES) {
+  const p = postures[posture] || postures.open || MARCH_POSTURES.open;
   const d = Number.isFinite(distance) ? distance : 3;
   return Math.max(1, Math.round((d + 1) * MARCH_BASE_ETA * p.etaFactor));
 }
 
-export function postureMoraleMod(posture) {
-  return (MARCH_POSTURES[posture] || MARCH_POSTURES.open).attackerMorale;
+export function postureMoraleMod(posture, postures = MARCH_POSTURES) {
+  return (postures[posture] || postures.open || MARCH_POSTURES.open).attackerMorale;
 }
 
 // ============================================================
@@ -71,10 +71,10 @@ export function intelRange(general) {
  * 某旬侦得一支行军的概率：超出守将情报半径=0；半径内则按姿态探测度（突袭难、公开易），
  * 距离越近越易。一旦侦得由系统置 detected=true。
  */
-export function marchDetectChance(distanceToDefender, defenderGeneral, posture) {
+export function marchDetectChance(distanceToDefender, defenderGeneral, posture, postures = MARCH_POSTURES) {
   const range = intelRange(defenderGeneral);
   if (!Number.isFinite(distanceToDefender) || distanceToDefender > range) return 0;
-  const base = (MARCH_POSTURES[posture] || MARCH_POSTURES.open).detect;
+  const base = (postures[posture] || postures.open || MARCH_POSTURES.open).detect;
   const proximity = 1 - Math.min(0.6, distanceToDefender * 0.2); // 越近越易
   return Math.max(0, Math.min(1, base * proximity));
 }

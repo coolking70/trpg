@@ -79,9 +79,16 @@ function canAfford(state, cost) {
   return true;
 }
 
-/** 执行一条政令（纯函数）：返回 { ok, reason, deltas{gold,food,troops,order}, aggDeltas{productionEfficiency,security}, narrative } */
-export function applyPolicyPure(state, policyId) {
-  const p = POLICIES[policyId];
+/**
+ * 执行一条政令（纯函数）：返回 { ok, reason, deltas{gold,food,troops,order}, aggDeltas{productionEfficiency,security}, narrative }
+ * policies 可由题材覆盖。题材换皮两种方式：
+ *   (a) 沿用 6 个政令 KEY（farming/tax/conscript/fortify/relief/develop），仅改 name/cost → 走内置原型效果；
+ *   (b) 政令定义带 effect 字段 → 走题材自定义效果（可定义任意 KEY 的新政令）。
+ *       effect: { gold?, food?, troops?, order?, productionEfficiency?, security?, scaled?:['food',...] }
+ *       scaled 列出的资源项按人口规模缩放（缺省 gold/food/troops 缩放、order 不缩放）。
+ */
+export function applyPolicyPure(state, policyId, policies = POLICIES) {
+  const p = policies[policyId];
   if (!p) return { ok: false, reason: `无此政令: ${policyId}` };
   if (!canAfford(state, p.cost)) return { ok: false, reason: '国库不足，无法施行', narrative: `${p.name}所需资源不足，未能施行。` };
 
@@ -91,13 +98,23 @@ export function applyPolicyPure(state, policyId) {
   const aggDeltas = { productionEfficiency: 0, security: 0 };
   for (const k of Object.keys(p.cost || {})) deltas[k] = (deltas[k] || 0) - p.cost[k];
 
-  switch (policyId) {
-    case 'farming': deltas.food += Math.round(40 * scale); aggDeltas.productionEfficiency += 5; break;
-    case 'tax': deltas.gold += Math.round(60 * scale); deltas.order -= 8; break;
-    case 'conscript': deltas.troops += Math.round(800 * scale); deltas.order -= 6; break;
-    case 'fortify': aggDeltas.security += 12; break;
-    case 'relief': deltas.order += 15; break;
-    case 'develop': aggDeltas.productionEfficiency += 10; break;
+  if (p.effect) {
+    const scaled = new Set(p.effect.scaled || ['food', 'gold', 'troops']);
+    for (const k of ['gold', 'food', 'troops', 'order']) {
+      if (p.effect[k] != null) deltas[k] += Math.round(p.effect[k] * (scaled.has(k) ? scale : 1));
+    }
+    for (const k of ['productionEfficiency', 'security']) {
+      if (p.effect[k] != null) aggDeltas[k] += p.effect[k];
+    }
+  } else {
+    switch (policyId) {
+      case 'farming': deltas.food += Math.round(40 * scale); aggDeltas.productionEfficiency += 5; break;
+      case 'tax': deltas.gold += Math.round(60 * scale); deltas.order -= 8; break;
+      case 'conscript': deltas.troops += Math.round(800 * scale); deltas.order -= 6; break;
+      case 'fortify': aggDeltas.security += 12; break;
+      case 'relief': deltas.order += 15; break;
+      case 'develop': aggDeltas.productionEfficiency += 10; break;
+    }
   }
   return { ok: true, deltas, aggDeltas, narrative: `${p.name}施行。` };
 }
@@ -126,9 +143,9 @@ export function governorBonusFromWarfare(w) {
   };
 }
 
-/** 一座城的有效营建度（dev × 类型产出权重 × 太守产能加成） */
-export function holdingEffectiveDev(h) {
-  const t = HOLDING_TYPES[h.type] || HOLDING_TYPES.city;
+/** 一座城的有效营建度（dev × 类型产出权重 × 太守产能加成）。holdingTypes 可由题材覆盖。 */
+export function holdingEffectiveDev(h, holdingTypes = HOLDING_TYPES) {
+  const t = holdingTypes[h.type] || holdingTypes.city || HOLDING_TYPES.city;
   const gb = h.governorBonus || { prod: 1 };
   return (h.dev ?? 100) * t.prod * (gb.prod || 1);
 }
@@ -159,8 +176,8 @@ export const DIPLOMACY_KEYS = Object.keys(DIPLOMACY_ACTIONS);
  * @param {object} rel - 当前 src→target 关系 { stance, relation }
  * @param {function} [rng]
  */
-export function applyDiplomacyPure(srcState, action, rel = { stance: 'neutral', relation: 0 }, rng = Math.random) {
-  const a = DIPLOMACY_ACTIONS[action];
+export function applyDiplomacyPure(srcState, action, rel = { stance: 'neutral', relation: 0 }, rng = Math.random, actions = DIPLOMACY_ACTIONS) {
+  const a = actions[action];
   if (!a) return { ok: false, reason: `无此外交动作: ${action}` };
   if (!canAfford(srcState, a.cost)) return { ok: false, reason: '资源不足，无法施行', narrative: `${a.name}所需财货不足。` };
   const srcDeltas = {};
