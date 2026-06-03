@@ -25,6 +25,7 @@ import { CombatSystem } from '../systems/CombatSystem.js';
 import { LegionWarfareSystem } from '../systems/LegionWarfareSystem.js';
 import { StrategicSystem } from '../systems/StrategicSystem.js';
 import { SkirmishSystem } from '../systems/SkirmishSystem.js';
+import { SchoolSystem } from '../systems/SchoolSystem.js';
 import { skirmishContext, buildSkirmishDef, settleSkirmish } from '../systems/skirmishOrchestration.js';
 import { TurnManager } from '../systems/TurnManager.js';
 import { AIGMEngine } from '../systems/AIGMEngine.js';
@@ -43,6 +44,7 @@ import { GamePreset } from '../models/GamePreset.js';
 import { GameState } from '../models/GameState.js';
 import { canUseFormation, generalHasTactic } from '../data/warfare.js';
 import { schemaOf, battleUnitKey } from '../data/strategySchema.js';
+import { canElect, eligibleRecruits } from '../data/school.js';
 import { assembleLegionBattle, settleLegionBattle } from '../systems/legionOrchestration.js';
 import { applyStrategyEffect, applySeasonEvents } from '../systems/strategyOrchestration.js';
 
@@ -85,6 +87,7 @@ export class GameSession {
     this.engine.registerSystem(new LegionWarfareSystem(), 49);
     this.engine.registerSystem(new StrategicSystem(), 48);
     this.engine.registerSystem(new SkirmishSystem(), 47);
+    this.engine.registerSystem(new SchoolSystem(), 46);
     this.engine.registerSystem(new TurnManager(), 40);
     this.engine.registerSystem(new AIGMEngine(), 30);
     this.engine.registerSystem(new EventTriggerEngine(), 35);
@@ -126,6 +129,7 @@ export class GameSession {
 
     this.sys('NPCSystem').initializeNPCState(this.gameState);
     this.sys('StrategicSystem').initFromPreset(this.gameState, this.preset);
+    this.sys('SchoolSystem').initFromPreset(this.gameState, this.preset);
     this.gameState.storyTime ||= { day: 1, hour: 8 };
     const ms = this.sys('MemorySystem');
     if (ms) ms.initializeFromPreset(this.gameState, this.preset);
@@ -1103,6 +1107,9 @@ export class GameSession {
       case 'skirmish':
         await this._submitSkirmish(action);
         break;
+      case 'school':
+        await this._doSchool(action);
+        break;
       default:
         this.gameState.addNarrative('system', `（未知动作类型：${action.type}）`);
     }
@@ -1235,6 +1242,18 @@ export class GameSession {
       }
     }
 
+    // 学校层（Phase 48，可选模块）：始终给概要；在校(status==='enrolled')且身处校园场景
+    //   (scene tag 'school'/'campus') 且无更紧迫情形(travel/governance)时进入 school 态并给就学动作。
+    let school = null;
+    if (gs.schoolState) {
+      school = this.sys('SchoolSystem').snapshot(gs);
+      const onCampus = current && ((current.tags || []).includes('school') || (current.tags || []).includes('campus'));
+      if (gs.schoolState.status === 'enrolled' && (situation === 'travel') && onCampus) {
+        situation = 'school';
+        this._appendSchoolOptions(gs, options);
+      }
+    }
+
     const narrative = (gs.narrativeLog || []).slice(-8).map(n => ({ speaker: n.speaker, text: n.text }));
 
     return {
@@ -1249,6 +1268,7 @@ export class GameSession {
       strategy,
       siege,
       skirmish,
+      school,
       options: (situation === 'combat' || situation === 'legion' || situation === 'skirmish') ? options : options.filter(o => o.type !== 'travel' || o.reachable),
       party,
       usableItems,
@@ -1376,6 +1396,98 @@ export class GameSession {
       }
     }
     options.push({ n: ++n, type: 'advance_season', text: '处理政务（推进一季）' });
+  }
+
+  /** 校园场景的就学动作（交互模式）：选专业/选课/上课/社团/考试/竞赛/推进学期/毕业招募 */
+  _appendSchoolOptions(gs, options) {
+    if (this.combatMode !== 'interactive') return;
+    const sc = this.sys('SchoolSystem');
+    const st = gs.schoolState; const schema = sc.schema(gs);
+    if (!st) return;
+    let n = options.length;
+    // 选专业（free 模式仅作方向；major-fixed 决定必修）— 仅在尚未定专业或允许换向时给
+    for (const [mid, m] of Object.entries(schema.majors || {})) {
+      if (mid === st.major) continue;
+      options.push({ n: ++n, type: 'school', op: 'major', majorId: mid, text: `选择方向·${m.name}` });
+    }
+    // 选课（仅给可选的）
+    for (const [cid, c] of Object.entries(schema.courses || {})) {
+      const chk = canElect(st, schema, cid);
+      if (chk.ok) options.push({ n: ++n, type: 'school', op: 'elect', courseId: cid, text: `选课·${c.name}(${c.credits}学分)` });
+    }
+    // 上课（已选未修毕）
+    for (const cid of (st.enrolled || [])) {
+      const c = schema.courses[cid];
+      if (c) options.push({ n: ++n, type: 'school', op: 'attend', courseId: cid, text: `上课·${c.name}` });
+    }
+    // 社团（未加入的）
+    for (const [clid, cl] of Object.entries(schema.clubs || {})) {
+      if ((st.clubs || []).includes(clid)) continue;
+      options.push({ n: ++n, type: 'school', op: 'club', clubId: clid, text: `加入社团·${cl.name}` });
+    }
+    // 考试 / 竞赛
+    for (const [eid, e] of Object.entries(schema.exams || {})) {
+      options.push({ n: ++n, type: 'school', op: 'exam', examId: eid, text: `参加${e.name}` });
+    }
+    for (const [eid, e] of Object.entries(schema.competitions || {})) {
+      options.push({ n: ++n, type: 'school', op: 'exam', examId: eid, text: `报名${e.name}` });
+    }
+    // 推进学期（升级/留级/毕业/退学判定）
+    options.push({ n: ++n, type: 'school', op: 'advance_term', text: `结束本${(schema.narration?.terms?.term) || '学期'}（推进学期）` });
+    // 毕业招募（有达标关系时）
+    if (eligibleRecruits(st, schema).length) {
+      options.push({ n: ++n, type: 'school', op: 'recruit', text: '招募交好的师友同窗入队' });
+    }
+  }
+
+  /** 执行一条就学动作，叙述结果，并将实践/社团 eventHook 交事件系统触发剧情 */
+  async _doSchool(action) {
+    const gs = this.gameState;
+    const sc = this.sys('SchoolSystem');
+    const op = action.op;
+    let r = null; let narr = '';
+    if (op === 'major') { r = sc.chooseMajor(gs, action.majorId); if (r.ok) narr = `你确定了修业方向：${r.name}。`; }
+    else if (op === 'elect') { r = sc.electCourse(gs, action.courseId); if (r.ok) narr = `你选修了《${r.name}》。`; }
+    else if (op === 'drop') { r = sc.dropCourse(gs, action.courseId); if (r.ok) narr = `你退掉了该课程。`; }
+    else if (op === 'attend') {
+      r = sc.attendClass(gs, action.courseId);
+      if (r.ok) {
+        const gains = Object.entries(r.grants.stats || {}).map(([k, v]) => `${k}+${v}`).join('、');
+        const sk = (r.grants.skills || []).length ? `，习得 ${r.grants.skills.join('、')}` : '';
+        narr = `你修毕《${r.name}》（绩点 ${r.grade}）${gains ? `，${gains}` : ''}${sk}。累计学分 ${r.credits}。`;
+      }
+    }
+    else if (op === 'club') { r = sc.joinClub(gs, action.clubId); if (r.ok) narr = `你加入了「${r.name}」，参与${r.activity}。`; }
+    else if (op === 'exam') {
+      r = sc.takeExam(gs, action.examId);
+      if (r.ok) {
+        narr = `${r.name}：得分 ${r.score}，名列第 ${r.rank}/${r.fieldSize}，${r.passed ? '通过' : '未通过'}。`;
+        if (r.reward) narr += `（名次奖励到手）`;
+        if (r.penalty === 'retain') narr += `（不及格，面临留级）`;
+        if (r.penalty === 'expel') narr += `（成绩太差，面临退学）`;
+      }
+    }
+    else if (op === 'advance_term') {
+      r = sc.advanceTerm(gs);
+      const map = { advance_term: '学期更替', promote: '升入新学年', retain: '留级重读', graduate: '顺利毕业', expel: '被勒令退学' };
+      if (r.ok) narr = `${map[r.outcome] || r.outcome}（${r.reason}）。`;
+    }
+    else if (op === 'recruit') {
+      r = sc.graduateRecruit(gs, action.npcIds || null);
+      narr = r.recruited.length ? `${r.recruited.length} 位师友同窗应邀加入了你。` : '暂无人应邀（关系或未达标）。';
+    }
+    else { narr = `（未知就学动作：${op}）`; }
+
+    if (r && r.ok === false) narr = `无法执行：${r.reason}`;
+    if (narr) gs.addNarrative('system', narr);
+
+    // 实践课 / 社团活动可挂事件钩子 → 触发特殊剧情（事件系统按 requireSchoolState 等条件评估）
+    const hook = r && r.eventHook;
+    if (hook) {
+      try { await this.sys('AIGMEngine').processGameAction('school_activity', { hook, op, result: r, school: sc.snapshot(gs) }, gs); }
+      catch { /* AI 不可用静默 */ }
+    }
+    return r;
   }
 
   isMainQuestComplete() { return !!this._mainQuestComplete; }

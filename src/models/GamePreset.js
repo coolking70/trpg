@@ -71,9 +71,15 @@ export class GamePreset {
     this.strategicLayer = data.strategicLayer || null;
     this.strategicSetup = data.strategicSetup || null;
     this.strategySchema = data.strategySchema || null;  // 战略主题 Schema 覆盖（Phase 42 T3）
-    // 可选模块开关（Phase 47）：strategy=战略系统（军团战+内政外交+战争+底层视角）。
-    //   缺省时由内容推断（有 strategicSetup → 视为开启），保持向后兼容。
-    this.modules = data.modules || { strategy: !!(data.strategicSetup || data.strategicLayer) };
+    // 学校系统（Phase 48 可选模块）：schoolSetup=活状态种子；schoolSchema=题材覆盖。
+    this.schoolSetup = data.schoolSetup || null;
+    this.schoolSchema = data.schoolSchema || null;
+    // 可选模块开关（Phase 47/48）：strategy=战略系统；school=学校系统。
+    //   缺省时由内容推断（有 setup → 视为开启），保持向后兼容。
+    this.modules = data.modules || {
+      strategy: !!(data.strategicSetup || data.strategicLayer),
+      school: !!data.schoolSetup,
+    };
 
     // 场景图（新版主路径）— 节点 + 连接，每个节点是一个有意义的场景
     // scenes 为空数组时回退到旧的格子地图触发机制
@@ -223,6 +229,8 @@ export class GamePreset {
       strategicLayer: this.strategicLayer,
       strategicSetup: this.strategicSetup,
       strategySchema: this.strategySchema,
+      schoolSetup: this.schoolSetup,
+      schoolSchema: this.schoolSchema,
       modules: this.modules,
       scenes: this.scenes,
       startingSceneId: this.startingSceneId,
