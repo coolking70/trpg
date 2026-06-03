@@ -11,6 +11,7 @@ import { estimateTokens } from '../utils/tokenEstimator.js';
 import {
   clampAuthority, filterActionsByAuthority, narrationCanMutate, authorityPromptSection, requiredAuthority,
 } from './AIAuthority.js';
+import { schemaOf } from '../data/strategySchema.js';
 
 export class AIGMEngine extends GameSystem {
   constructor() {
@@ -808,19 +809,30 @@ export class AIGMEngine extends GameSystem {
       const ss = this.gameEngine?.getSystem('StrategicSystem');
       const me = ss ? ss.getPlayerState(gameState) : st.factions?.[st.playerFactionId];
       if (me) {
-        lines.push(`【国势】${me.name}：金${me.gold} 粮${me.food} 兵${me.troops} 民心${me.order}（第${st.season}季）`);
+        // 题材 Schema（缺省=三国）：资源标签 / 政令外交清单 / 口吻随题材
+        const schema = schemaOf(gameState);
+        const R = schema.resources;
+        const rn = (k, d) => R[k]?.name || d;
+        if (schema.narration?.settingTone) lines.push(`【题材】${schema.narration.settingTone}`);
+        lines.push(`【国势】${me.name}：${rn('gold', '金')}${me.gold} ${rn('food', '粮')}${me.food} ${rn('troops', '兵')}${me.troops} ${rn('order', '民心')}${me.order}（第${st.season}季）`);
         const dip = Object.entries(me.diplomacy || {}).map(([id, r]) => `${st.factions[id]?.name || id}:${r.stance}(${r.relation})`).join('，');
         if (dip) lines.push(`【外交】${dip}`);
         if (Array.isArray(me.holdings) && me.holdings.length) {
           lines.push(`【城池】${me.holdings.map(h => `${h.name}(${h.id}${h.governorName ? '·守:' + h.governorName : ''})`).join('，')}`);
         }
-        lines.push('【可用战略动作】govern{policyId: farming劝农|tax征税|conscript征兵|fortify筑城|relief赈灾|develop屯田, targetHoldingId?城id(可选,限指定城)}；'
-          + 'diplomacy{action: alliance结盟|declare_war宣战|sue_peace求和|tribute朝贡|marriage联姻, targetId}；'
-          + 'appoint_governor{holdingId城id, charId武将id}（委任太守）；mobilize{value}。'
+        const polList = Object.entries(schema.policies).map(([k, v]) => `${k}${v.name}`).join('|');
+        const dipList = Object.entries(schema.diplomacyActions).map(([k, v]) => `${k}${v.name}`).join('|');
+        lines.push(`【可用战略动作】govern{policyId: ${polList}, targetHoldingId?城id(可选,限指定城)}；`
+          + `diplomacy{action: ${dipList}, targetId}；`
+          + 'appoint_governor{holdingId城id, charId将领id}（委任主官）；mobilize{value}。'
           + '仅当玩家明确提出相应内政/外交/人事主张、且你的权限足够时才发出这些动作；否则只叙述、不擅改国势。');
 
         // 作战层（Phase 42）：仅当作战地理(regions)启用时注入军情 + 可用作战动作
         if (st.regions) {
+          const POS = schema.marchPostures || {};
+          const posTone = schema.narration?.postures || {};
+          const raidName = posTone.raid || POS.raid?.name || '突袭';
+          const openName = posTone.open || POS.open?.name || '公开讨伐';
           const targets = [];
           for (const [fid, f] of Object.entries(st.factions || {})) {
             if (fid === st.playerFactionId) continue;
@@ -843,7 +855,7 @@ export class AIGMEngine extends GameSystem {
               + (asAtk ? '我为攻方：siege_order{order: assault强攻 | blockade围困 | lift退兵}'
                        : '我为守方：siege_order{order: hold坚守 | sortie强攻反击 | relief求援(可带allyId) | breakout突围}'));
           }
-          lines.push('【可用作战动作】launch_march{target:城名或城id, posture: raid密遣奇袭(敌不及备防,无盟援) | open公开讨伐(传檄召盟友响应,士气高但守方预警), generalIds?:[武将id]}。'
+          lines.push(`【可用作战动作】launch_march{target:城名或城id, posture: raid(${raidName}：敌不及备防,无盟援) | open(${openName}：召盟友响应,士气高但守方预警), generalIds?:[将领id]}。`
             + '仅当玩家明确提出出兵/接敌/围城主张、且权限足够时才发出作战动作；行军费时、非即时抵达。');
         }
       }

@@ -39,8 +39,8 @@ import { ContextRetriever } from '../systems/ContextRetriever.js';
 
 import { GamePreset } from '../models/GamePreset.js';
 import { GameState } from '../models/GameState.js';
-import { FORMATIONS, canUseFormation, generalHasTactic, TACTICS } from '../data/warfare.js';
-import { POLICIES, DIPLOMACY_ACTIONS } from '../data/governance.js';
+import { canUseFormation, generalHasTactic } from '../data/warfare.js';
+import { schemaOf } from '../data/strategySchema.js';
 import { assembleLegionBattle, settleLegionBattle } from '../systems/legionOrchestration.js';
 import { applyStrategyEffect, applySeasonEvents } from '../systems/strategyOrchestration.js';
 
@@ -850,7 +850,7 @@ export class GameSession {
     try { await this.sys('AIGMEngine').processGameAction('narrate_legion_result', { won: false, summary: {}, siege: true }, this.gameState); } catch { /* */ }
     if (r.outcome) {
       const res = ss.resolveSiege(this.gameState, sg, r.outcome.type);
-      const verb = { breach: '城门告破', surrender: '粮尽献城', fallen: '城陷', retreat: '攻方退兵' }[r.outcome.type] || r.outcome.type;
+      const verb = (schemaOf(this.gameState).narration?.siegeVerbs || {})[r.outcome.type] || r.outcome.type;
       this.gameState.addNarrative('system', res.attackerWins
         ? `🏯 ${this._holdingName(sg.holdingId)} ${verb}，落入 ${this._factionName(sg.attacker)} 之手。`
         : `🎉 ${verb}，${this._holdingName(sg.holdingId)} 之围得解！`);
@@ -1156,12 +1156,14 @@ export class GameSession {
       for (const t of targets) {
         options.push({ n: ++n, type: 'legion', orderType: 'attack', targetId: t.id, text: `进攻 ${t.name}（${t.troops}众）` });
       }
-      // 列阵（仅主将阵法够格的）
+      // 列阵（仅主将阵法够格的）——阵型/战法表取自题材 Schema
+      const _sc = schemaOf(gs);
+      const FORMS = _sc.formations, TACS = _sc.tactics;
       const g = actor.generalId ? (b.generals[actor.generalId] || null) : null;
-      for (const fk of Object.keys(FORMATIONS)) {
+      for (const fk of Object.keys(FORMS)) {
         if (fk === 'none' || fk === actor.formation) continue;
-        if (canUseFormation(g, fk)) {
-          options.push({ n: ++n, type: 'legion', orderType: 'set_formation', formation: fk, text: `列「${FORMATIONS[fk].name}」阵` });
+        if (canUseFormation(g, fk, FORMS)) {
+          options.push({ n: ++n, type: 'legion', orderType: 'set_formation', formation: fk, text: `列「${FORMS[fk].name}」阵` });
         }
       }
       // 器械轰击
@@ -1171,7 +1173,7 @@ export class GameSession {
       // 战法
       for (const tk of (g?.warfare?.abilities || [])) {
         if (generalHasTactic(g, tk) && !b.tacticsUsed[`${actor.id}:${tk}`]) {
-          options.push({ n: ++n, type: 'legion', orderType: 'tactic', tacticKey: tk, targetId: targets[0]?.id, text: `战法「${TACTICS[tk]?.name || tk}」` });
+          options.push({ n: ++n, type: 'legion', orderType: 'tactic', tacticKey: tk, targetId: targets[0]?.id, text: `战法「${TACS[tk]?.name || tk}」` });
         }
       }
       options.push({ n: ++n, type: 'legion', orderType: 'hold', text: '据守不动' });
@@ -1211,14 +1213,15 @@ export class GameSession {
     if (!me) return;
     let n = options.length;
     const afford = (cost) => Object.keys(cost || {}).every(k => (me[k] || 0) >= cost[k]);
-    // 内政政令
-    for (const [pid, p] of Object.entries(POLICIES)) {
+    const _sc = schemaOf(gs);
+    // 内政政令（题材表）
+    for (const [pid, p] of Object.entries(_sc.policies)) {
       options.push({ n: ++n, type: 'govern', policyId: pid, text: `政令·${p.name}`, affordable: afford(p.cost) });
     }
-    // 外交：对每个其它势力的可行动作
+    // 外交：对每个其它势力的可行动作（题材表）
     for (const [tid, rel] of Object.entries(me.diplomacy || {})) {
       const name = this._factionName(tid);
-      for (const [aid, a] of Object.entries(DIPLOMACY_ACTIONS)) {
+      for (const [aid, a] of Object.entries(_sc.diplomacyActions)) {
         if (aid === 'sow_discord') continue; // 离间需双目标，UI 层另议
         // 简单可行性：宣战/求和依当前 stance，结盟/联姻依关系
         if (aid === 'declare_war' && rel.stance === 'war') continue;

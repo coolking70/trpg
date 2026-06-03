@@ -51,6 +51,7 @@ import { GameUI } from './ui/GameUI.js';
 
 // 数据
 import { DEFAULT_PRESET } from './data/defaultPreset.js';
+import { schemaOf } from './data/strategySchema.js';
 import { assignPresetImages } from './data/assetLibrary.js';
 
 // Phase 26E — 项目自带预设清单（Vite 在构建时把 presets/*.json 都打入 bundle）
@@ -1621,7 +1622,7 @@ class TRPGApp {
         for (const ev of (r.events || [])) if (ev.type === 'relief_arrived' && ev.result) this.gameState.addNarrative('system', `🚩 援军驰至，里应外合，重创围城之敌（歼约 ${ev.result.hit}）！`);
         if (r.outcome) {
           const res = ss.resolveSiege(this.gameState, sg, r.outcome.type);
-          const verb = { breach: '城门告破', surrender: '粮尽献城', fallen: '城陷', retreat: '攻方退兵' }[r.outcome.type] || r.outcome.type;
+          const verb = (schemaOf(this.gameState).narration?.siegeVerbs || {})[r.outcome.type] || r.outcome.type;
           this.gameState.addNarrative('system', res.attackerWins ? `🏯 ${this._stratHolding(sg.holdingId)} ${verb}，落入 ${this._stratName(sg.attacker)} 之手。` : `🎉 ${verb}，${this._stratHolding(sg.holdingId)} 之围得解！`);
         }
       }
