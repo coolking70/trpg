@@ -4,6 +4,22 @@
 
 ## [Unreleased]
 
+### Phase 42 — 战略玩法主题抽象（可换皮框架）+ 围城平衡 + 作战自由进谏 🎨⚔️
+
+把"战术(warfare)·作战(war)·战略(governance)"三层的**三国硬编码数据表**抽成**剧本可覆盖的 `strategySchema`**，机制引擎保持通用，换皮=改数据不碰逻辑；三国为内置默认（零回归）。
+
+**T1 围城平衡细调**：重调 `war.js siegeTick/siegeOutcome`——强攻=城防伤随兵力/器械、攻方折损随守军反击放大（攻坚弱旅未破门先溃退）；围困=攻守皆耗存粮的"断粮赛跑"（守方存粮足可"坚守待敌粮尽/士气崩而退"，不再必先饿死）；破城需残兵≥守军四成（否则顿兵而退）。新增 `warSimulator`（buildSiege/simulateSiege/runWarBalance/standardScenarios）校四条结局路径皆可达。
+
+**T2 作战自由进谏**：`ACTION_AUTHORITY` 加 `launch_march`/`engage`/`siege_order`（L3）；`AIGMEngine._applyEngineActions` 落地——玩家自然语言"密遣轻骑奇袭X城 / 公开讨伐Y / 急召盟友救援 / 出城迎击 / 闭城固守"→ AI 落为作战动作（launch_march 即时入列费时行军；engage/siege_order 记 `_pendingWarOrder` 由运行时起战/建围/结算）。数字摘要注入军情（可征讨城池/我军在途/探报敌军/兵临城下/围城中）+ 可用作战动作。
+
+**T3 战略主题抽象框架（全 Schema 覆盖）**：新增 `src/data/strategySchema.js`——`DEFAULT_SCHEMA`(=三国常量组合) + `resolveSchema(preset)`（表字段整张替换、resources/narration 深合并）+ `schemaOf`/`battleUnitKey`。Schema 字段：resources / unitTypes / counterMatrix / formations / machines / battleTypes / tactics / marchPostures / holdingTypes / policies / diplomacyActions / defaultBattleUnits / narration。
+- 资源键(gold/food/troops/order)、政令 6 原型键、战型键(field/siege/defense/naval)、姿态键(raid/open)、战法键(charge/fire/ambush/rally) 为**结构槽位**，题材沿用并只改名/数值/克制即换皮；政令亦可带 `effect` 字段定义全新键。
+- 接线（向后兼容，缺省即三国）：`StrategicSystem.initFromPreset` 解析并挂 `gameState.strategySchema`（共享单点，存档持久化）；warfare/governance/war 纯函数加可选表参（默认内置）；LegionWarfareSystem 经 `_T()`、StrategicSystem 经 `_S()`/`_bu()` 读题材表；UI(RightPanel/LegionBattlePanel) 与 AI 数字摘要/叙事(narration.siegeVerbs/settingTone/postures) 同源读 schema。
+
+**T4 主题包**：`src/data/themes/medievalFantasy.js`（剑士/骑士/法师、盾墙/楔形、垦荒/募兵、王城/要塞）+ `modernWar.js`（步兵/装甲/炮兵/防空/海空军、战线/装甲楔、生产/征召、首都/工业城）各一份完整 schema + 示范剧本（区域图+城池+两势力）。`defaultBattleUnits` 让战略抽象兵力下沉军团战时用题材兵种。
+
+**验证**：jest 737/737（+warSimulator/strategySchema/themeCombat/themeStrategy/warAdvisory/themePacks 共 ~30 例）、MCP 45/45、vite build 通过。deepseek-v4-flash 真 GM 抽样：西幻/现代题材的进谏→题材化叙事+作战落地正常。
+
 ### Phase 41 — 叙事化战争层（行军·情报·明暗·围城·救援）🏰⚔️
 
 在战术层（warfare.js/LegionWarfareSystem）之上加"作战层"，取代"一回合兵临城下"，实现 TRPG 跑团的战争叙事合理性。

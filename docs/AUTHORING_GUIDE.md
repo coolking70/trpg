@@ -621,6 +621,65 @@ Math.random = () => 0.05;  // 让所有概率检查通过
 
 ---
 
+## 八·五、做一个新题材的战略剧本（写一个 `strategySchema`）
+
+战争/战略层（兵种·克制·阵型·器械·政令·外交·城池·行军姿态）是**通用机制引擎 + 题材数据**两层。要做中世纪西幻、现代战争、星际等迥异题材的"内政外交 + 军团战"剧本，**不必改任何引擎代码**——只在预设里写一份 `strategySchema` 覆盖默认（三国）数据即可。范例见 [`src/data/themes/medievalFantasy.js`](../src/data/themes/medievalFantasy.js)、[`src/data/themes/modernWar.js`](../src/data/themes/modernWar.js) 及对应 `*Preset.js`。
+
+### 怎么挂
+
+预设顶层加 `strategySchema` 字段（可只覆盖部分，其余继承三国默认）：
+
+```js
+const myPreset = {
+  presetId: 'my_theme', name: '…',
+  strategySchema: { /* 见下 */ },
+  factions: [ /* … */ ],
+  strategicSetup: { playerFactionId, regions, factions: { …holdings… } },
+  // 角色 / 场景（含 tags:['governance'] 的理政场景）/ startingSceneId 同普通剧本
+};
+```
+
+加载时 `StrategicSystem.initFromPreset` 自动 `resolveSchema(preset)` 并挂到 `gameState.strategySchema`，全引擎（战术/战略/作战/UI/AI 叙事）随之换皮。
+
+### Schema 字段一览
+
+| 字段 | 作用 | 覆盖方式 |
+|---|---|---|
+| `resources` | 资源标签 `{name,icon}` | 深合并（**键固定** gold/food/troops/order，只改名/图标） |
+| `unitTypes` | 兵种 `{name,melee,def,ranged,speed,charge,water,wishFormation?}` | 整张替换 |
+| `counterMatrix` | 克制倍率 `{攻种:{守种:倍率}}` | 整张替换 |
+| `formations` | 阵型 `{name,statMods,requiresTactics}` | 整张替换 |
+| `machines` | 器械 `{name,effect:{vs,power,area},battleTypes,mobility}` | 整张替换 |
+| `battleTypes` | 战型（**键固定** field/siege/defense/naval；可改名/分区/`gateZone`） | 整张替换（一般沿用默认） |
+| `tactics` | 战法（**键固定** charge/fire/ambush/rally；可改名/数值） | 整张替换 |
+| `marchPostures` | 行军姿态（**键固定** raid/open；可改名/数值） | 整张替换 |
+| `holdingTypes` | 城池类型 `{name,prod,def,recruit}` | 整张替换 |
+| `policies` | 政令 `{name,cost,note,effect?}` | 整张替换 |
+| `diplomacyActions` | 外交 `{name,cost,note}` | 整张替换 |
+| `defaultBattleUnits` | 战略抽象兵力→军团战兵种角色 `{defender,defenderSupport,attacker,attackerShock}` | 整张替换 |
+| `narration` | 口吻 `{settingTone,postures,siegeVerbs,terms}` | 深合并 |
+
+### 结构槽位 vs 自由数据（关键约定）
+
+引擎逻辑按"原型键"运作，换皮时**键名沿用、只改展示与数值**最省事：
+
+- **资源键** `gold/food/troops/order` 固定（季产/政令逻辑按键运作）——只改 `name/icon`。
+- **政令键** `farming/tax/conscript/fortify/relief/develop` 是 6 个原型（增粮/增金/增兵/增防/增民心/增产能）。沿用键则走内置原型效果；若要**全新政令**，给该政令一个 `effect:{gold?,food?,troops?,order?,productionEfficiency?,security?,scaled?:[...]}` 字段即可自定义任意键。
+- **外交键** `alliance/declare_war/sue_peace/tribute/marriage/sow_discord`、**战型键** `field/siege/defense/naval`、**姿态键** `raid/open`、**战法键** `charge/fire/ambush/rally` 同理：沿用键得到内置行为，改 `name/cost/数值` 换皮。
+- **兵种/阵型/器械/城池类型**：键可任意自定义（克制矩阵、`defaultBattleUnits`、`wishFormation` 引用这些键即可）。`unitType.water>1` 视为"水栖兵种"（水战免地形罚）。
+
+### 最小检查清单
+
+1. `unitTypes` 至少含 `defaultBattleUnits` 引用的几个键；`counterMatrix` 用你的兵种键。
+2. `defaultBattleUnits.{defender,defenderSupport,attacker,attackerShock}` 指向已定义的兵种键（缺失会回退到首个兵种，不报错但不理想）。
+3. `policies`/`diplomacyActions` 若改了键，UI 快捷与 AI 进谏清单会自动跟随；若用全新政令键务必带 `effect`。
+4. `strategicSetup.factions[*].holdings[*].type` 用你的 `holdingTypes` 键；`region` 用 `regions` 图中的键。
+5. 跑 `npx jest`（题材 schema resolve/combat 用例可仿 `__tests__/integration/themePacks.test.js`）；可选 `simulateLegionBattle(battleDef,{strategySchema})` 跑题材平衡。
+
+> 提示：题材**叙事口吻**主要由 `narration.settingTone` + 各表的 `name` 驱动 AI 文风；机制平衡由数值（melee/def/克制倍率/cost）驱动。两者解耦，可分别调。
+
+---
+
 ## 九、常见陷阱
 
 | 陷阱 | 修复 |
