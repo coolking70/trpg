@@ -1577,11 +1577,18 @@ class TRPGApp {
       if (r.ok && data.action === 'declare_war' && before !== 'war') { (this.gameState.worldFlags ||= {})[`war_with_${data.targetId}`] = true; }
       if (r.ok) { try { await ai.processGameAction('narrate_diplomacy', { action: data.action, targetId: data.targetId, result: r }, this.gameState); } catch { /* */ } }
     } else if (data.kind === 'season') {
+      const commands = ss.playerCommands(this.gameState);
       const { events, season } = ss.advanceSeason(this.gameState);
-      this.gameState.addNarrative('system', `🗓 政务推进，时序入第 ${season} 季。`);
+      this.gameState.addNarrative('system', commands ? `🗓 政务推进，时序入第 ${season} 季。` : `🗓 时局流转，又是一季（第 ${season} 季）。`);
       // 敌国 AI 事件 → worldFlags + 叙述 + 入侵意图（共享编排）
       const { narratives, invasion } = applySeasonEvents(this.gameState, events);
       for (const n of narratives) this.gameState.addNarrative('system', n);
+      for (const e of events.filter(ev => ev.type === 'siege_resolved')) {
+        const sg = e.siege;
+        this.gameState.addNarrative('system', e.attackerWins
+          ? `🏯 ${this._stratHolding(sg.holdingId)} 失守，落入 ${this._stratName(sg.attacker)} 之手。`
+          : `🛡 ${this._stratName(sg.attacker)} 顿兵 ${this._stratHolding(sg.holdingId)} 城下，无功而退。`);
+      }
       try { await ai.processGameAction('narrate_governance', { kind: 'season', season, events, player: ss.getPlayerState(this.gameState) }, this.gameState); } catch { /* */ }
       // 作战层（Phase 41）：探报 + 接敌抉择（regions 启用时）
       for (const d of events.filter(e => e.type === 'march_detected')) {

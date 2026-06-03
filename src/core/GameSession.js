@@ -745,11 +745,19 @@ export class GameSession {
   async _advanceSeason() {
     const ss = this.sys('StrategicSystem');
     if (!this.gameState.strategicState) { this.gameState.addNarrative('system', '（当前剧本无战略层）'); return; }
+    const commands = ss.playerCommands(this.gameState);
     const { events, season } = ss.advanceSeason(this.gameState);
-    this.gameState.addNarrative('system', `🗓 政务推进，时序入第 ${season} 季。`);
+    this.gameState.addNarrative('system', commands ? `🗓 政务推进，时序入第 ${season} 季。` : `🗓 时局流转，又是一季（第 ${season} 季）。`);
     // 敌国 AI 事件 → worldFlags + 叙述 + 入侵意图（共享编排）
     const { narratives, invasion } = applySeasonEvents(this.gameState, events);
     for (const n of narratives) this.gameState.addNarrative('system', n);
+    // 作战自结算（Phase 43）：城池易主等大事——尤其底层视角下，让玩家从天下风云中感知战局
+    for (const e of events.filter(ev => ev.type === 'siege_resolved')) {
+      const sg = e.siege;
+      this.gameState.addNarrative('system', e.attackerWins
+        ? `🏯 ${this._holdingName(sg.holdingId)} 失守，落入 ${this._factionName(sg.attacker)} 之手。`
+        : `🛡 ${this._factionName(sg.attacker)} 顿兵 ${this._holdingName(sg.holdingId)} 城下，无功而退。`);
+    }
     try { await this.sys('AIGMEngine').processGameAction('narrate_governance', { kind: 'season', season, events, player: ss.getPlayerState(this.gameState) }, this.gameState); } catch { /* */ }
 
     // 作战层（Phase 41 W3）：探报 + 接敌抉择（regions 启用时取代 instant invasion）
@@ -1081,20 +1089,25 @@ export class GameSession {
       });
     }
 
-    // 战略层：始终给概要；位于「理政」场景时进入 governance 态并给出内政外交动作
+    // 战略层：始终给概要；号令权(ruler)下位于「理政」场景进入 governance 态并给指挥动作。
+    // 底层视角(officer/soldier)：不给任何指挥选项——势力自治、战争幕后自结算（Phase 43）。
     let siege = null;
     if (gs.strategicState) {
       strategy = this._buildStrategySnapshot(gs);
-      // 围城进行中（无激战/事件时）→ siege 态 + 围城操作（Phase 41 W4）
-      const sg = (situation === 'travel' || situation === 'governance') ? this.sys('StrategicSystem').playerSiege(gs) : null;
+      const commands = this.sys('StrategicSystem').playerCommands(gs);
+      // 围城进行中且玩家亲自指挥（ruler）→ siege 态 + 围城操作（Phase 41 W4）
+      const sg = commands && (situation === 'travel' || situation === 'governance') ? this.sys('StrategicSystem').playerSiege(gs) : null;
       if (sg) {
         situation = 'siege';
         options = [];
         siege = this._buildSiegeSnapshot(gs, sg);
         this._appendSiegeOptions(gs, sg, options);
-      } else if (situation === 'travel' && current && (current.tags || []).includes('governance')) {
+      } else if (commands && situation === 'travel' && current && (current.tags || []).includes('governance')) {
         situation = 'governance';
         this._appendGovernanceOptions(gs, options);
+      } else if (!commands && situation === 'travel' && gs.strategicState.regions) {
+        // 底层视角：给一个"静观时局"入口，让幕后世界继续运转（势力/战争自行推进一季）
+        options.push({ n: options.length + 1, type: 'advance_season', text: '静观时局变化（一季流转）' });
       }
     }
 
@@ -1191,17 +1204,23 @@ export class GameSession {
     const diplomacy = Object.entries(me.diplomacy || {}).map(([id, rel]) => ({
       factionId: id, name: this._factionName(id), stance: rel.stance, relation: rel.relation,
     }));
-    // 暗示：高参与度(≥L3)下，玩家可直接用自然语言向主公/军师进言，由 AI 落实为内政外交动作
-    const canPropose = (gs.aiAuthority ?? 2) >= 3;
+    const role = st.playerRole || 'ruler';
+    const commands = ss.playerCommands(gs);
+    // 暗示：仅号令权(ruler)+高参与度(≥L3)下，进言才会被落实为内政外交动作；底层视角进言只是表态。
+    const canPropose = commands && (gs.aiAuthority ?? 2) >= 3;
+    const hint = commands
+      ? (canPropose ? '可直接进言：说出你的内政或外交主张（如「劝课农桑、遣使结好东吴」），自会有人去办。' : null)
+      : `你身处「${me.name}」，却无号令之权——天下大势自有人主张，你只能在洪流中安身、随波而行。`;
     return {
       season: st.season,
       playerFactionId: st.playerFactionId,
+      playerRole: role,
       resources: { gold: me.gold, food: me.food, troops: me.troops, order: me.order },
       productionEfficiency: me.agg?.productionEfficiency,
       diplomacy,
       ranking: ss.ranking(gs),
-      // 极简呈现：UI 只需取 resources + diplomacy 几项；hint 提示自由进谏入口
-      hint: canPropose ? '可直接进言：说出你的内政或外交主张（如「劝课农桑、遣使结好东吴」），自会有人去办。' : null,
+      // 极简呈现：UI 只需取 resources + diplomacy 几项；hint 提示进言入口或底层处境
+      hint,
     };
   }
 

@@ -820,12 +820,18 @@ export class AIGMEngine extends GameSystem {
         if (Array.isArray(me.holdings) && me.holdings.length) {
           lines.push(`【城池】${me.holdings.map(h => `${h.name}(${h.id}${h.governorName ? '·守:' + h.governorName : ''})`).join('，')}`);
         }
-        const polList = Object.entries(schema.policies).map(([k, v]) => `${k}${v.name}`).join('|');
-        const dipList = Object.entries(schema.diplomacyActions).map(([k, v]) => `${k}${v.name}`).join('|');
-        lines.push(`【可用战略动作】govern{policyId: ${polList}, targetHoldingId?城id(可选,限指定城)}；`
-          + `diplomacy{action: ${dipList}, targetId}；`
-          + 'appoint_governor{holdingId城id, charId将领id}（委任主官）；mobilize{value}。'
-          + '仅当玩家明确提出相应内政/外交/人事主张、且你的权限足够时才发出这些动作；否则只叙述、不擅改国势。');
+        // 底层视角（officer/soldier，Phase 43）：玩家无号令权——势力自治、不广告指挥动作。
+        const commands = ss?.playerCommands ? ss.playerCommands(gameState) : true;
+        if (commands) {
+          const polList = Object.entries(schema.policies).map(([k, v]) => `${k}${v.name}`).join('|');
+          const dipList = Object.entries(schema.diplomacyActions).map(([k, v]) => `${k}${v.name}`).join('|');
+          lines.push(`【可用战略动作】govern{policyId: ${polList}, targetHoldingId?城id(可选,限指定城)}；`
+            + `diplomacy{action: ${dipList}, targetId}；`
+            + 'appoint_governor{holdingId城id, charId将领id}（委任主官）；mobilize{value}。'
+            + '仅当玩家明确提出相应内政/外交/人事主张、且你的权限足够时才发出这些动作；否则只叙述、不擅改国势。');
+        } else {
+          lines.push(`【身份】玩家身处「${me.name}」但无号令之权（${st.playerRole}）。天下大势由其君主自理，玩家不能左右国策——其进言只是表态/牢骚，不得发出 govern/diplomacy/launch_march 等指挥动作，只可叙述其作为一个小人物在时局洪流中的见闻与处境。`);
+        }
 
         // 作战层（Phase 42）：仅当作战地理(regions)启用时注入军情 + 可用作战动作
         if (st.regions) {
@@ -838,25 +844,29 @@ export class AIGMEngine extends GameSystem {
             if (fid === st.playerFactionId) continue;
             for (const h of (f.holdings || [])) targets.push(`${h.name}(${h.id},属${f.name})`);
           }
-          if (targets.length) lines.push(`【可征讨城池】${targets.slice(0, 12).join('，')}`);
+          if (commands && targets.length) lines.push(`【可征讨城池】${targets.slice(0, 12).join('，')}`);
           const myMarches = (st.marches || []).filter(m => m.attacker === st.playerFactionId && !m._done);
-          if (myMarches.length) lines.push(`【我军在途】${myMarches.map(m => `→${this._stratHoldingName(gameState, m.targetHoldingId)}(余${m.etaXun}旬)`).join('，')}`);
+          if (myMarches.length) lines.push(`【${commands ? '我军' : '本势力'}在途】${myMarches.map(m => `→${this._stratHoldingName(gameState, m.targetHoldingId)}(余${m.etaXun}旬)`).join('，')}`);
           const incoming = (st.marches || []).filter(m => m.detected && m.defender === st.playerFactionId && !m._done);
           if (incoming.length) lines.push(`【探报·敌军来犯】${incoming.map(m => `${this._stratFactionName(gameState, m.attacker)}→${this._stratHoldingName(gameState, m.targetHoldingId)}(${m.posture === 'raid' ? '隐秘' : '公开'},约${m.etaXun}旬)`).join('，')}`);
           const ss2 = this.gameEngine?.getSystem('StrategicSystem');
-          if (gameState._pendingEngagement) {
+          if (commands && gameState._pendingEngagement) {
             const m = gameState._pendingEngagement;
             lines.push(`【兵临城下】${this._stratFactionName(gameState, m.attacker)}大军已抵 ${this._stratHoldingName(gameState, m.targetHoldingId)} 城下，待抉择：engage{choice: sally出城迎击 | hold闭城固守}`);
           }
           const sg = ss2?.playerSiege?.(gameState);
           if (sg) {
             const asAtk = sg.attacker === st.playerFactionId;
-            lines.push(`【围城中】${this._stratHoldingName(gameState, sg.holdingId)}（${sg.mode === 'blockade' ? '围困' : '强攻'}，第${sg.xun}旬；攻${sg.atk.troops}/守${sg.def.troops}/门${sg.works?.gate}）。`
-              + (asAtk ? '我为攻方：siege_order{order: assault强攻 | blockade围困 | lift退兵}'
-                       : '我为守方：siege_order{order: hold坚守 | sortie强攻反击 | relief求援(可带allyId) | breakout突围}'));
+            const head = `【围城中】${this._stratHoldingName(gameState, sg.holdingId)}（${sg.mode === 'blockade' ? '围困' : '强攻'}，第${sg.xun}旬；攻${sg.atk.troops}/守${sg.def.troops}/门${sg.works?.gate}）。`;
+            lines.push(commands
+              ? head + (asAtk ? '我为攻方：siege_order{order: assault强攻 | blockade围困 | lift退兵}'
+                              : '我为守方：siege_order{order: hold坚守 | sortie强攻反击 | relief求援(可带allyId) | breakout突围}')
+              : head + `你${asAtk ? '随军在围城一方' : '困守城中'}，胜负由主将定夺，你只是其中一卒。`);
           }
-          lines.push(`【可用作战动作】launch_march{target:城名或城id, posture: raid(${raidName}：敌不及备防,无盟援) | open(${openName}：召盟友响应,士气高但守方预警), generalIds?:[将领id]}。`
-            + '仅当玩家明确提出出兵/接敌/围城主张、且权限足够时才发出作战动作；行军费时、非即时抵达。');
+          if (commands) {
+            lines.push(`【可用作战动作】launch_march{target:城名或城id, posture: raid(${raidName}：敌不及备防,无盟援) | open(${openName}：召盟友响应,士气高但守方预警), generalIds?:[将领id]}。`
+              + '仅当玩家明确提出出兵/接敌/围城主张、且权限足够时才发出作战动作；行军费时、非即时抵达。');
+          }
         }
       }
     }
@@ -987,8 +997,13 @@ export class AIGMEngine extends GameSystem {
   //   已通过权限过滤器（≥L3 才会到这里），此处负责真正落地到引擎系统。
   // ============================================================
   _applyEngineActions(actions, gameState, level) {
+    // 底层视角（Phase 43）：玩家无号令权时，战略/作战指挥动作不予落地（进言仅为表态）。
+    const COMMAND_ACTIONS = new Set(['govern', 'diplomacy', 'mobilize', 'appoint_governor', 'launch_march', 'engage', 'siege_order']);
+    const ssCmd = this.gameEngine?.getSystem('StrategicSystem');
+    const canCommand = !ssCmd || !ssCmd.playerCommands || ssCmd.playerCommands(gameState);
     for (const action of actions) {
       try {
+        if (!canCommand && COMMAND_ACTIONS.has(action.type)) continue; // 人微言轻，主张不落地
         switch (action.type) {
           case 'spawn_event': this._spawnEvent(action, gameState, level); break;
           case 'scale_difficulty': {
