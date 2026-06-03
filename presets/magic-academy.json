@@ -1,0 +1,637 @@
+{
+  "presetId": "theme_magic_academy",
+  "name": "云霄学徒·奥术之路",
+  "author": "TRPG 主题包",
+  "lore": {
+    "worldName": "云霄学院",
+    "background": "你考入了漂浮于云端的云霄魔法学院，将在此研习奥秘、结交同道，直至学成出师。"
+  },
+  "modules": {
+    "strategy": false,
+    "school": true
+  },
+  "schoolSchema": {
+    "name": "云霄魔法学院",
+    "curriculum": {
+      "mode": "major-fixed",
+      "termsPerYear": 2,
+      "creditsPerTerm": 12,
+      "creditsPerYear": 22,
+      "creditsToGraduate": 88,
+      "yearsToGraduate": 4,
+      "passGpa": 1.2,
+      "expelGpa": 0.6,
+      "expelDemerits": 9,
+      "maxElectivesPerTerm": 5
+    },
+    "majors": {
+      "evocation": {
+        "name": "塑能学派",
+        "desc": "操控元素，攻伐之道。",
+        "requiredByYear": {
+          "1": [
+            "m_fund",
+            "m_fire1"
+          ],
+          "2": [
+            "m_fire2"
+          ],
+          "3": [
+            "m_ward"
+          ],
+          "4": [
+            "m_field"
+          ]
+        },
+        "requiredCourses": [
+          "m_fund",
+          "m_fire1"
+        ]
+      },
+      "conjuration": {
+        "name": "咒法学派",
+        "desc": "召唤与传送，奇术万千。",
+        "requiredByYear": {
+          "1": [
+            "m_fund",
+            "m_summon1"
+          ],
+          "2": [
+            "m_summon2"
+          ],
+          "3": [
+            "m_ward"
+          ],
+          "4": [
+            "m_field"
+          ]
+        },
+        "requiredCourses": [
+          "m_fund",
+          "m_summon1"
+        ]
+      }
+    },
+    "courses": {
+      "m_fund": {
+        "name": "魔法基础理论",
+        "credits": 3,
+        "type": "lecture",
+        "attr": "intellect",
+        "prereqs": [],
+        "grants": {
+          "stats": {
+            "intellect": 2,
+            "mp": 6
+          }
+        }
+      },
+      "m_fire1": {
+        "name": "初级塑能",
+        "credits": 4,
+        "type": "training",
+        "attr": "magicAttack",
+        "prereqs": [
+          "m_fund"
+        ],
+        "grants": {
+          "stats": {
+            "magicAttack": 3
+          },
+          "skills": [
+            "火花术"
+          ]
+        }
+      },
+      "m_fire2": {
+        "name": "高级塑能",
+        "credits": 4,
+        "type": "training",
+        "attr": "magicAttack",
+        "prereqs": [
+          "m_fire1"
+        ],
+        "grants": {
+          "stats": {
+            "magicAttack": 4
+          },
+          "skills": [
+            "烈焰术"
+          ]
+        }
+      },
+      "m_summon1": {
+        "name": "初级咒法",
+        "credits": 4,
+        "type": "training",
+        "attr": "intellect",
+        "prereqs": [
+          "m_fund"
+        ],
+        "grants": {
+          "stats": {
+            "intellect": 3
+          },
+          "skills": [
+            "召唤·小妖"
+          ]
+        }
+      },
+      "m_summon2": {
+        "name": "高级咒法",
+        "credits": 4,
+        "type": "training",
+        "attr": "intellect",
+        "prereqs": [
+          "m_summon1"
+        ],
+        "grants": {
+          "stats": {
+            "intellect": 4
+          },
+          "skills": [
+            "召唤·石像"
+          ]
+        }
+      },
+      "m_ward": {
+        "name": "防护与解咒",
+        "credits": 3,
+        "type": "seminar",
+        "attr": "magicDefense",
+        "prereqs": [
+          "m_fund"
+        ],
+        "grants": {
+          "stats": {
+            "magicDefense": 3
+          },
+          "skills": [
+            "法盾术"
+          ]
+        }
+      },
+      "m_field": {
+        "name": "野外秘境实习",
+        "credits": 5,
+        "type": "practical",
+        "attr": "luck",
+        "prereqs": [
+          "m_ward"
+        ],
+        "grants": {
+          "stats": {
+            "luck": 1,
+            "mp": 8
+          }
+        },
+        "eventHook": "academy_fieldwork"
+      }
+    },
+    "clubs": {
+      "club_alchemy": {
+        "name": "炼金研究会",
+        "activity": "调配药剂",
+        "eventHook": "club_alchemy",
+        "perk": {
+          "stats": {
+            "intellect": 1,
+            "mp": 4
+          }
+        }
+      },
+      "club_duel": {
+        "name": "决斗社",
+        "activity": "切磋法术",
+        "eventHook": "club_duel",
+        "perk": {
+          "stats": {
+            "magicAttack": 1
+          }
+        }
+      }
+    },
+    "rules": {
+      "no_forbidden": {
+        "name": "禁习禁咒",
+        "desc": "私习禁咒者，逐出师门。",
+        "penalty": {
+          "demerits": 5,
+          "severe": true
+        }
+      },
+      "no_duel": {
+        "name": "禁止私斗",
+        "desc": "院内私自斗法，记过。",
+        "penalty": {
+          "demerits": 2
+        }
+      },
+      "no_leave": {
+        "name": "禁止擅离学院",
+        "desc": "未经许可离院，记过。",
+        "penalty": {
+          "demerits": 1
+        }
+      }
+    },
+    "exams": {
+      "midterm": {
+        "name": "学期评定",
+        "kind": "exam",
+        "courses": "enrolled",
+        "passScore": 60,
+        "failPenalty": null,
+        "rewardByRank": [
+          {
+            "maxRank": 1,
+            "reward": {
+              "stats": {
+                "mp": 6
+              }
+            }
+          }
+        ]
+      },
+      "final": {
+        "name": "晋级试炼",
+        "kind": "exam",
+        "courses": "enrolled",
+        "passScore": 60,
+        "failPenalty": "retain",
+        "rewardByRank": [
+          {
+            "maxRank": 1,
+            "reward": {
+              "stats": {
+                "intellect": 1,
+                "magicAttack": 1
+              }
+            }
+          }
+        ]
+      }
+    },
+    "competitions": {
+      "cup": {
+        "name": "学院杯·魔法对抗",
+        "kind": "competition",
+        "attr": "magicAttack",
+        "rewardByRank": [
+          {
+            "maxRank": 1,
+            "reward": {
+              "stats": {
+                "magicAttack": 2,
+                "mp": 8
+              },
+              "skills": [
+                "奥术涌动"
+              ]
+            }
+          },
+          {
+            "maxRank": 3,
+            "reward": {
+              "stats": {
+                "magicAttack": 1
+              }
+            }
+          }
+        ]
+      },
+      "league": {
+        "name": "跨院魔法联赛",
+        "kind": "competition",
+        "attr": "magicAttack",
+        "fieldSize": 40,
+        "rewardByRank": [
+          {
+            "maxRank": 1,
+            "reward": {
+              "stats": {
+                "magicAttack": 3,
+                "luck": 1
+              }
+            }
+          },
+          {
+            "maxRank": 5,
+            "reward": {
+              "stats": {
+                "magicAttack": 1
+              }
+            }
+          }
+        ]
+      }
+    },
+    "roles": [
+      "archmage",
+      "mentor",
+      "dean",
+      "classmate",
+      "roommate"
+    ],
+    "recruitAffinity": 60,
+    "narration": {
+      "settingTone": "一座漂浮于云端的古老魔法学院，塔楼藏书无数，学徒们钻研奥秘、彼此竞逐。",
+      "terms": {
+        "school": "学院",
+        "term": "学期",
+        "exam": "试炼",
+        "club": "研究会",
+        "demerit": "记过"
+      }
+    }
+  },
+  "characters": [
+    {
+      "id": "char_player",
+      "name": "新晋学徒",
+      "stats": {
+        "hp": 40,
+        "hpCurrent": 40,
+        "mp": 20,
+        "mpCurrent": 20,
+        "attack": 6,
+        "defense": 4,
+        "magicAttack": 8,
+        "magicDefense": 6,
+        "speed": 6,
+        "luck": 4,
+        "intellect": 12
+      },
+      "skills": []
+    }
+  ],
+  "npcs": [
+    {
+      "id": "npc_mentor",
+      "name": "导师·薇拉",
+      "recruitable": true,
+      "description": "塑能学派的年轻导师，治学严谨却护短。",
+      "stats": {
+        "hp": 70,
+        "hpCurrent": 70,
+        "mp": 60,
+        "mpCurrent": 60,
+        "attack": 8,
+        "defense": 8,
+        "magicAttack": 16,
+        "magicDefense": 12,
+        "speed": 8,
+        "luck": 5
+      },
+      "abilities": [
+        {
+          "id": "firestorm",
+          "name": "烈焰风暴",
+          "type": "active",
+          "mpCost": 12
+        }
+      ]
+    },
+    {
+      "id": "npc_rival",
+      "name": "同窗·凯尔",
+      "recruitable": true,
+      "description": "咒法学派的天才，与你亦敌亦友。",
+      "stats": {
+        "hp": 45,
+        "hpCurrent": 45,
+        "mp": 30,
+        "mpCurrent": 30,
+        "attack": 6,
+        "defense": 5,
+        "magicAttack": 11,
+        "magicDefense": 7,
+        "speed": 7,
+        "luck": 4
+      },
+      "abilities": [
+        {
+          "id": "summon_stone",
+          "name": "召唤石像",
+          "type": "active",
+          "mpCost": 8
+        }
+      ]
+    },
+    {
+      "id": "npc_roommate",
+      "name": "室友·莉莉",
+      "recruitable": true,
+      "description": "炼金研究会的开朗少女，总有用不完的药剂。",
+      "stats": {
+        "hp": 42,
+        "hpCurrent": 42,
+        "mp": 28,
+        "mpCurrent": 28,
+        "attack": 5,
+        "defense": 5,
+        "magicAttack": 9,
+        "magicDefense": 8,
+        "speed": 7,
+        "luck": 6
+      },
+      "abilities": [
+        {
+          "id": "heal_potion",
+          "name": "治疗药剂",
+          "type": "active",
+          "mpCost": 6
+        }
+      ]
+    }
+  ],
+  "enemies": [],
+  "items": [],
+  "events": [
+    {
+      "id": "ev_meet_roommate",
+      "type": "event",
+      "name": "新生报到",
+      "description": "宿舍里，开朗的莉莉伸手向你打招呼：「以后多关照啦！」",
+      "eventType": "story",
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "inScene": [
+            "scene_academy"
+          ],
+          "requireSchoolState": true
+        }
+      },
+      "tags": [],
+      "maxTriggers": 1,
+      "choices": [
+        {
+          "id": "c_friendly",
+          "text": "热情回应",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "你与莉莉相谈甚欢。",
+              "effects": [
+                {
+                  "type": "school_relationship",
+                  "npcId": "npc_roommate",
+                  "delta": 30,
+                  "role": "roommate"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "c_cool",
+          "text": "礼貌点头",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "你淡淡地回了礼。",
+              "effects": [
+                {
+                  "type": "school_relationship",
+                  "npcId": "npc_roommate",
+                  "delta": 10,
+                  "role": "roommate"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ev_fieldwork",
+      "type": "event",
+      "name": "秘境实习",
+      "description": "导师薇拉带你与几名同窗深入秘境，临时结成小队。",
+      "eventType": "story",
+      "trigger": {
+        "type": "composite",
+        "condition": {
+          "requireSchoolState": {
+            "eventHook": "academy_fieldwork"
+          }
+        }
+      },
+      "tags": [],
+      "maxTriggers": 1,
+      "choices": [
+        {
+          "id": "c_team",
+          "text": "与同窗并肩",
+          "outcomes": [
+            {
+              "probability": 1,
+              "text": "你与凯尔临时组队，互为照应。",
+              "effects": [
+                {
+                  "type": "school_relationship",
+                  "npcId": "npc_mentor",
+                  "delta": 25,
+                  "role": "mentor"
+                },
+                {
+                  "type": "school_temp_party",
+                  "members": [
+                    "npc_rival"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "scenes": [
+    {
+      "id": "scene_academy",
+      "name": "云霄学院",
+      "type": "settlement",
+      "icon": "🏫",
+      "coords": {
+        "x": 0,
+        "y": 0
+      },
+      "tags": [
+        "spawn",
+        "school"
+      ],
+      "description": "悬浮云端的古老学院，塔楼林立，符文流转。",
+      "connections": [
+        {
+          "to": "scene_town",
+          "label": "乘云梯下凡"
+        }
+      ],
+      "events": [],
+      "vignettes": []
+    },
+    {
+      "id": "scene_town",
+      "name": "云脚镇",
+      "type": "town",
+      "icon": "🏘️",
+      "coords": {
+        "x": 1,
+        "y": 0
+      },
+      "tags": [],
+      "description": "学院脚下的小镇，补给与情报的集散地。",
+      "connections": [
+        {
+          "to": "scene_academy",
+          "label": "返回学院"
+        }
+      ],
+      "events": [],
+      "vignettes": []
+    }
+  ],
+  "startingSceneId": "scene_academy",
+  "startingOptions": {
+    "origins": [
+      {
+        "id": "evoker",
+        "name": "塑能学徒",
+        "icon": "🔥",
+        "tags": [
+          "major:evocation"
+        ],
+        "schoolMajor": "evocation",
+        "statBonus": {
+          "magicAttack": 2
+        },
+        "description": "志在元素攻伐，入塑能学派。"
+      },
+      {
+        "id": "conjurer",
+        "name": "咒法学徒",
+        "icon": "✨",
+        "tags": [
+          "major:conjuration"
+        ],
+        "schoolMajor": "conjuration",
+        "statBonus": {
+          "intellect": 2
+        },
+        "description": "醉心召唤奇术，入咒法学派。"
+      }
+    ]
+  },
+  "startingSceneRules": [
+    {
+      "default": true,
+      "sceneId": "scene_academy"
+    }
+  ],
+  "schoolSetup": {
+    "schoolName": "云霄魔法学院",
+    "major": "evocation"
+  }
+}

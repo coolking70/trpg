@@ -22,6 +22,7 @@ import { CombatSystem } from './systems/CombatSystem.js';
 import { LegionWarfareSystem } from './systems/LegionWarfareSystem.js';
 import { StrategicSystem } from './systems/StrategicSystem.js';
 import { SkirmishSystem } from './systems/SkirmishSystem.js';
+import { SchoolSystem } from './systems/SchoolSystem.js';
 import { assembleLegionBattle, settleLegionBattle } from './systems/legionOrchestration.js';
 import { applyStrategyEffect, applySeasonEvents } from './systems/strategyOrchestration.js';
 import { TurnManager } from './systems/TurnManager.js';
@@ -156,6 +157,7 @@ class TRPGApp {
     this.engine.registerSystem(new LegionWarfareSystem(), 49);
     this.engine.registerSystem(new StrategicSystem(), 48);
     this.engine.registerSystem(new SkirmishSystem(), 47);
+    this.engine.registerSystem(new SchoolSystem(), 46);
     this.engine.registerSystem(new TurnManager(), 40);
     this.engine.registerSystem(new AIGMEngine(), 30);
     this.engine.registerSystem(new ImportExportSystem(), 20);
@@ -362,6 +364,11 @@ class TRPGApp {
     // ---- 局部战斗（来自 SkirmishPanel） ----
     es.subscribe('skirmish:playerAction', (evt) => {
       this._handleSkirmishAction(evt.data || {});
+    });
+
+    // ---- 学校就学动作（来自 RightPanel 就学条） ----
+    es.subscribe('school:uiAction', (evt) => {
+      this._handleSchoolUiAction(evt.data || {});
     });
 
     // ---- 工具栏操作 ----
@@ -927,6 +934,9 @@ class TRPGApp {
     // Phase 33 — 初始化战略层（无 strategicSetup/strategicLayer 则为 null，向后兼容）
     const strategicSystem = this.engine.getSystem('StrategicSystem');
     if (strategicSystem) strategicSystem.initFromPreset(this.gameState, this.preset);
+    // Phase 48 — 初始化学校层（无 schoolSetup 则为 null，向后兼容）
+    const schoolSystem = this.engine.getSystem('SchoolSystem');
+    if (schoolSystem) schoolSystem.initFromPreset(this.gameState, this.preset);
 
     // 初始化 AI 长期记忆（从预设 lore 导入 World Facts）
     const memorySystem = this.engine.getSystem('MemorySystem');
@@ -1651,6 +1661,54 @@ class TRPGApp {
 
   _stratName(id) { return this.gameState?.strategicState?.factions?.[id]?.name || id; }
   _stratHolding(id) { for (const f of Object.values(this.gameState?.strategicState?.factions || {})) { const h = (f.holdings || []).find(x => x.id === id); if (h) return h.name; } return id; }
+
+  /** 学校就学动作（浏览器）—— 调 SchoolSystem，叙述结果，实践/社团 eventHook 交 AIGM 触发剧情。与 GameSession._doSchool 对齐。 */
+  async _handleSchoolUiAction(data) {
+    const sc = this.engine.getSystem('SchoolSystem');
+    const gs = this.gameState;
+    if (!sc || !gs?.schoolState) return;
+    const ai = this.engine.getSystem('AIGMEngine');
+    const op = data.op;
+    let r = null; let narr = '';
+    if (op === 'major') { r = sc.chooseMajor(gs, data.majorId); if (r.ok) narr = `你确定了修业方向：${r.name}。`; }
+    else if (op === 'elect') { r = sc.electCourse(gs, data.courseId); if (r.ok) narr = `你选修了《${r.name}》。`; }
+    else if (op === 'attend') {
+      r = sc.attendClass(gs, data.courseId);
+      if (r.ok) {
+        const gains = Object.entries(r.grants.stats || {}).map(([k, v]) => `${k}+${v}`).join('、');
+        const sk = (r.grants.skills || []).length ? `，习得 ${r.grants.skills.join('、')}` : '';
+        narr = `你修毕《${r.name}》（绩点 ${r.grade}）${gains ? `，${gains}` : ''}${sk}。累计学分 ${r.credits}。`;
+      }
+    }
+    else if (op === 'club') { r = sc.joinClub(gs, data.clubId); if (r.ok) narr = `你加入了「${r.name}」，参与${r.activity}。`; }
+    else if (op === 'exam') {
+      r = sc.takeExam(gs, data.examId);
+      if (r.ok) {
+        narr = `${r.name}：得分 ${r.score}，名列第 ${r.rank}/${r.fieldSize}，${r.passed ? '通过' : '未通过'}。`;
+        if (r.reward) narr += '（名次奖励到手）';
+        if (r.penalty === 'retain') narr += '（不及格，面临留级）';
+        if (r.penalty === 'expel') narr += '（成绩太差，面临退学）';
+      }
+    }
+    else if (op === 'advance_term') {
+      r = sc.advanceTerm(gs);
+      const map = { advance_term: '学期更替', promote: '升入新学年', retain: '留级重读', graduate: '顺利毕业', expel: '被勒令退学' };
+      if (r.ok) narr = `${map[r.outcome] || r.outcome}（${r.reason}）。`;
+    }
+    else if (op === 'recruit') {
+      r = sc.graduateRecruit(gs, data.npcIds || null);
+      narr = r.recruited.length ? `${r.recruited.length} 位师友同窗应邀加入了你。` : '暂无人应邀（关系或未达标）。';
+    }
+    else { narr = `（未知就学动作：${op}）`; }
+
+    if (r && r.ok === false) narr = `无法执行：${r.reason}`;
+    if (narr) gs.addNarrative('system', narr);
+
+    const hook = r && r.eventHook;
+    if (hook) { try { await ai.processGameAction('school_activity', { hook, op, result: r, school: sc.snapshot(gs) }, gs); } catch { /* */ } }
+
+    this.eventSystem.publish('game:stateChanged', { gameState: gs });
+  }
 
   // ============================================================
   // 局部战斗（Phase 45 P45c，浏览器）—— 小兵实战参战，由 SkirmishPanel 逐回合驱动

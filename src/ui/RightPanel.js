@@ -7,6 +7,7 @@ import { CardRenderer } from '../rendering/CardRenderer.js';
 import { schemaOf } from '../data/strategySchema.js';
 import { campaignStatus } from '../data/campaign.js';
 import { skirmishContext } from '../systems/skirmishOrchestration.js';
+import { schoolSchemaOf, creditProgress, computeGpa, canElect, eligibleRecruits } from '../data/school.js';
 
 const STANCE_LABEL = { ally: '盟', trade: '睦', neutral: '中', rival: '隙', war: '战', vassal: '附' };
 
@@ -36,6 +37,11 @@ export class RightPanel {
     this._strategyEl.className = 'right-panel__strategy';
     this.container.appendChild(this._strategyEl);
 
+    // 学校就学条（极简，仅在剧本含学校层且身处校园时显示）
+    this._schoolEl = document.createElement('div');
+    this._schoolEl.className = 'right-panel__school';
+    this.container.appendChild(this._schoolEl);
+
     const header = document.createElement('div');
     header.className = 'right-panel__header';
     header.textContent = '当前事件';
@@ -46,6 +52,7 @@ export class RightPanel {
     this.container.appendChild(this._contentArea);
 
     this._renderStrategyStrip();
+    this._renderSchoolStrip();
     this._renderEvent();
   }
 
@@ -57,7 +64,83 @@ export class RightPanel {
       this._customChoiceCallback = null;
     }
     this._renderStrategyStrip();
+    this._renderSchoolStrip();
     this._renderEvent();
+  }
+
+  /** 极简就学呈现：学籍条（年级/学期/学分/绩点）+ 校园场景的就学动作（选课/上课/社团/考试/推进/招募） */
+  _renderSchoolStrip() {
+    if (!this._schoolEl) return;
+    const st = this.gameState?.schoolState;
+    // 仅在校 + 身处校园场景显示
+    const scene = this.gameState?.scene || this._currentScene();
+    const onCampus = scene && ((scene.tags || []).includes('school') || (scene.tags || []).includes('campus'));
+    if (!st || st.status !== 'enrolled' || !onCampus) {
+      this._schoolEl.style.display = 'none'; this._schoolEl.innerHTML = ''; return;
+    }
+    this._schoolEl.style.display = '';
+    this._schoolEl.innerHTML = '';
+    const schema = schoolSchemaOf(this.gameState);
+    const terms = schema.narration?.terms || {};
+    const prog = creditProgress(st, schema);
+    const gpa = computeGpa(st);
+
+    // 学籍条
+    const bar = document.createElement('div');
+    bar.className = 'right-panel__school-bar';
+    bar.innerHTML = `<span title="学院">🏫 ${st.schoolName}</span>`
+      + `<span title="方向">${schema.majors?.[st.major]?.name || st.major}</span>`
+      + `<span title="年级/${terms.term || '学期'}">${st.year}年级·${terms.term || '学期'}${st.term}</span>`
+      + `<span title="学分">📚${prog.earned}/${prog.toGraduate}</span>`
+      + `<span title="绩点">GPA ${gpa.toFixed(2)}</span>`
+      + (st.demerits ? `<span class="right-panel__school-demerit" title="${terms.demerit || '记过'}">⚠${st.demerits}</span>` : '');
+    this._schoolEl.appendChild(bar);
+    if (st.pendingPenalty) {
+      const warn = document.createElement('div');
+      warn.className = 'right-panel__school-warn';
+      warn.textContent = st.pendingPenalty === 'expel' ? '⚠ 考试不合格，面临退学' : '⚠ 考试不合格，面临留级';
+      this._schoolEl.appendChild(warn);
+    }
+
+    // 就学动作
+    const acts = document.createElement('div');
+    acts.className = 'right-panel__school-acts';
+    const mk = (text, payload, title = '') => {
+      const b = document.createElement('button');
+      b.className = 'btn right-panel__school-btn';
+      b.textContent = text; if (title) b.title = title;
+      b.addEventListener('click', () => this.eventSystem.publish('school:uiAction', payload));
+      acts.appendChild(b);
+    };
+    // 可选课程（限 4 个，避免刷屏）
+    let elected = 0;
+    for (const [cid, c] of Object.entries(schema.courses || {})) {
+      if (elected >= 4) break;
+      if (canElect(st, schema, cid).ok) { mk(`选课·${c.name}`, { op: 'elect', courseId: cid }, `${c.credits}学分`); elected++; }
+    }
+    // 在修课程上课
+    for (const cid of (st.enrolled || [])) {
+      const c = schema.courses[cid]; if (c) mk(`上课·${c.name}`, { op: 'attend', courseId: cid });
+    }
+    // 社团
+    for (const [clid, cl] of Object.entries(schema.clubs || {})) {
+      if (!(st.clubs || []).includes(clid)) mk(`社团·${cl.name}`, { op: 'club', clubId: clid });
+    }
+    // 考试 / 竞赛
+    for (const [eid, e] of Object.entries(schema.exams || {})) mk(`${e.name}`, { op: 'exam', examId: eid });
+    for (const [eid, e] of Object.entries(schema.competitions || {})) mk(`${e.name}`, { op: 'exam', examId: eid });
+    // 推进学期
+    mk(`结束本${terms.term || '学期'}`, { op: 'advance_term' }, '推进学期：升级/留级/毕业/退学判定');
+    // 毕业招募
+    if (eligibleRecruits(st, schema).length) mk('招募师友', { op: 'recruit' }, '关系达标的同窗师友入队');
+    this._schoolEl.appendChild(acts);
+  }
+
+  _currentScene() {
+    try {
+      const ss = this.engine?.getSystem?.('SceneSystem');
+      return ss ? ss.getCurrentScene(this.gameState) : null;
+    } catch { return null; }
   }
 
   /** 极简战略呈现：国势条（必要数值 + 外交立场）+ 理政场景的少量情境选项 + 高权限进谏提示 */

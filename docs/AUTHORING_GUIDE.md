@@ -722,6 +722,48 @@ startingOptions: { origins: [
 
 ---
 
+## 八·六、做一个学校剧本（`schoolSetup` + `schoolSchema`，Phase 48）
+
+学校系统是与战略系统并列的**可选模块**：剧本含 `schoolSetup` 才激活，普通剧本零负担。机制引擎通用，题材（魔法学院/武道馆/现代高中）只是 `schoolSchema` 数据——换皮 = 换 schema，不碰逻辑。
+
+### 怎么挂
+
+```js
+{
+  modules: { school: true },           // 省略也行：有 schoolSetup 即视为开启
+  schoolSchema: magicAcademySchema,    // 题材数据（省略=通用学院 DEFAULT_SCHOOL_SCHEMA）
+  schoolSetup: { schoolName: '云霄魔法学院', major: 'evocation' },  // 活状态种子
+  scenes: [ { id: 'scene_academy', tags: ['spawn', 'school'], /* … */ } ], // 场景打 'school'/'campus' tag → 进校园即给就学动作
+}
+```
+
+进入带 `school`/`campus` tag 的场景且在校（`status==='enrolled'`）时，`situation` 变为 `'school'`，浏览器 RightPanel 显示**就学条**（学籍/学分/绩点/记过 + 选课/上课/社团/考试/推进学期/招募按钮）。
+
+### `schoolSchema` 字段一览
+
+- `curriculum`：`mode`（`major-fixed` 选专业固定课 / `free-credits` 自选学分）、`termsPerYear`、`creditsPerYear`/`creditsToGraduate`、`yearsToGraduate`、`passGpa`（低于→留级）、`expelGpa`/`expelDemerits`（→退学）、`maxElectivesPerTerm`。
+- `majors`：专业/学派/门派。`major-fixed` 下用 `requiredCourses` 或 `requiredByYear:{1:[…],2:[…]}` 逐年载入必修。
+- `courses`：`{ credits, type(lecture/training/seminar/practical), attr(考试主属性), prereqs:[先修], grants:{stats,skills}, eventHook }`。修毕即把 `grants` 落到角色卡。
+- `clubs`：`{ name, activity, eventHook, perk:{stats,skills} }`。
+- `rules`：校规 `{ name, desc, penalty:{ demerits, severe } }`。记过累计达 `expelDemerits` 或重大违纪≥3 → 退学。
+- `exams` / `competitions`：`{ name, attr 或 courses:'enrolled'|'completed', passScore, failPenalty('retain'|'expel'|null), rewardByRank:[{maxRank,reward}] }`。竞赛即跨校联赛/擂台。
+- `roles`（师友角色名）、`recruitAffinity`（毕业招募关系阈值）、`narration.{settingTone,terms}`（题材口吻/术语）。
+
+### 校园剧情：`requireSchoolState` 门控 + 事件效果
+
+事件 `trigger.condition.requireSchoolState` 把社团/实践/校园剧情限定到在校特定情形：`true`（仅需在校）或 `{ status, minYear, maxYear, major, enrolledIn, completed, inClub, eventHook, minDemerits, minGpa }`。配合课程/社团的 `eventHook`（上课/参与时 `context.schoolHook` 注入）触发对应剧情。
+
+事件 outcome 可用学校事件效果：`school_relationship{npcId,delta,role}`、`school_violation{ruleId}`、`school_temp_party{members}`（课程/活动/任务**临时组队**，活动后用 `school_disband_party` 撤出）、`school_exam{examId}`（被动/强制点名参加统考或联赛）。
+
+### 招募与身份
+
+- 毕业（或辍学/肄业）时，与师友同窗关系 ≥ `recruitAffinity` 者可经"招募"实体化入队（走 `NPCSystem.recruitCompanion`，需 NPC `recruitable:true` 且有 `stats`）。
+- 出身可决定入学专业/学派/门派：`startingOptions.origins[*].schoolMajor`（覆盖 `schoolSetup.major` 默认）。
+
+> 范例：[`src/data/themes/magicAcademy.js`](../src/data/themes/magicAcademy.js)（魔法学院）、`martialDojo.js`（武道馆/宗门）、`modernHighschool.js`（现代高中含学科竞赛/校运会/高考）+ 示范剧本 [`presets/magic-academy.json`](../presets/magic-academy.json)。MCP 三段管线会据 digest 校园主题词自动判定是否启用（`recommendSchoolModule`），也可在 `blueprint_draft` 用 `schoolModule:true/false` 覆盖。
+
+---
+
 ## 九、常见陷阱
 
 | 陷阱 | 修复 |

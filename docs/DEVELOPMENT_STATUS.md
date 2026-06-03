@@ -11,8 +11,10 @@
 - **是什么**：浏览器端 AI GM TRPG，AI 担任游戏主持人，玩家通过卡牌/**场景节点图**/文本推进冒险
 - **技术**：原生 ES Modules + Vite + Three.js (3D 骰子) + Canvas2D，无前端框架
 - **AI 接口**：OpenAI 兼容 `/chat/completions` **及 `/responses`**（hy3 等），默认本地 `qwen/qwen3.6-35b-a3b @ http://127.0.0.1:1234/v1`
-- **当前状态**：Phase 16-47 完成、**Jest 773 / MCP 45 全过**、场景图作为主架构、生产就绪
-- **Phase 45（最新）**：局部战斗**主题换皮**（schema.narration.skirmish 小队/敌将命名）+ **浏览器 SkirmishPanel**（`skirmishOrchestration` 共享编排）+ **季报/外交叙事口吻吃题材**（现代战争不再串三国器物词）
+- **当前状态**：Phase 16-48 完成、**Jest 812 / MCP 50 全过**、场景图作为主架构、生产就绪
+- **Phase 48（最新）**：**学校系统（可选模块）**——数据驱动 `schoolSetup`+`schoolSchema`（`major-fixed`选专业固定课 / `free-credits`自选学分），上课长属性/习技能、社团/实践触发剧情、师友人际与毕业招募、校规惩罚（记过/留校察看/退学）、考试竞赛跨校联赛（名次奖励/挂科留级退学）、课程活动临时组队。`EventTriggerEngine.requireSchoolState` 门控校园剧情；三套主题包（魔法学院/武道馆/现代高中）+ 示范剧本；MCP `recommendSchoolModule` 据校园题材词自动判定。`src/data/school.js` + `src/systems/SchoolSystem.js`，与基础架构零耦合（无 schoolSetup 全程 no-op）
+- **Phase 47**：战略系统作为**可选模块** + MCP 据需求自动判定（`recommendStrategyModule`）；`preset.modules.{strategy,school}` 显式开关，无数据时全程 no-op
+- **Phase 45**：局部战斗**主题换皮**（schema.narration.skirmish 小队/敌将命名）+ **浏览器 SkirmishPanel**（`skirmishOrchestration` 共享编排）+ **季报/外交叙事口吻吃题材**（现代战争不再串三国器物词）
 - **Phase 44**：**小兵实战参战**——`SkirmishSystem` 小队回合制连续战斗（援兵波次随战线 tide、士气按战损比→溃逃/投降/俘虏/鸣金/全歼）；底层视角"请缨参战"投身战线，**局部时间放缓**（每数场厮杀战略才推进一旬）；战功晋升（达将官→转 ruler 战略参与）；**阵斩/生擒敌将→`applyMajorEvent` 撬动战局**。`src/data/skirmish.js` + `src/systems/SkirmishSystem.js`
 - **Phase 43**：**底层视角**——`strategicState.playerRole`（ruler/officer/soldier），玩家可扮演底层小兵，势力内政外交/行军围城/城池易主在幕后**全自动运转**（`advanceWarXun` 非玩家指挥的围城即时结算，顺带修复 AI-vs-AI 城池不易主旧缺陷）；命令按角色门控、AI 进谏分级；出身轴 `startingOptions.origins.strategicRole` 决定身份。向后兼容（缺省 ruler）
 - **Phase 42**：战略玩法**主题抽象框架**——战术/战略/作战/叙事四层数据抽成剧本可覆盖的 `strategySchema`（`src/data/strategySchema.js`，三国为内置默认、零回归），换皮=改数据不碰引擎；附**中世纪西幻 + 现代战争**两个主题包及示范剧本（`src/data/themes/`）。另含围城平衡细调（强攻破城/围困献城/坚守退敌/突围 四路径皆可达）+ 作战自由进谏（`launch_march`/`engage`/`siege_order` 自然语言落地）

@@ -4,6 +4,18 @@
 
 ## [Unreleased]
 
+### Phase 48 — 学校系统（可选模块）🏫📚
+
+新增**学校系统**——与战略系统并列的数据驱动**可选模块**：剧本含 `schoolSetup` 才激活，普通剧本零负担、零耦合。机制引擎通用，题材（魔法学院/武道馆/现代高中…）只是 `schoolSchema` 数据。
+
+- **数据层 `src/data/school.js`**：`DEFAULT_SCHOOL_SCHEMA`（课程模式 `major-fixed` 选专业固定课 / `free-credits` 自选学分；课程含学分/类型/主属性/先修/修毕授予；社团/校规/考试/竞赛/角色/招募阈值/叙事口吻）+ 纯函数（学分核算、绩点、升级/留级/毕业/退学判定、选课门控、考试名次奖惩、违纪、招募）+ `resolveSchoolSchema`（题材换皮深合并）。
+- **`SchoolSystem`**：选专业/选课（先修门控）、上课（修毕→改角色卡属性/技能、计绩点、累学分）、社团（perk+剧情钩子）、人际关系（镜像 NPC 好感）、考试/竞赛（名次→奖励；挂科→留级/退学）、违纪（记过·重大违纪·留校察看/退学）、学期推进（升级/留级/毕业/退学落状态）、毕业招募（关系达标的师友同窗实体化入队）、课程/活动/任务**临时组队**（活动后撤出）。
+- **接入**：GameSession + main.js 均注册 `SchoolSystem` 并 `initFromPreset`；身处校园场景（tag `school`/`campus`）+ 在校 → `situation='school'` + 就学动作。`EventTriggerEngine` 新增 `requireSchoolState` 门控（year/major/club/eventHook/demerits/gpa…），社团/实践/校园剧情可精确限定触发情形。事件效果 `school_relationship`/`school_violation`/`school_temp_party`/`school_exam` 等。出身可选学派/门派（`opt.schoolMajor`）。
+- **主题包**：`magicAcademy` 魔法学院、`martialDojo` 武道馆/宗门、`modernHighschool` 现代高中（含学科竞赛/校运会/高考）；示范剧本 `magic-academy.json`（可招募导师/同窗/室友 + requireSchoolState 校园剧情）。
+- **MCP 自动判定**：`mcp-server/schoolModule.mjs` 的 `recommendSchoolModule(digest)`——据校园/就学主题词、校园设施地点、校园成长节拍占比打分（阈值 ≥3）。`blueprint_draft` 加 `schoolModule` 覆盖参数；`preset_build_from_blueprint` 据此门控产出 `schoolSetup`/`schoolSchema` 并标记 `preset.modules.school`。
+- **浏览器 UI**：RightPanel 就学条（学籍/年级/学分/绩点/记过 + 选课/上课/社团/考试/推进/招募按钮 → `school:uiAction`）。
+- **验证**：jest 812/812（school 数据/系统/桥接/主题包共 +35 例）、MCP 50/50（+学校推荐器 2）、build 通过。
+
 ### Phase 47 — 战略系统作为可选模块 + MCP 自动判定 🧩🤖
 
 确认并强化战略系统（军团战 + 内政外交 + 叙事化战争 + 底层视角/小兵参战）与基础架构的**解耦**，使其成为创建剧本时的**可选模块**，并在 MCP 管线中**据需求自动判定**是否纳入。
