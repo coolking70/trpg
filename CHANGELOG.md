@@ -12,7 +12,9 @@
 
 **P45c 浏览器 SkirmishPanel**：新增 `skirmishOrchestration.js`（`skirmishContext`/`buildSkirmishDef`/`settleSkirmish`）作共享单点，GameSession 委托之（去重）。`src/ui/SkirmishPanel.js` 双方小队 HP 条（★玩家/⚑敌将）+ 回合/战线/斩获 + 动作（斩/据守/鼓舞/退却/生擒）；GameUI 调度 `activeSkirmish`；RightPanel 按 `playerCommands` 门控、底层视角给"请缨参战/静观时局"；main.js 接线驱动。Claude Preview 验证渲染。
 
-**验证**：jest 762/762、MCP 45/45、build 通过、Claude Preview 面板渲染正常。
+**P45e 三国主线补出身轴**：三国剧本（`generate-sanguo-preset` → MCP 构建产物）经 `scripts/patch-sanguo-origins.mjs` 幂等补 `startingOptions.origins`——主公·刘备(ruler) / 蜀军裨将(officer) / 行伍小卒(soldier)，后两者改写主角身份（裨将 / 无名小卒）。`_applyCreationChoices` 支持出身改写主角 name/title/description。至此三国与主题包同标准：可由帝王或一卒切入同一乱世。
+
+**验证**：jest 766/766、MCP 45/45、build 通过、Claude Preview 面板渲染正常。
 
 ### Phase 44 — 小兵实战参战：局部战斗 + 局部时间放缓 ⚔️🔍
 

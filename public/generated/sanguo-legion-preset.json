@@ -4357,8 +4357,62 @@
       }
     }
   },
-  "startingOptions": null,
-  "startingSceneRules": [],
+  "startingOptions": {
+    "origins": [
+      {
+        "id": "lord",
+        "name": "主公·刘备",
+        "icon": "👑",
+        "tags": [
+          "rank:lord",
+          "literate"
+        ],
+        "strategicRole": "ruler",
+        "statBonus": {
+          "luck": 2
+        },
+        "description": "汉室宗亲，桃园举义，志在匡复汉室——蜀汉之主，方略征伐皆决于你。"
+      },
+      {
+        "id": "officer",
+        "name": "蜀军裨将",
+        "icon": "🪖",
+        "tags": [
+          "rank:officer"
+        ],
+        "strategicRole": "officer",
+        "charName": "裨将",
+        "charTitle": "蜀军裨将",
+        "charDescription": "蜀汉行伍出身的一员裨将，统领一队人马，听命征战。",
+        "statBonus": {
+          "attack": 3,
+          "defense": 2
+        },
+        "description": "蜀军一员裨将，统一队人马、亲历阵战。国策非你所能左右，但你能在沙场上博取功名。"
+      },
+      {
+        "id": "footman",
+        "name": "行伍小卒",
+        "icon": "🗡",
+        "tags": [
+          "rank:soldier"
+        ],
+        "strategicRole": "soldier",
+        "charName": "无名小卒",
+        "charTitle": "蜀军小卒",
+        "charDescription": "涿县乡里一名应募从军的无名小卒，只想在乱世里活着、挣口饱饭。",
+        "statBonus": {
+          "hp": 20
+        },
+        "description": "你只是涿县应募从军的乡勇之一。王侯将相的棋局与你无关，你在刀枪缝里求活，偶尔也能立些战功。"
+      }
+    ]
+  },
+  "startingSceneRules": [
+    {
+      "default": "scene_taoyuan"
+    }
+  ],
   "combatMode": "party",
   "aiHooks": {
     "sceneArrival": "optional",

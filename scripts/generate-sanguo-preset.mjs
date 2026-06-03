@@ -264,3 +264,5 @@ fs.writeFileSync(path.join(OUT, 'sanguo-legion.digest.json'), JSON.stringify(dig
 fs.writeFileSync(path.join(OUT, 'sanguo-legion.blueprint.json'), JSON.stringify(blueprint, null, 2));
 console.log(`digest: ${digest.characters.length} 人物 / ${digest.plotBeats.length} 节拍`);
 console.log(`blueprint: ${blueprint.chapters.length} 章；军团战 ${blueprint.chapters.reduce((s, c) => s + c.legionBattlePlan.length, 0)} 场，个人战 ${blueprint.chapters.reduce((s, c) => s + c.combatPlan.length, 0)} 场`);
+console.log('提示：MCP preset_build_from_blueprint 构建出 sanguo-legion-preset.json 后，');
+console.log('      再跑 `node scripts/patch-sanguo-origins.mjs` 补「出身轴」(主公/裨将/小卒，Phase 45)。');

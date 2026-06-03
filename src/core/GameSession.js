@@ -146,6 +146,12 @@ export class GameSession {
       const opt = opts.find(o => o.id === choices[axis]) || opts[0];
       if (!opt) continue;
       (opt.tags || []).forEach(t => tags.add(t));
+      // 出身可改写主角身份（Phase 45：如三国"主公/校尉/小卒"）：name/title/description 覆盖
+      if (protag) {
+        if (opt.charName) protag.name = opt.charName;
+        if (opt.charTitle !== undefined) protag.title = opt.charTitle;
+        if (opt.charDescription) protag.description = opt.charDescription;
+      }
       // 出身可决定战略身份（Phase 43）：playerRole(ruler/officer/soldier) + 所属势力。
       //   initFromPreset 随后读取 gameState._creationStrategic 覆盖默认 playerFactionId/playerRole。
       if (opt.strategicRole || opt.strategicFaction) {
