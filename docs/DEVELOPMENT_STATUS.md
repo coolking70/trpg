@@ -19,9 +19,9 @@
 - **Phase 43**：**底层视角**——`strategicState.playerRole`（ruler/officer/soldier），玩家可扮演底层小兵，势力内政外交/行军围城/城池易主在幕后**全自动运转**（`advanceWarXun` 非玩家指挥的围城即时结算，顺带修复 AI-vs-AI 城池不易主旧缺陷）；命令按角色门控、AI 进谏分级；出身轴 `startingOptions.origins.strategicRole` 决定身份。向后兼容（缺省 ruler）
 - **Phase 42**：战略玩法**主题抽象框架**——战术/战略/作战/叙事四层数据抽成剧本可覆盖的 `strategySchema`（`src/data/strategySchema.js`，三国为内置默认、零回归），换皮=改数据不碰引擎；附**中世纪西幻 + 现代战争**两个主题包及示范剧本（`src/data/themes/`）。另含围城平衡细调（强攻破城/围困献城/坚守退敌/突围 四路径皆可达）+ 作战自由进谏（`launch_march`/`engage`/`siege_order` 自然语言落地）
 - **已验证规模**：bundled 最大 **101 节点 / 87 事件 / 22 NPC**；三国剧本 **23 场景 / 30 事件 / 10 场军团战 + 4 场个人战 + 内政外交战略层**（0 必修、全可达，军团战经真 GM 玩测、内政外交链路 headless 验证）
-- **核心能力栈**：场景图 + 快速旅行 + 角色创建 4 轴 + NPC schedule/关系图 + 故事时间 + 营地交互 + worldFlags + 隐藏路径 + IndexedDB + 跨周目元进度 + AI 本地权威状态/相关性检索 + AI Hooks gate(4 tier) + AI 参与度阶梯(L0–L4) + 个人战 buff/AOE/phases/escape + **军团战争系统(单位栈战术制·四战型)** + **叙事化战争层(行军/情报/明暗/围城/救援)** + **内政外交系统(势力级国库 + 理政朝堂 + 敌国活跃 AI，与军团战深耦合)** + **战略主题抽象(可换皮 strategySchema·西幻/现代战争主题包)** + 生态位动态掉落 + Monte Carlo 模拟器(个人战/军团战/围城/战略) + 小说→预设三段确定性管线
+- **核心能力栈**：场景图 + 快速旅行 + 角色创建 4 轴 + NPC schedule/关系图 + 故事时间 + 营地交互 + worldFlags + 隐藏路径 + IndexedDB + 跨周目元进度 + AI 本地权威状态/相关性检索 + AI Hooks gate(4 tier) + AI 参与度阶梯(L0–L4) + 个人战 buff/AOE/phases/escape + **军团战争系统(单位栈战术制·四战型)** + **叙事化战争层(行军/情报/明暗/围城/救援)** + **内政外交系统(势力级国库 + 理政朝堂 + 敌国活跃 AI，与军团战深耦合)** + **战略主题抽象(可换皮 strategySchema·西幻/现代战争主题包)** + **学校系统(可选模块·选课学分/学习成长/社团实践/师友招募/校规/考试竞赛·魔法学院/武道馆/现代高中主题包)** + 生态位动态掉落 + Monte Carlo 模拟器(个人战/军团战/围城/战略) + 小说→预设三段确定性管线 + **可选模块按需自动判定(strategy/school)**
 - **MCP 服务器**：69 个工具（小说→预设三段管线，蓝图可编排 `combatPlan` 个人战 / `legionBattlePlan` 军团战 / `strategicSetup` 内政外交；`combat_simulate`/`legion_simulate`/`strategy_simulate` 平衡模拟、战略层生成/审稿、enemy_assign_ecology 等）
-- **下一步候选**：军团战 + 理政朝堂浏览器 UI（LegionBattlePanel / GovernanceModal）/ 逐城经营 / 战役级连战元层 / 部署+真人玩测
+- **下一步候选**：学校系统深化（社团专属副本 / 同窗竞争对手 AI / 校园季节事件历法）/ 逐城经营 / 战役级连战元层 / 部署+真人玩测
 
 ---
 
@@ -98,6 +98,9 @@ git show <commit> --stat
 | _(unreleased)_ | **Phase 34 三国战略内容 🀄** | 三国生成器加 `strategicSetup`（蜀视角内政外交）+ 理政朝堂 hub；夷陵/街亭 `drawFromStrategy`；strategy_simulate 蜀第 3/4 贴史实；内政外交链路 headless 验证 |
 | _(unreleased)_ | **Phase 35 战略交互 AI 化 🗣️** | 设计原则：战略=底层数据，玩家角色本位、不切战略 UI。`govern`/`diplomacy`/`mobilize` 入 `ACTION_AUTHORITY`(L3)；`AIGMEngine._applyEngineActions` 落实；`say` 路由 `player_action`（自由进谏）；digest 注入国势/可用动作；`strategy.hint` 极简提示。deepseek-v4-flash 真 GM 验证自然语言进谏→落为内政动作 |
 | _(unreleased)_ | **Phase 36 前端 🖥️** | 把军团战/内政外交接进浏览器 `main.js`（注册系统 + 事件效果 + 军团战高阶令编排 + 理政情境选项）；`LegionBattlePanel`（混合·简洁面板+高阶令）+ `RightPanel` 国势条（极简数值/外交 chips/情境选项/进谏提示）；GameUI 面板切换。Claude Preview 浏览器实测三国剧本 |
+| … | _(Phase 37–46：逐城经营 / 战役级连战 / 作战层行军围城 / 战略主题抽象 + 主题包 / 底层视角 playerRole / 小兵实战参战 + 局部时间放缓 / 出身定制 + 事件身份门控；详见 CHANGELOG)_ | |
+| _(unreleased)_ | **Phase 47 战略可选模块 🧩** | 战略系统解耦为可选模块（`preset.modules.strategy`，无数据 no-op）；`mcp-server/strategyModule.mjs` 据 digest 自动判定；`blueprint_draft`/`build` 门控战略产物；`strategyOptional.test` 零耦合验证 |
+| _(unreleased)_ | **Phase 48 学校系统 🏫** | `src/data/school.js`（schoolSchema + 纯函数：学分/绩点/升留毕退/选课/考试/违纪/招募）+ `SchoolSystem.js`（选课·上课长属性技能·社团·考试竞赛·校规·学期推进·毕业招募·临时组队）；GameSession/main.js 接线 + `situation:'school'` + RightPanel 就学条；`EventTriggerEngine.requireSchoolState` 校园剧情门控；三套主题包（魔法学院/武道馆/现代高中）+ `magic-academy.json`；MCP `recommendSchoolModule` 自动判定。jest 812 / MCP 50 |
 
 详细 bug 见第 5 章。
 
@@ -113,6 +116,10 @@ CardManager (80) ────── 卡牌 CRUD + 按类型/标签索引
 DiceSystem (70) ──────── 公式解析、优势/劣势、表达式求值
 MapSystem (60) ───────── 网格地图、寻路、迷雾（向后兼容用）
 CombatSystem (50) ─────── 先攻、攻击、技能、静态/动态掉落
+LegionWarfareSystem (49) ─ 军团战（单位栈战术制）※可选模块，无数据 no-op
+StrategicSystem (48) ──── 内政外交 + 叙事化战争（行军/围城）※可选模块
+SkirmishSystem (47) ───── 小兵实战参战（小队回合制）※底层视角时按需激活
+SchoolSystem (46) ─────── 学校系统（选课/学分·学习成长·社团·考试·招募）※可选模块（Phase 48）
 TurnManager (40) ──────── 阶段状态机、DoT/HoT 处理
 EventTriggerEngine (35) ─ 7 维度复合触发器（含 inScene）
 SceneSystem (33) ──────── 场景图：节点 / 连接 / 门控 / 旅行 / 快速旅行（**主路径**）
