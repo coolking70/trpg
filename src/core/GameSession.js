@@ -402,6 +402,36 @@ export class GameSession {
         gs.addNarrative('system', `🛤 你来到了 ${target.name}。`);
         break;
       }
+      // 学校系统事件效果（Phase 48）：仅在学校模块激活(schoolState)时生效，否则静默
+      case 'school_relationship': {
+        const sc = this.sys('SchoolSystem');
+        if (gs.schoolState && eff.npcId) {
+          const r = sc.adjustRelationship(gs, eff.npcId, eff.delta || 0, eff.role || null);
+          if (r.ok) gs.addNarrative('system', `（与 ${eff.npcId} 的关系 ${eff.delta >= 0 ? '+' : ''}${eff.delta}）`);
+        }
+        break;
+      }
+      case 'school_violation': {
+        const sc = this.sys('SchoolSystem');
+        if (gs.schoolState && eff.ruleId) {
+          const r = sc.violateRule(gs, eff.ruleId);
+          if (r.ok) gs.addNarrative('system', `⚠ 违反「${r.name}」，记过 ${r.demerits}${r.severe ? '（重大违纪）' : ''}。`);
+        }
+        break;
+      }
+      case 'school_temp_party': {
+        const sc = this.sys('SchoolSystem');
+        if (gs.schoolState) {
+          const r = sc.formTempParty(gs, eff.members || []);
+          if (r.added.length) gs.addNarrative('system', `🤝 ${r.added.length} 位同窗临时与你组队。`);
+        }
+        break;
+      }
+      case 'school_disband_party': {
+        const sc = this.sys('SchoolSystem');
+        if (gs.schoolState) sc.disbandTempParty(gs);
+        break;
+      }
     }
   }
 

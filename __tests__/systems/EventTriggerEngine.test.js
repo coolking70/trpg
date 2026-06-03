@@ -347,6 +347,35 @@ describe('EventTriggerEngine', () => {
     });
   });
 
+  // Phase 48 — 学校状态门控：requireSchoolState 限定社团/实践/校园剧情
+  describe('Phase 48 — requireSchoolState 学校门控', () => {
+    const gsSchool = (school) => ({ ...makeGameState(), mapState: { currentSceneId: 's1' }, schoolState: school });
+    test('无 schoolState → 设此条件的事件恒不触发', () => {
+      const ev = { id: 'e_club', type: 'event', trigger: { type: 'composite', condition: { inScene: ['s1'], requireSchoolState: true } } };
+      const engine = makeEngine([ev]);
+      expect(engine.scan(gsSchool(undefined), { moment: 'scene_enter' })).not.toContain('e_club');
+      expect(engine.scan(gsSchool({ status: 'enrolled', year: 1 }), { moment: 'scene_enter' })).toContain('e_club');
+    });
+    test('细粒度条件：minYear / inClub / eventHook', () => {
+      const ev = { id: 'e_y2', type: 'event', trigger: { type: 'composite', condition: { inScene: ['s1'], requireSchoolState: { minYear: 2, inClub: 'club_arts' } } } };
+      const engine = makeEngine([ev]);
+      expect(engine.scan(gsSchool({ status: 'enrolled', year: 1, clubs: ['club_arts'] }), { moment: 'scene_enter' })).not.toContain('e_y2'); // 年级不够
+      expect(engine.scan(gsSchool({ status: 'enrolled', year: 2, clubs: [] }), { moment: 'scene_enter' })).not.toContain('e_y2'); // 未入社
+      expect(engine.scan(gsSchool({ status: 'enrolled', year: 2, clubs: ['club_arts'] }), { moment: 'scene_enter' })).toContain('e_y2');
+    });
+    test('eventHook 匹配上下文', () => {
+      const ev = { id: 'e_hook', type: 'event', trigger: { type: 'composite', condition: { requireSchoolState: { eventHook: 'school_practical' } } } };
+      const engine = makeEngine([ev]);
+      const gs = gsSchool({ status: 'enrolled', year: 1 });
+      expect(engine.scan(gs, { moment: 'scene_enter', schoolHook: 'school_practical' })).toContain('e_hook');
+      expect(engine.scan(gs, { moment: 'scene_enter', schoolHook: 'other' })).not.toContain('e_hook');
+    });
+    test('未设 requireSchoolState 的事件不受影响（普通剧本零影响）', () => {
+      const engine = makeEngine([{ id: 'e_any', type: 'event', trigger: { type: 'composite', condition: { inScene: ['s1'] } } }]);
+      expect(engine.scan(gsSchool(undefined), { moment: 'scene_enter' })).toContain('e_any');
+    });
+  });
+
   // Phase 29 — 随机遭遇每次进入场景只触发一次（修复战斗后补扫 SCENE_ENTER 背靠背重复触发）
   describe('Phase 29 — 概率随机遭遇的单次访问冷却', () => {
     function encEngine() {

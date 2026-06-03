@@ -122,6 +122,26 @@ export class EventTriggerEngine extends GameSystem {
       if (!need.includes(role)) return false;
     }
 
+    // 学校状态门控（Phase 48，通用）：把社团/实践/校园剧情限定到在校特定情形。
+    //   未含学校模块的剧本若设此条件则恒不触发（无 schoolState）。无此条件的事件不受影响。
+    //   支持：true(仅需在校)/{status,minYear,maxYear,major,enrolledIn,completed,inClub,
+    //          eventHook,minDemerits,minGpa}。
+    if (condition.requireSchoolState) {
+      const ss = gameState?.schoolState;
+      if (!ss) return false;
+      const c = condition.requireSchoolState === true ? {} : condition.requireSchoolState;
+      if (c.status && ss.status !== c.status) return false;
+      if (c.minYear != null && (ss.year || 1) < c.minYear) return false;
+      if (c.maxYear != null && (ss.year || 1) > c.maxYear) return false;
+      if (c.major && ss.major !== c.major) return false;
+      if (c.enrolledIn && !(ss.enrolled || []).includes(c.enrolledIn)) return false;
+      if (c.completed && !(ss.completed || []).includes(c.completed)) return false;
+      if (c.inClub && !(ss.clubs || []).includes(c.inClub)) return false;
+      if (c.eventHook && context.schoolHook !== c.eventHook) return false;
+      if (c.minDemerits != null && (ss.demerits || 0) < c.minDemerits) return false;
+      if (c.minGpa != null && (ss.gpa || 0) < c.minGpa) return false;
+    }
+
     // 场景条件（新版）— 必须当前在指定的场景之一
     if (condition.inScene && condition.inScene.length > 0) {
       if (context.moment !== TRIGGER_MOMENTS.SCENE_ENTER) return false;

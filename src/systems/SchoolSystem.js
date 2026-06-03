@@ -294,9 +294,58 @@ export class SchoolSystem extends GameSystem {
     for (const e of pool) {
       let ok = false;
       try { ok = !!this.npcSystem?.recruitCompanion?.(gameState, e.npcId); } catch { /* */ }
-      if (ok) recruited.push(e.npcId);
+      if (ok) { this._materializeCompanion(gameState, e.npcId); recruited.push(e.npcId); }
     }
     return { ok: true, recruited, eligible: eligible.map(e => e.npcId) };
+  }
+
+  /** 把已招募 NPC 实体化为可参战的队伍成员（与 GameSession recruit_companion 同口径） */
+  _materializeCompanion(gameState, npcId) {
+    const npc = this.npcSystem?.getNPC?.(npcId);
+    if (!npc || !npc.stats) return false;
+    if ((gameState.activeCharacters || []).some(c => c.id === npcId)) return false;
+    const slot = JSON.parse(JSON.stringify(npc));
+    slot._isCompanion = true; slot.type = 'character';
+    slot.stats.hpCurrent = slot.stats.hp; slot.stats.mpCurrent = slot.stats.mp || 0;
+    gameState.activeCharacters = gameState.activeCharacters || [];
+    gameState.activeCharacters.push(slot);
+    return true;
+  }
+
+  // ============================================================
+  // 临时组队（课程/活动/任务的同伴）：参与期间并入队伍，结束后撤出（不永久入队）
+  //   members: [{ id, name, stats:{...}, abilities? }]（或 NPC id 字符串：从 NPCSystem 取卡）
+  // ============================================================
+  formTempParty(gameState, members = []) {
+    gameState.activeCharacters = gameState.activeCharacters || [];
+    gameState._tempPartyIds = gameState._tempPartyIds || [];
+    const added = [];
+    for (const m of members) {
+      let def = null;
+      if (typeof m === 'string') { const npc = this.npcSystem?.getNPC?.(m); if (npc?.stats) def = JSON.parse(JSON.stringify(npc)); }
+      else if (m && m.stats) def = JSON.parse(JSON.stringify(m));
+      if (!def) continue;
+      def.id = def.id || `temp_${Math.random().toString(36).slice(2, 8)}`;
+      if ((gameState.activeCharacters).some(c => c.id === def.id)) continue;
+      def._isCompanion = true; def._temporary = true; def.type = 'character';
+      def.stats.hpCurrent = def.stats.hp; def.stats.mpCurrent = def.stats.mp || 0;
+      gameState.activeCharacters.push(def);
+      gameState._tempPartyIds.push(def.id);
+      added.push(def.id);
+    }
+    return { ok: true, added };
+  }
+
+  /** 解散临时队伍（活动/任务结束）：撤出所有 _temporary 成员 */
+  disbandTempParty(gameState) {
+    const ids = new Set(gameState._tempPartyIds || []);
+    const removed = [];
+    gameState.activeCharacters = (gameState.activeCharacters || []).filter(c => {
+      if (c._temporary || ids.has(c.id)) { removed.push(c.id); return false; }
+      return true;
+    });
+    gameState._tempPartyIds = [];
+    return { ok: true, removed };
   }
 
   // ============================================================

@@ -122,6 +122,22 @@ describe('学期推进 / 招募 / 快照', () => {
     expect(r.recruited).toEqual([]); // 无 NPCSystem → 招募失败但不报错
   });
 
+  test('临时组队：活动期间并入、解散后撤出（不影响玩家与永久同伴）', () => {
+    const sys = mkSys(); const gs = mkGS();
+    sys.initFromPreset(gs, { id: 'p', schoolSetup: {} });
+    gs.activeCharacters.push({ id: 'perm', name: '挚友', _isCompanion: true, stats: { hp: 30, hpCurrent: 30 } });
+    const r = sys.formTempParty(gs, [
+      { id: 'tm1', name: '同窗甲', stats: { hp: 25, attack: 6, defense: 3 } },
+      { name: '同窗乙', stats: { hp: 20, attack: 5, defense: 2 } },
+    ]);
+    expect(r.added.length).toBe(2);
+    expect(gs.activeCharacters.length).toBe(4); // 玩家+永久+2临时
+    expect(gs.activeCharacters.find(c => c.id === 'tm1')._temporary).toBe(true);
+    const d = sys.disbandTempParty(gs);
+    expect(d.removed).toContain('tm1');
+    expect(gs.activeCharacters.map(c => c.id).sort()).toEqual(['pc', 'perm']); // 临时全撤、永久保留
+  });
+
   test('snapshot 概览', () => {
     const sys = mkSys(); const gs = mkGS();
     sys.initFromPreset(gs, { id: 'p', schoolSetup: { schoolName: '青云' } });
