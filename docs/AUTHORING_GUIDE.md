@@ -623,6 +623,10 @@ Math.random = () => 0.05;  // 让所有概率检查通过
 
 ## 八·五、做一个新题材的战略剧本（写一个 `strategySchema`）
 
+> **战略系统是可选模块（Phase 47）**。它与基础架构**数据驱动解耦**：所有战略系统（势力级国库/内政外交、军团战、叙事化战争、底层视角/小兵参战）只在预设含 `strategicSetup`（或 `preset.modules.strategy`）时激活；纯个人冒险/悬疑/解谜剧本不带这些字段即可，引擎对它们零开销、零干扰（系统已注册但全程 no-op）。
+>
+> **MCP 自动判定**：经小说→预设管线时，`blueprint_draft` 会用 `recommendStrategyModule(digest)` 据**势力数 / 战争·王朝·权谋主题词 / 战役类节拍 / 反向的个人题材词**自动判定是否启用战略模块，写入 `blueprint.strategyModule`（可用工具参数 `strategyModule:true/false` 或手改蓝图覆盖）。`preset_build_from_blueprint` 据此**包含或跳过**战略产物（strategicSetup / 军团战 / 理政朝堂），并在 `preset.modules.strategy` 标记结果。三国/西幻/现代战争 → 启用；纯冒险/悬疑/武侠个人线 → 不启用。
+
 战争/战略层（兵种·克制·阵型·器械·政令·外交·城池·行军姿态）是**通用机制引擎 + 题材数据**两层。要做中世纪西幻、现代战争、星际等迥异题材的"内政外交 + 军团战"剧本，**不必改任何引擎代码**——只在预设里写一份 `strategySchema` 覆盖默认（三国）数据即可。范例见 [`src/data/themes/medievalFantasy.js`](../src/data/themes/medievalFantasy.js)、[`src/data/themes/modernWar.js`](../src/data/themes/modernWar.js) 及对应 `*Preset.js`。
 
 ### 怎么挂

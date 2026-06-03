@@ -11,7 +11,7 @@
 - **是什么**：浏览器端 AI GM TRPG，AI 担任游戏主持人，玩家通过卡牌/**场景节点图**/文本推进冒险
 - **技术**：原生 ES Modules + Vite + Three.js (3D 骰子) + Canvas2D，无前端框架
 - **AI 接口**：OpenAI 兼容 `/chat/completions` **及 `/responses`**（hy3 等），默认本地 `qwen/qwen3.6-35b-a3b @ http://127.0.0.1:1234/v1`
-- **当前状态**：Phase 16-46 完成、**Jest 770 / MCP 45 全过**、场景图作为主架构、生产就绪
+- **当前状态**：Phase 16-47 完成、**Jest 773 / MCP 45 全过**、场景图作为主架构、生产就绪
 - **Phase 45（最新）**：局部战斗**主题换皮**（schema.narration.skirmish 小队/敌将命名）+ **浏览器 SkirmishPanel**（`skirmishOrchestration` 共享编排）+ **季报/外交叙事口吻吃题材**（现代战争不再串三国器物词）
 - **Phase 44**：**小兵实战参战**——`SkirmishSystem` 小队回合制连续战斗（援兵波次随战线 tide、士气按战损比→溃逃/投降/俘虏/鸣金/全歼）；底层视角"请缨参战"投身战线，**局部时间放缓**（每数场厮杀战略才推进一旬）；战功晋升（达将官→转 ruler 战略参与）；**阵斩/生擒敌将→`applyMajorEvent` 撬动战局**。`src/data/skirmish.js` + `src/systems/SkirmishSystem.js`
 - **Phase 43**：**底层视角**——`strategicState.playerRole`（ruler/officer/soldier），玩家可扮演底层小兵，势力内政外交/行军围城/城池易主在幕后**全自动运转**（`advanceWarXun` 非玩家指挥的围城即时结算，顺带修复 AI-vs-AI 城池不易主旧缺陷）；命令按角色门控、AI 进谏分级；出身轴 `startingOptions.origins.strategicRole` 决定身份。向后兼容（缺省 ruler）
@@ -27,7 +27,7 @@
 
 ```bash
 npm install
-npm test          # 770 tests in 63 suites
+npm test          # 773 tests in 64 suites
 npm run dev       # localhost:3000
 npm run build     # 生产构建到 dist/
 npm run test:mcp  # 45 MCP smoke tests

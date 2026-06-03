@@ -4,6 +4,16 @@
 
 ## [Unreleased]
 
+### Phase 47 — 战略系统作为可选模块 + MCP 自动判定 🧩🤖
+
+确认并强化战略系统（军团战 + 内政外交 + 叙事化战争 + 底层视角/小兵参战）与基础架构的**解耦**，使其成为创建剧本时的**可选模块**，并在 MCP 管线中**据需求自动判定**是否纳入。
+
+- **耦合审计**：战略系统对基础架构**零硬耦合**——系统注册廉价且无数据时全程 no-op；getState/kickoff/travel/combat/event 的战略路径全部数据门控（`if (strategicState)`/`activeSkirmish`/`regions`）。新增 `strategyOptional.test`：纯个人冒险剧本（无 strategicSetup）加载/游玩完全正常，战略/局部战斗的情境与动作绝不出现。
+- **需求分析推荐器**：`mcp-server/strategyModule.mjs` 的 `recommendStrategyModule(digest)`——据势力数（≥2 对峙/≥3 逐鹿）、战争/王朝/权谋主题词、战役类节拍占比、反向的个人/悬疑题材词，给出 `{strategy, score, reasons}`。三国/现代战争 → 启用；暗黑森林/武侠个人线 → 不启用。
+- **blueprint `strategyModule` + 构建门控**：`normalizeBlueprint` 自动写入 `strategyModule`（显式 `raw.strategyModule` 优先，否则推荐器）；`preset_build_from_blueprint` 据此**包含/跳过**战略产物（strategicSetup / 军团战 / 理政朝堂），并在 `preset.modules.strategy` 标记。未标记时按内容推断（向后兼容）。
+- **MCP 接线**：`blueprint_draft` 加 `strategyModule` 覆盖参数，返回判定与依据；build 返回 `modules`。`GamePreset.modules` 持久化（缺省由 strategicSetup 推断）。
+- **验证**：jest 773/773（+strategyOptional 3）、MCP 48/48（+推荐器 2、构建门控 1）、build 通过。AUTHORING_GUIDE 增「战略系统可选模块 + MCP 自动判定」说明。
+
 ### Phase 46 — 出身定制身份 + 主角本位事件门控（通用机制）🎭🚪
 
 三国小卒玩测暴露两点（被强塞主角开场、继承主角高属性），修为**通用引擎能力**，任何剧本可用：

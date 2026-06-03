@@ -27,6 +27,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import fs from 'node:fs';
 import path from 'node:path';
+import { recommendStrategyModule } from './strategyModule.mjs';
 
 // 默认目标文件
 const DEFAULT_FILE = path.resolve(process.cwd(), 'preset-draft.json');
@@ -57,6 +58,7 @@ function createEmptyPreset() {
     npcs: [],                       // Phase 19B
     strategicLayer: null,           // Phase 27: faction holdings / resources / governance, played through TRPG briefings
     strategicSetup: null,           // Phase 33: 内政外交活状态种子（玩家势力资源 + 外交立场）
+    modules: { strategy: false },   // Phase 47: 可选模块开关（战略系统：军团战+内政外交+战争+底层视角）
     startingOptions: null,          // Phase 19A
     startingSceneRules: [],         // Phase 19A
     combatMode: 'party',            // Phase 19
@@ -814,12 +816,17 @@ function normalizeBlueprint(raw = {}, digest = {}, { sizeClass = 'medium' } = {}
     id: e.id || `ending_${i + 1}`, name: e.name || `结局${i + 1}`,
     condition: e.condition || '', summary: e.summary || '', tone: e.tone || '',
   }));
+  // 战略系统可选模块（Phase 47）：显式 raw.strategyModule 优先；否则按需求分析自动判定。
+  const rec = recommendStrategyModule(digest);
+  const strategyModule = (raw.strategyModule !== undefined && raw.strategyModule !== null) ? !!raw.strategyModule : rec.strategy;
   return {
     schemaVersion: 1,
     title: raw.title || digest.title || '未命名',
     logline: raw.logline || digest.logline || '',
     tone: raw.tone || digest.tone || '',
     scale,
+    strategyModule,
+    strategyModuleRationale: rec,
     scope: {
       includeBeatIds: Array.isArray(raw.scope?.includeBeatIds) ? raw.scope.includeBeatIds : beats.map(b => b.id),
       startBeatId: raw.scope?.startBeatId || beats[0]?.id || '',
@@ -871,6 +878,14 @@ async function buildPresetFromBlueprint(blueprint, digest) {
   p.name = blueprint.title || digest.title || '未命名';
   p.lore = { worldName: digest.world?.name || '', era: '', background: digest.world?.setting || '', rules: '', gmStyle: blueprint.tone || digest.tone || '' };
   p.factions = (digest.world?.factions || []).map(f => ({ id: f.id, name: f.name, description: f.description || '', reputationVar: `rep_${f.id}`, tags: [`faction:${f.id}`] }));
+
+  // 战略系统（可选模块，Phase 47）：blueprint.strategyModule 显式开关；
+  //   未标记则按内容推断（有 strategicSetup 或 军团战计划 → 视为开启），保持向后兼容。
+  //   关闭时：不产出 strategicSetup / 军团战 / 理政朝堂——纯个人冒险剧本。
+  const strategyOn = (blueprint.strategyModule !== undefined && blueprint.strategyModule !== null)
+    ? !!blueprint.strategyModule
+    : (!!blueprint.strategicSetup || (blueprint.chapters || []).some(c => (c.legionBattlePlan || []).length > 0));
+  p.modules = { strategy: strategyOn };
 
   // 角色：主角 + companions（按 characterMapping）
   const roleOf = new Map((blueprint.characterMapping || []).map(m => [m.digestCharId, m.gameRole]));
@@ -961,7 +976,8 @@ async function buildPresetFromBlueprint(blueprint, digest) {
 
     // 军团战计划 → start_legion_battle 事件（与个人战 combatPlan 并列；单位栈战术制）
     //   每个 plan 编译为一条 hub 事件，effect 内联整场战斗编制（双方单位栈 + 主将武备 + 粮草）。
-    (ch.legionBattlePlan || []).forEach((plan, li) => {
+    //   战略模块关闭时跳过（纯个人冒险无军团战）。
+    (strategyOn ? (ch.legionBattlePlan || []) : []).forEach((plan, li) => {
       const battleType = BATTLE_TYPES[plan.battleType] ? plan.battleType : 'field';
       const generals = {};
       const mkUnits = (forces, side) => (forces || []).map((f, i) => {
@@ -1049,7 +1065,8 @@ async function buildPresetFromBlueprint(blueprint, digest) {
   }
 
   // 战略层（Phase 33）：blueprint.strategicSetup → preset.strategicSetup + 「理政朝堂」hub
-  if (blueprint.strategicSetup) {
+  //   仅当战略模块开启时纳入（Phase 47 可选模块）。
+  if (strategyOn && blueprint.strategicSetup) {
     const factionIds = new Set((p.factions || []).map(f => f.id));
     const sErrs = validateStrategicSetup(blueprint.strategicSetup, [...factionIds]);
     if (sErrs.length) console.error(`[build] strategicSetup 警告: ${sErrs.join('; ')}`);
@@ -3795,6 +3812,7 @@ tools.blueprint_draft = {
     digestPath: z.string().describe('段① 产出的 NovelDigest JSON 路径'),
     sizeClass: z.enum(['small', 'medium', 'large']).default('medium').describe('目标规模：small 15-25 / medium 40-60 / large 80-120 场景'),
     arc: z.string().optional().describe('只取小说哪一段/卷（自由文本提示）'),
+    strategyModule: z.boolean().optional().describe('战略系统可选模块（军团战+内政外交+战争+底层视角）：省略=据需求自动判定；可显式 true/false 覆盖'),
     apiKey: z.string().optional(),
     baseUrl: z.string().optional().describe(`默认 ${DEFAULT_OPENAI_BASE_URL}`),
     model: z.string().optional().describe(`默认 ${DEFAULT_OPENAI_MODEL}`),
@@ -3811,6 +3829,8 @@ tools.blueprint_draft = {
       });
       let raw;
       try { raw = parseAIJson(content); } catch (e) { return err(`蓝图 JSON 解析失败：${e.message}`); }
+      // 显式 strategyModule 覆盖优先（否则 normalizeBlueprint 据需求分析自动判定）
+      if (args.strategyModule !== undefined) raw.strategyModule = args.strategyModule;
       const bp = normalizeBlueprint(raw, digest, args);
       const errs = validateBlueprint(bp, digest);
       const outPath = args.outPath || args.digestPath.replace(/\.digest\.json$|\.json$/, '') + '.blueprint.json';
@@ -3818,8 +3838,11 @@ tools.blueprint_draft = {
       return ok(JSON.stringify({
         message: '已起草 PresetBlueprint（⚠ 请人工审阅/编辑后再进段③）',
         outPath, scale: bp.scale, chapters: bp.chapters.length, endings: bp.endings.length,
+        // Phase 47：战略系统可选模块——已据需求自动判定，可在 blueprint.strategyModule 手动改写
+        strategyModule: bp.strategyModule,
+        strategyModuleRationale: bp.strategyModuleRationale,
         validation: errs.length ? errs : 'ok',
-        next: '审阅/编辑 blueprint 后 → 段③ preset_build_from_blueprint',
+        next: '审阅/编辑 blueprint 后 → 段③ preset_build_from_blueprint' + (bp.strategyModule ? '（含战略系统：军团战/内政外交/战争）' : '（纯个人冒险，无战略系统）'),
       }, null, 2));
     } catch (e) {
       return err(`起草蓝图失败：${e.message}`);
@@ -3901,6 +3924,7 @@ tools.preset_build_from_blueprint = {
       return ok(JSON.stringify({
         message: '已从 Blueprint 确定性生成剧本' + (imgNote ? '（已配图）' : ''),
         name: preset.name,
+        modules: preset.modules,   // Phase 47：战略系统是否纳入（可选模块）
         counts: { scenes: preset.scenes.length, events: preset.events.length, enemies: preset.enemies.length, items: preset.items.length, characters: preset.characters.length },
         materializedLoot: materialized.length,
         imagesAssigned: !!imgNote,

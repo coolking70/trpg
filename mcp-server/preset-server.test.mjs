@@ -361,6 +361,21 @@ class StdioClient {
 async function main() {
   if (fs.existsSync(TMP)) fs.unlinkSync(TMP);
 
+  // Phase 47：战略系统可选模块 — 需求分析推荐器（纯函数，无需 server）
+  const { recommendStrategyModule } = await import('./strategyModule.mjs');
+  await test('recommendStrategyModule：群雄/战争题材 → 启用战略', async () => {
+    const r = recommendStrategyModule({ title: '三国', tone: '战争·群像', themes: ['兴亡', '权谋'],
+      world: { name: '汉末', setting: '群雄割据、逐鹿天下', factions: [{ id: 'a' }, { id: 'b' }, { id: 'c' }] },
+      plotBeats: [{ type: 'battle', title: '官渡' }, { type: 'battle', title: '赤壁' }] });
+    assert(r.strategy === true, `应启用战略，实际：${JSON.stringify(r)}`);
+    assert(r.signals.factionCount === 3, '势力数应为 3');
+  });
+  await test('recommendStrategyModule：个人/悬疑题材 → 不启用战略', async () => {
+    const r = recommendStrategyModule({ title: '林中低语', tone: '悬疑·恐怖', themes: ['生存', '解谜'],
+      world: { name: '迷雾森林', setting: '一个人深入诅咒之地解谜', factions: [] }, plotBeats: [{ title: '迷踪' }] });
+    assert(r.strategy === false, `应不启用战略，实际：${JSON.stringify(r)}`);
+  });
+
   const serverPath = path.join(import.meta.dirname || path.dirname(new URL(import.meta.url).pathname), 'preset-server.mjs');
   const client = new StdioClient(serverPath, TMP);
   await client.initialize();
@@ -1147,6 +1162,36 @@ async function main() {
     } finally { await mock.close(); }
   });
 
+
+  await test('preset_build_from_blueprint：strategyModule 开关门控战略产物', async () => {
+    const dg = path.join(os.tmpdir(), `trpg-mod-digest-${Date.now()}.json`);
+    const bp = path.join(os.tmpdir(), `trpg-mod-bp-${Date.now()}.json`);
+    const digest = {
+      schemaVersion: 1, title: '模块测试', logline: 'x', tone: 't',
+      world: { name: 'w', setting: 's', gmStyle: 'g', factions: [{ id: 'shu', name: '蜀' }, { id: 'wei', name: '魏' }] },
+      characters: [{ id: 'liu', name: '刘备', role: 'protagonist' }], locations: [],
+      plotBeats: [{ id: 'b1', order: 1, sectionTitle: '起', title: '起', summary: '', type: 'battle' }],
+    };
+    const baseBp = {
+      schemaVersion: 1, title: '模块测试', logline: 'x', tone: 't',
+      scale: { sizeClass: 'small', sceneCount: 15, chapterCount: 1, enemyCount: 2, endingCount: 1 },
+      scope: { includeBeatIds: ['b1'], startBeatId: 'b1', endBeatId: 'b1', excludedBeatIds: [] },
+      characterMapping: [{ digestCharId: 'liu', gameRole: 'protagonist' }],
+      chapters: [{ id: 'ch1', title: '起', fromBeatIds: ['b1'], mainEvent: { title: '起', summary: '' }, combatPlan: [], legionBattlePlan: [], branchPoints: [], sideContent: [] }],
+      endings: [{ id: 'e1', name: '终', condition: '', summary: '' }],
+      strategicSetup: { playerFactionId: 'shu', factions: { shu: { name: '蜀', gold: 100, food: 100, troops: 1000, order: 60 }, wei: { name: '魏', gold: 100, food: 100, troops: 2000, order: 60 } } },
+    };
+    fs.writeFileSync(dg, JSON.stringify(digest));
+    // 关闭：不纳入 strategicSetup
+    fs.writeFileSync(bp, JSON.stringify({ ...baseBp, strategyModule: false }));
+    let r = JSON.parse(await client.call('preset_build_from_blueprint', { blueprintPath: bp, digestPath: dg, confirm: true }));
+    assert(r.modules && r.modules.strategy === false, `关闭时 modules.strategy 应 false，实际：${JSON.stringify(r.modules)}`);
+    // 开启：纳入战略层
+    fs.writeFileSync(bp, JSON.stringify({ ...baseBp, strategyModule: true }));
+    r = JSON.parse(await client.call('preset_build_from_blueprint', { blueprintPath: bp, digestPath: dg, confirm: true }));
+    assert(r.modules && r.modules.strategy === true, `开启时 modules.strategy 应 true，实际：${JSON.stringify(r.modules)}`);
+    fs.unlinkSync(dg); fs.unlinkSync(bp);
+  });
 
   client.close();
   if (fs.existsSync(TMP)) fs.unlinkSync(TMP);
